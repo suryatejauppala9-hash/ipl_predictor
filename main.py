@@ -3,6 +3,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
+import uvicorn
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -25,7 +26,7 @@ print("API Ready!")
 class MatchRequest(BaseModel):
     team1: str
     team2: str
-    team1_venue_status: str # "home", "away", or "neutral"
+    team1_venue_status: str 
     toss_winner: str
     toss_decision: str
 
@@ -53,15 +54,16 @@ async def predict(data: MatchRequest):
         'toss_decision_bat': 1 if data.toss_decision == 'bat' else 0
     }])
     
-    # Get raw prediction and probability array
     prediction = model.predict(input_data)[0]
     probabilities = model.predict_proba(input_data)[0] 
     
-    # probabilities[1] = Team 1 win chance, probabilities[0] = Team 2 win chance
     winner = t1 if prediction == 1 else t2
     win_prob = probabilities[1] if prediction == 1 else probabilities[0]
     
     return {
         "winner": winner,
-        "probability": round(win_prob * 100, 1) # Round to 1 decimal place
+        "probability": round(win_prob * 100, 1) 
     }
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
