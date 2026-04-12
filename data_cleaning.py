@@ -4,7 +4,7 @@ def clean_and_prepare_data():
     print("Loading raw data...")
     df = pd.read_csv('ipl_data.csv')
 
-    # 1. Map legacy teams that evolved into current active franchises
+    # 1. Map legacy teams
     team_mapping = {
         'Delhi Daredevils': 'Delhi Capitals', 
         'Kings XI Punjab': 'Punjab Kings',
@@ -15,14 +15,12 @@ def clean_and_prepare_data():
         if col in df.columns:
             df[col] = df[col].replace(team_mapping)
 
-    # 2. STRICT FILTER: Only keep the 10 active IPL teams
+    # 2. Strict Filter: 10 active IPL teams
     active_teams = [
         'Chennai Super Kings', 'Mumbai Indians', 'Kolkata Knight Riders',
         'Royal Challengers Bengaluru', 'Delhi Capitals', 'Rajasthan Royals',
         'Sunrisers Hyderabad', 'Punjab Kings', 'Lucknow Super Giants', 'Gujarat Titans'
     ]
-    
-    # Drop any row involving a defunct franchise
     df = df[df['batting_team'].isin(active_teams) & df['bowling_team'].isin(active_teams)]
 
     # 3. Exhaustive Venue Mapping
@@ -47,32 +45,53 @@ def clean_and_prepare_data():
     if 'venue' in df.columns:
         df['venue'] = df['venue'].replace(venue_mapping)
 
-    print("Calculating historical metrics for active teams...")
+    print("Calculating dynamic rolling form (Last 5 Matches)...")
     df['is_wicket'] = df['player_out'].notnull().astype(int)
     
-    # Calculate Team Stats
-    stats = pd.DataFrame()
-    stats['sr'] = (df.groupby('batting_team')['runs_total'].sum() / df.groupby('batting_team')['ball'].count()) * 100
-    stats['econ'] = df.groupby('bowling_team')['runs_total'].sum() / (df.groupby('bowling_team')['ball'].count() / 6)
-    stats['bat_avg'] = df.groupby('batting_team')['runs_total'].sum() / df.groupby('batting_team')['is_wicket'].sum().replace(0, 1)
-    stats['bowl_avg'] = df.groupby('bowling_team')['runs_total'].sum() / df.groupby('bowling_team')['is_wicket'].sum().replace(0, 1)
+    # Aggregate match-by-match
+    match_batting = df.groupby(['date', 'match_id', 'batting_team']).agg(
+        runs=('runs_total', 'sum'), balls=('ball', 'count'), wickets=('is_wicket', 'sum')
+    ).reset_index().sort_values('date')
+    
+    match_bowling = df.groupby(['date', 'match_id', 'bowling_team']).agg(
+        runs_c=('runs_total', 'sum'), balls_b=('ball', 'count'), wkts_t=('is_wicket', 'sum')
+    ).reset_index().sort_values('date')
+
+    # Rolling Sums + Shift to prevent data leakage
+    match_batting['roll_runs'] = match_batting.groupby('batting_team')['runs'].transform(lambda x: x.rolling(5, min_periods=1).sum().shift(1))
+    match_batting['roll_balls'] = match_batting.groupby('batting_team')['balls'].transform(lambda x: x.rolling(5, min_periods=1).sum().shift(1))
+    match_batting['roll_wkts'] = match_batting.groupby('batting_team')['wickets'].transform(lambda x: x.rolling(5, min_periods=1).sum().shift(1))
+    
+    match_bowling['roll_runs_c'] = match_bowling.groupby('bowling_team')['runs_c'].transform(lambda x: x.rolling(5, min_periods=1).sum().shift(1))
+    match_bowling['roll_balls_b'] = match_bowling.groupby('bowling_team')['balls_b'].transform(lambda x: x.rolling(5, min_periods=1).sum().shift(1))
+    match_bowling['roll_wkts_t'] = match_bowling.groupby('bowling_team')['wkts_t'].transform(lambda x: x.rolling(5, min_periods=1).sum().shift(1))
+
+    # Calculate Rates & Handle NaNs for early matches
+    match_batting['dyn_sr'] = ((match_batting['roll_runs'] / match_batting['roll_balls']) * 100).fillna(130.0)
+    match_batting['dyn_bat_avg'] = (match_batting['roll_runs'] / match_batting['roll_wkts'].replace(0, 1)).fillna(25.0)
+    
+    match_bowling['dyn_econ'] = (match_bowling['roll_runs_c'] / (match_bowling['roll_balls_b'] / 6)).fillna(8.0)
+    match_bowling['dyn_bowl_avg'] = (match_bowling['roll_runs_c'] / match_bowling['roll_wkts_t'].replace(0, 1)).fillna(28.0)
+
+    # Save Current Form for FastAPI Web App
+    latest_bat = match_batting.groupby('batting_team').tail(1).set_index('batting_team')[['dyn_sr', 'dyn_bat_avg']]
+    latest_bowl = match_bowling.groupby('bowling_team').tail(1).set_index('bowling_team')[['dyn_econ', 'dyn_bowl_avg']]
+    team_stats = pd.concat([latest_bat, latest_bowl], axis=1)
+    team_stats.rename(columns={'dyn_sr': 'sr', 'dyn_bat_avg': 'bat_avg', 'dyn_econ': 'econ', 'dyn_bowl_avg': 'bowl_avg'}, inplace=True)
+    team_stats.to_csv('team_stats.csv')
 
     print("Extracting match-level data...")
     matches = df[df['innings'] == 1].drop_duplicates(subset=['match_id']).copy()
     matches.rename(columns={'batting_team': 'team1', 'bowling_team': 'team2'}, inplace=True)
     matches.dropna(subset=['match_won_by', 'team1', 'team2', 'venue', 'toss_winner', 'toss_decision'], inplace=True)
 
-    # Map stats back to matches
-    matches['team1_sr'] = matches['team1'].map(stats['sr'])
-    matches['team2_sr'] = matches['team2'].map(stats['sr'])
-    matches['team1_econ'] = matches['team1'].map(stats['econ'])
-    matches['team2_econ'] = matches['team2'].map(stats['econ'])
-    matches['team1_bat_avg'] = matches['team1'].map(stats['bat_avg'])
-    matches['team2_bat_avg'] = matches['team2'].map(stats['bat_avg'])
-    matches['team1_bowl_avg'] = matches['team1'].map(stats['bowl_avg'])
-    matches['team2_bowl_avg'] = matches['team2'].map(stats['bowl_avg'])
+    # Merge dynamic stats
+    matches = pd.merge(matches, match_batting[['match_id', 'batting_team', 'dyn_sr', 'dyn_bat_avg']], left_on=['match_id', 'team1'], right_on=['match_id', 'batting_team'], how='left').rename(columns={'dyn_sr': 'team1_sr', 'dyn_bat_avg': 'team1_bat_avg'}).drop(columns=['batting_team'])
+    matches = pd.merge(matches, match_batting[['match_id', 'batting_team', 'dyn_sr', 'dyn_bat_avg']], left_on=['match_id', 'team2'], right_on=['match_id', 'batting_team'], how='left').rename(columns={'dyn_sr': 'team2_sr', 'dyn_bat_avg': 'team2_bat_avg'}).drop(columns=['batting_team'])
+    matches = pd.merge(matches, match_bowling[['match_id', 'bowling_team', 'dyn_econ', 'dyn_bowl_avg']], left_on=['match_id', 'team1'], right_on=['match_id', 'bowling_team'], how='left').rename(columns={'dyn_econ': 'team1_econ', 'dyn_bowl_avg': 'team1_bowl_avg'}).drop(columns=['bowling_team'])
+    matches = pd.merge(matches, match_bowling[['match_id', 'bowling_team', 'dyn_econ', 'dyn_bowl_avg']], left_on=['match_id', 'team2'], right_on=['match_id', 'bowling_team'], how='left').rename(columns={'dyn_econ': 'team2_econ', 'dyn_bowl_avg': 'team2_bowl_avg'}).drop(columns=['bowling_team'])
 
-    # Determine historical home flags for training data
+    # Determine Home Advantage
     venue_home_team = {
         'M Chinnaswamy Stadium': 'Royal Challengers Bengaluru', 'Wankhede Stadium': 'Mumbai Indians',
         'MA Chidambaram Stadium': 'Chennai Super Kings', 'Eden Gardens': 'Kolkata Knight Riders',
@@ -95,8 +114,8 @@ def clean_and_prepare_data():
     ]
     matches.dropna(subset=features, inplace=True)
     matches[features].to_csv('ml_ready_data.csv', index=False)
-    stats.to_csv('team_stats.csv')
-    print("Pre-processing complete. Filtered to 10 active teams.")
+    
+    print("Pre-processing complete. Output saved to 'ml_ready_data.csv' and 'team_stats.csv'.")
 
 if __name__ == "__main__":
     clean_and_prepare_data()
