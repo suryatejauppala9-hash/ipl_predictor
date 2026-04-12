@@ -27,9 +27,11 @@
             {% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}
         </select>
 
-        <label>Venue</label>
-        <select id="venue">
-            {% for venue in venues %}<option value="{{ venue }}">{{ venue }}</option>{% endfor %}
+        <label>Location (For Team 1)</label>
+        <select id="venue_status">
+            <option value="home">Home</option>
+            <option value="away">Away</option>
+            <option value="neutral">Neutral</option>
         </select>
 
         <label>Toss Winner</label>
@@ -51,39 +53,40 @@
 
     <script>
         async function makePrediction() {
-            const t1 = document.getElementById('team1').value;
-            const t2 = document.getElementById('team2').value;
-            const tossWinnerSelection = document.getElementById('toss_winner').value;
-            
-            const payload = {
-                team1: t1,
-                team2: t2,
-                venue: document.getElementById('venue').value,
-                toss_winner: tossWinnerSelection === 'team1' ? t1 : t2,
-                toss_decision: document.getElementById('toss_decision').value
-            };
+        const t1 = document.getElementById('team1').value;
+        const t2 = document.getElementById('team2').value;
+        const tossWinnerSelection = document.getElementById('toss_winner').value;
+        
+        const payload = {
+            team1: t1,
+            team2: t2,
+            team1_venue_status: document.getElementById('venue_status').value,
+            toss_winner: tossWinnerSelection === 'team1' ? t1 : t2,
+            toss_decision: document.getElementById('toss_decision').value
+        };
 
-            document.getElementById('result').innerText = "Analyzing stats...";
+        document.getElementById('result').innerText = "Analyzing stats...";
 
-            try {
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+        try {
+            const response = await fetch('/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-                const data = await response.json();
-                if(data.error) {
-                    document.getElementById('result').style.color = "red";
-                    document.getElementById('result').innerText = data.error;
-                } else {
-                    document.getElementById('result').style.color = "#28a745";
-                    document.getElementById('result').innerText = "🏆 Predicted Winner: " + data.winner;
-                }
-            } catch (error) {
-                document.getElementById('result').innerText = "Error connecting to server.";
+            const data = await response.json();
+            if(data.error) {
+                document.getElementById('result').style.color = "red";
+                document.getElementById('result').innerText = data.error;
+            } else {
+                document.getElementById('result').style.color = "#28a745";
+                // Injected the probability percentage directly into the result text
+                document.getElementById('result').innerText = `🏆 Predicted Winner: ${data.winner} (${data.probability}%)`;
             }
+        } catch (error) {
+            document.getElementById('result').innerText = "Error connecting to server.";
         }
+    }
     </script>
 </body>
 </html>
