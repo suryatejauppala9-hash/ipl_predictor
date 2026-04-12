@@ -2,91 +2,219 @@
 <html>
 <head>
     <title>IPL Match Predictor</title>
-    <style>
-        body { font-family: Arial; padding: 20px; max-width: 500px; margin: auto; background-color: #f4f4f9;}
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc; font-size: 16px;}
-        button { background-color: #28a745; color: white; cursor: pointer; border: none; font-weight: bold;}
-        button:hover { background-color: #218838; }
-        #result { font-size: 24px; font-weight: bold; color: #333; text-align: center; margin-top: 20px;}
-        label { font-weight: bold; font-size: 14px; color: #555;}
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
     <div class="card">
-        <h2 style="text-align: center;">🏏 IPL Match Predictor</h2>
+        <h2>🏏 IPL Analytics Dashboard</h2>
         
-        <label>Team 1</label>
-        <select id="team1">
-            {% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}
-        </select>
+        <div class="team-selection">
+            <div class="team-input">
+                <label>Team 1</label>
+                <select id="team1">
+                    {% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}
+                </select>
+            </div>
+            
+            <button id="swap-btn" onclick="swapTeams()" title="Swap Teams">⇅</button>
+            
+            <div class="team-input">
+                <label>Team 2</label>
+                <select id="team2">
+                    {% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
 
-        <label>Team 2</label>
-        <select id="team2">
-            {% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}
-        </select>
+        <div class="match-conditions">
+            <div>
+                <label>Location (For Team 1)</label>
+                <select id="venue_status">
+                    <option value="home">Home</option>
+                    <option value="away">Away</option>
+                    <option value="neutral">Neutral</option>
+                </select>
+            </div>
 
-        <label>Location (For Team 1)</label>
-        <select id="venue_status">
-            <option value="home">Home</option>
-            <option value="away">Away</option>
-            <option value="neutral">Neutral</option>
-        </select>
+            <div>
+                <label>Toss Winner</label>
+                <select id="toss_winner">
+                    </select>
+            </div>
 
-        <label>Toss Winner</label>
-        <select id="toss_winner">
-            <option value="team1">Team 1</option>
-            <option value="team2">Team 2</option>
-        </select>
+            <div>
+                <label>Toss Decision</label>
+                <select id="toss_decision">
+                    <option value="bat">Bat First</option>
+                    <option value="field">Bowl First</option>
+                </select>
+            </div>
+        </div>
 
-        <label>Toss Decision</label>
-        <select id="toss_decision">
-            <option value="bat">Bat First</option>
-            <option value="field">Bowl First</option>
-        </select>
+        <button class="predict-btn" onclick="makePrediction()">Predict Match Outcome</button>
 
-        <button onclick="makePrediction()">Predict Winner</button>
+        <div id="result-container" style="display: none;">
+            <div class="winner-announcement">
+                <div class="team-logo" id="winner-logo"></div>
+                <h3 id="result-text"></h3>
+            </div>
 
-        <div id="result"></div>
+            <div class="prob-container">
+                <div class="prob-labels">
+                    <span id="t1-label"></span>
+                    <span id="t2-label"></span>
+                </div>
+                <div class="prob-bar-bg">
+                    <div class="prob-bar-fill" id="prob-fill"></div>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-header" id="stat-t1-name">T1</div>
+                <div class="stat-header">Metric</div>
+                <div class="stat-header" id="stat-t2-name">T2</div>
+
+                <div class="stat-value" id="t1-sr"></div>
+                <div class="stat-label">Strike Rate</div>
+                <div class="stat-value" id="t2-sr"></div>
+
+                <div class="stat-value" id="t1-bat"></div>
+                <div class="stat-label">Batting Avg</div>
+                <div class="stat-value" id="t2-bat"></div>
+
+                <div class="stat-value" id="t1-econ"></div>
+                <div class="stat-label">Economy</div>
+                <div class="stat-value" id="t2-econ"></div>
+            </div>
+        </div>
     </div>
 
     <script>
-        async function makePrediction() {
-        const t1 = document.getElementById('team1').value;
-        const t2 = document.getElementById('team2').value;
-        const tossWinnerSelection = document.getElementById('toss_winner').value;
-        
-        const payload = {
-            team1: t1,
-            team2: t2,
-            team1_venue_status: document.getElementById('venue_status').value,
-            toss_winner: tossWinnerSelection === 'team1' ? t1 : t2,
-            toss_decision: document.getElementById('toss_decision').value
+        const teamColors = {
+            'Chennai Super Kings': '#F9CD05', 'Mumbai Indians': '#004BA0',
+            'Royal Challengers Bengaluru': '#EC1C24', 'Kolkata Knight Riders': '#3A225D',
+            'Delhi Capitals': '#174A92', 'Rajasthan Royals': '#EA1A85',
+            'Sunrisers Hyderabad': '#F26522', 'Punjab Kings': '#DD1F2D',
+            'Lucknow Super Giants': '#00B5DF', 'Gujarat Titans': '#1B2133'
         };
 
-        document.getElementById('result').innerText = "Analyzing stats...";
-
-        try {
-            const response = await fetch('/predict', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-            if(data.error) {
-                document.getElementById('result').style.color = "red";
-                document.getElementById('result').innerText = data.error;
-            } else {
-                document.getElementById('result').style.color = "#28a745";
-                // Injected the probability percentage directly into the result text
-                document.getElementById('result').innerText = `🏆 Predicted Winner: ${data.winner} (${data.probability}%)`;
-            }
-        } catch (error) {
-            document.getElementById('result').innerText = "Error connecting to server.";
+        // Smart Toss Logic
+        function updateTossDropdown() {
+            const t1 = document.getElementById('team1').value;
+            const t2 = document.getElementById('team2').value;
+            const tossDropdown = document.getElementById('toss_winner');
+            const currentSelection = tossDropdown.value;
+            
+            tossDropdown.innerHTML = `<option value="team1">${t1}</option><option value="team2">${t2}</option>`;
+            if (currentSelection === 'team2') tossDropdown.value = 'team2'; 
         }
-    }
+
+        document.getElementById('team1').addEventListener('change', updateTossDropdown);
+        document.getElementById('team2').addEventListener('change', updateTossDropdown);
+        
+        // Swap Button Logic
+        function swapTeams() {
+            const t1 = document.getElementById('team1');
+            const t2 = document.getElementById('team2');
+            const temp = t1.value;
+            t1.value = t2.value;
+            t2.value = temp;
+            updateTossDropdown();
+        }
+
+        // Initialize on load
+        updateTossDropdown();
+
+        function getInitials(name) {
+            return name.split(' ').map(n => n[0]).join('').substring(0, 3);
+        }
+
+        async function makePrediction() {
+            const t1 = document.getElementById('team1').value;
+            const t2 = document.getElementById('team2').value;
+            const tossWinnerSelection = document.getElementById('toss_winner').value;
+            const resultContainer = document.getElementById('result-container');
+            const btn = document.querySelector('.predict-btn');
+
+            if(t1 === t2) {
+                alert("Please select different teams.");
+                return;
+            }
+
+            btn.innerText = "Analyzing...";
+            resultContainer.style.display = "none";
+
+            const payload = {
+                team1: t1, team2: t2,
+                team1_venue_status: document.getElementById('venue_status').value,
+                toss_winner: tossWinnerSelection === 'team1' ? t1 : t2,
+                toss_decision: document.getElementById('toss_decision').value
+            };
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                if(!data.error) {
+                    // Dynamic Theming
+                    const winColor = teamColors[data.winner] || '#2563eb';
+                    document.documentElement.style.setProperty('--accent-primary', winColor);
+                    
+                    // Winner Announcement
+                    document.getElementById('result-text').innerText = `${data.winner} Win`;
+                    const logo = document.getElementById('winner-logo');
+                    logo.innerText = getInitials(data.winner);
+                    logo.style.backgroundColor = winColor;
+
+                    // Probability Bar
+                    const t1Win = data.winner === t1;
+                    const t1Prob = t1Win ? data.probability : (100 - data.probability).toFixed(1);
+                    const t2Prob = t1Win ? (100 - data.probability).toFixed(1) : data.probability;
+                    
+                    document.getElementById('t1-label').innerText = `${getInitials(t1)}: ${t1Prob}%`;
+                    document.getElementById('t2-label').innerText = `${getInitials(t2)}: ${t2Prob}%`;
+                    
+                    const probFill = document.getElementById('prob-fill');
+                    probFill.style.width = `${t1Prob}%`;
+                    probFill.style.backgroundColor = teamColors[t1];
+                    document.querySelector('.prob-bar-bg').style.backgroundColor = teamColors[t2];
+
+                    // Stat Grid
+                    document.getElementById('stat-t1-name').innerText = getInitials(t1);
+                    document.getElementById('stat-t2-name').innerText = getInitials(t2);
+                    
+                    document.getElementById('t1-sr').innerText = data.team1_stats.sr;
+                    document.getElementById('t2-sr').innerText = data.team2_stats.sr;
+                    document.getElementById('t1-bat').innerText = data.team1_stats.bat_avg;
+                    document.getElementById('t2-bat').innerText = data.team2_stats.bat_avg;
+                    document.getElementById('t1-econ').innerText = data.team1_stats.econ;
+                    document.getElementById('t2-econ').innerText = data.team2_stats.econ;
+
+                    // Highlight better stats
+                    const highlight = (id1, id2, isHigherBetter) => {
+                        const v1 = parseFloat(document.getElementById(id1).innerText);
+                        const v2 = parseFloat(document.getElementById(id2).innerText);
+                        document.getElementById(id1).style.color = (isHigherBetter ? v1 > v2 : v1 < v2) ? '#10b981' : 'var(--text-secondary)';
+                        document.getElementById(id2).style.color = (isHigherBetter ? v2 > v1 : v2 < v1) ? '#10b981' : 'var(--text-secondary)';
+                    };
+                    highlight('t1-sr', 't2-sr', true);
+                    highlight('t1-bat', 't2-bat', true);
+                    highlight('t1-econ', 't2-econ', false);
+
+                    resultContainer.style.display = "block";
+                }
+            } catch (error) {
+                alert("Prediction failed. Ensure backend is running.");
+            } finally {
+                btn.innerText = "Predict Match Outcome";
+            }
+        }
     </script>
 </body>
 </html>
