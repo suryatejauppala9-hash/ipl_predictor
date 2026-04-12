@@ -1,11 +1,15 @@
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import pandas as pd
-from sklearn.ensemble import GradientBoostingClassifier
+from xgboost import XGBClassifier
 import uvicorn
 
 app = FastAPI()
+
+# Mount the static folder for CSS
+app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 print("Loading pre-processed data...")
@@ -18,8 +22,9 @@ features = [
     'team1_is_home', 'team2_is_home', 'toss_winner_is_team1', 'toss_decision_bat'
 ]
 
-print("Training Gradient Boosting model...")
-model = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42)
+print("Training XGBoost model...")
+# Swapped to XGBClassifier
+model = XGBClassifier(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42)
 model.fit(matches[features], matches['target'])
 print("API Ready!")
 
@@ -58,11 +63,21 @@ async def predict(data: MatchRequest):
     probabilities = model.predict_proba(input_data)[0] 
     
     winner = t1 if prediction == 1 else t2
-    win_prob = probabilities[1] if prediction == 1 else probabilities[0]
+    win_prob = float(probabilities[1] if prediction == 1 else probabilities[0]) * 100
     
     return {
         "winner": winner,
-        "probability": round(win_prob * 100, 1) 
+        "probability": round(win_prob, 1),
+        "team1_stats": {
+            "sr": round(stats.loc[t1, 'sr'], 1),
+            "bat_avg": round(stats.loc[t1, 'bat_avg'], 1),
+            "econ": round(stats.loc[t1, 'econ'], 1)
+        },
+        "team2_stats": {
+            "sr": round(stats.loc[t2, 'sr'], 1),
+            "bat_avg": round(stats.loc[t2, 'bat_avg'], 1),
+            "econ": round(stats.loc[t2, 'econ'], 1)
+        }
     }
 
 if __name__ == "__main__":
