@@ -86,6 +86,10 @@
                 <div class="stat-value" id="t1-econ"></div>
                 <div class="stat-label">Economy</div>
                 <div class="stat-value" id="t2-econ"></div>
+
+                <div class="stat-value" id="t1-h2h"></div>
+                <div class="stat-label">H2H Win %</div>
+                <div class="stat-value" id="t2-h2h"></div>
             </div>
         </div>
     </div>
@@ -99,7 +103,6 @@
             'Lucknow Super Giants': '#00B5DF', 'Gujarat Titans': '#1B2133'
         };
 
-        // Smart Toss Logic
         function updateTossDropdown() {
             const t1 = document.getElementById('team1').value;
             const t2 = document.getElementById('team2').value;
@@ -113,7 +116,6 @@
         document.getElementById('team1').addEventListener('change', updateTossDropdown);
         document.getElementById('team2').addEventListener('change', updateTossDropdown);
         
-        // Swap Button Logic
         function swapTeams() {
             const t1 = document.getElementById('team1');
             const t2 = document.getElementById('team2');
@@ -123,7 +125,6 @@
             updateTossDropdown();
         }
 
-        // Initialize on load
         updateTossDropdown();
 
         function getInitials(name) {
@@ -162,17 +163,14 @@
                 const data = await response.json();
                 
                 if(!data.error) {
-                    // Dynamic Theming
                     const winColor = teamColors[data.winner] || '#2563eb';
                     document.documentElement.style.setProperty('--accent-primary', winColor);
                     
-                    // Winner Announcement
                     document.getElementById('result-text').innerText = `${data.winner} Win`;
                     const logo = document.getElementById('winner-logo');
                     logo.innerText = getInitials(data.winner);
                     logo.style.backgroundColor = winColor;
 
-                    // Probability Bar
                     const t1Win = data.winner === t1;
                     const t1Prob = t1Win ? data.probability : (100 - data.probability).toFixed(1);
                     const t2Prob = t1Win ? (100 - data.probability).toFixed(1) : data.probability;
@@ -185,7 +183,6 @@
                     probFill.style.backgroundColor = teamColors[t1];
                     document.querySelector('.prob-bar-bg').style.backgroundColor = teamColors[t2];
 
-                    // Stat Grid
                     document.getElementById('stat-t1-name').innerText = getInitials(t1);
                     document.getElementById('stat-t2-name').innerText = getInitials(t2);
                     
@@ -195,8 +192,9 @@
                     document.getElementById('t2-bat').innerText = data.team2_stats.bat_avg;
                     document.getElementById('t1-econ').innerText = data.team1_stats.econ;
                     document.getElementById('t2-econ').innerText = data.team2_stats.econ;
+                    document.getElementById('t1-h2h').innerText = data.team1_stats.h2h + '%';
+                    document.getElementById('t2-h2h').innerText = data.team2_stats.h2h + '%';
 
-                    // Highlight better stats
                     const highlight = (id1, id2, isHigherBetter) => {
                         const v1 = parseFloat(document.getElementById(id1).innerText);
                         const v2 = parseFloat(document.getElementById(id2).innerText);
@@ -206,6 +204,7 @@
                     highlight('t1-sr', 't2-sr', true);
                     highlight('t1-bat', 't2-bat', true);
                     highlight('t1-econ', 't2-econ', false);
+                    highlight('t1-h2h', 't2-h2h', true);
 
                     resultContainer.style.display = "block";
                 }
