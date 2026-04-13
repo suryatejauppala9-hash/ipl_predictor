@@ -3,622 +3,1291 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>IPL Intelligence — Match Predictor 2026</title>
+<title>IPL Predictor 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <div class="app">
 
-<!-- HERO -->
-<div class="hero">
-  <div class="hero-glow"></div>
-  <div class="hero-badge"><div class="hero-badge-dot"></div>IPL Intelligence · 2026 Squads</div>
-  <h1>Match<br>Predictor</h1>
-  <p class="hero-sub">XGBoost model · 6767 match simulations · Full ball-by-ball · with Custom XI</p>
-</div>
+<!-- ── TOP BAR ─────────────────────────────────────────────── -->
+<header class="topbar">
+  <a class="brand" href="#">
+    <div class="brand-mark">IPL</div>
+    <span class="brand-name">Predictor<span class="brand-year">2026</span></span>
+  </a>
 
-<!-- MAIN CARD -->
-<div class="card">
-  <div class="sec-label">Team Selection</div>
-  <div class="team-grid">
-    <div class="team-block">
+  <nav class="main-nav">
+    <button class="nav-item active" onclick="showView('predict-view',this)">Predict</button>
+    <button class="nav-item" onclick="showView('simulate-view',this)">Simulate</button>
+    <button class="nav-item" onclick="showView('ideal-xi-view',this)">Ideal XI</button>
+    <button class="nav-item" onclick="showView('builder-view',this);loadBothPools()">Build XI</button>
+  </nav>
+
+  <div class="nav-right">
+    <button class="nav-squads-btn" onclick="openSquadModal()">Squads</button>
+  </div>
+</header>
+
+<!-- ── MATCH SETUP (shared) ──────────────────────────────── -->
+<div class="setup-card" id="selector-card">
+
+  <!-- Teams -->
+  <div class="match-setup">
+    <div class="team-selector">
       <label>Team 1</label>
-      <div class="select-wrap">
-        <select id="team1">{% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select>
+      <div class="team-select-wrap" id="wrap-t1">
+        <select class="team-select" id="team1">{% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select>
       </div>
-      <div class="team-chip"><div class="chip-dot" id="t1-dot"></div><span class="chip-name" id="t1-chip"></span></div>
+      <div class="team-color-bar" id="t1-bar"></div>
     </div>
-    <button class="swap-btn" onclick="swapTeams()" title="Swap">⇅</button>
-    <div class="team-block">
+
+    <div class="vs-col">
+      <span class="vs-label">VS</span>
+      <button class="swap-btn" onclick="swapTeams()" title="Swap">⇄</button>
+    </div>
+
+    <div class="team-selector">
       <label>Team 2</label>
-      <div class="select-wrap">
-        <select id="team2">{% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select>
+      <div class="team-select-wrap" id="wrap-t2">
+        <select class="team-select" id="team2">{% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select>
       </div>
-      <div class="team-chip"><div class="chip-dot" id="t2-dot"></div><span class="chip-name" id="t2-chip"></span></div>
+      <div class="team-color-bar" id="t2-bar"></div>
     </div>
   </div>
 
-  <div class="sec-label">Match Conditions</div>
-  <div class="conditions">
-    <div class="cond-block">
-      <label>Location (Team 1)</label>
-      <select id="venue_status">
-        <option value="neutral" selected>Neutral</option>
-        <option value="home">Home Ground</option>
+  <!-- Venue -->
+  <div class="setup-row">
+    <div class="setup-field">
+      <label>Venue (Team 1)</label>
+      <select class="setup-select" id="venue_status">
+        <option value="neutral">Neutral Ground</option>
+        <option value="home">Home</option>
         <option value="away">Away</option>
       </select>
     </div>
-    <div class="cond-block">
-      <label>Toss Winner</label>
-      <select id="toss_winner"></select>
-    </div>
-    <div class="cond-block">
-      <label>Toss Decision</label>
-      <select id="toss_decision">
-        <option value="bat">Bat First</option>
-        <option value="field">Bowl First</option>
-      </select>
+    <div class="setup-field" style="display:flex;align-items:flex-end">
+      <!-- placeholder for layout balance -->
     </div>
   </div>
 
-  <div class="btn-row-3">
-    <button class="btn btn-primary"   id="predict-btn"  onclick="runPredict()">⚡ Predict Winner</button>
-    <button class="btn btn-secondary" id="simulate-btn" onclick="runSimulate()">🎲 Run Simulation</button>
-    <button class="btn btn-ghost"     id="squad-btn"    onclick="openSquadModal()">👥 View Squads</button>
-  </div>
-  <div style="margin-top:8px">
-    <button class="btn btn-orange" id="builder-btn" onclick="openBuilderCard()" style="width:100%">🔧 Build My Own Playing XI</button>
-  </div>
-
-  <!-- LOADING ANIMATION -->
-  <div class="anim-container" id="anim-container">
-    <div class="cricket-anim">
-      <div class="anim-ring anim-ring-1"></div>
-      <div class="anim-ring anim-ring-2"></div>
-      <div class="anim-ring anim-ring-3"></div>
-      <div class="anim-core" id="anim-emoji">🏏</div>
+  <!-- Toss -->
+  <div class="toss-section">
+    <div class="toss-header">
+      <div>
+        <div class="toss-title">Toss outcome known?</div>
+        <div class="toss-subtitle">Disable for pre-match predictions, model averages 4 scenarios</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="toss-toggle" checked onchange="onTossToggle()">
+        <div class="toggle-track"></div>
+      </label>
     </div>
-    <div class="anim-counter" id="anim-counter">0</div>
-    <div class="anim-sublabel" id="anim-sublabel">matches simulated</div>
-    <div class="anim-label" id="anim-label">Simulating 6767 matches…</div>
-    <div class="anim-progress"><div class="anim-progress-bar" id="anim-bar" style="width:0%"></div></div>
-    <div class="anim-facts" id="anim-facts"></div>
-  </div>
 
-  <!-- ── PREDICTION RESULT ── -->
-  <div id="predict-result" style="display:none">
-    <div class="divider"></div>
-    <div class="sec-label">Prediction</div>
-    <div class="winner-banner">
-      <div class="winner-left">
-        <div class="winner-logo" id="winner-logo">MI</div>
-        <div>
-          <div class="winner-name" id="winner-name">Team</div>
-          <div class="winner-sub">Predicted Winner · XGBoost</div>
+    <div class="toss-unknown-notice" id="toss-notice">
+      <span>🎲</span> Averaging all 4 toss scenarios equally
+    </div>
+
+    <div class="toss-fields" id="toss-fields">
+      <div class="toss-grid">
+        <div class="toss-field">
+          <label>Toss Winner</label>
+          <select class="toss-select" id="toss_winner"></select>
+        </div>
+        <div class="toss-field">
+          <label>Decision</label>
+          <select class="toss-select" id="toss_decision">
+            <option value="bat">Bat First</option>
+            <option value="field">Bowl First</option>
+          </select>
         </div>
       </div>
-      <div class="conf-pill">
-        <div class="conf-val" id="conf-val">—</div>
-        <div class="conf-lbl">Confidence</div>
-      </div>
-    </div>
-    <div class="prob-row"><span id="p-t1-lbl"></span><span id="p-t2-lbl"></span></div>
-    <div class="prob-track">
-      <div class="prob-fill" id="pf-t1" style="width:50%"></div>
-      <div class="prob-fill" id="pf-t2" style="flex:1"></div>
-    </div>
-    <div class="stats-table">
-      <div class="sh" id="sh-t1">T1</div><div class="sh">Metric</div><div class="sh" id="sh-t2">T2</div>
-      <div class="sv" id="sv-t1-sr"></div><div class="sl">Strike Rate</div><div class="sv" id="sv-t2-sr"></div>
-      <div class="sv" id="sv-t1-bat"></div><div class="sl">Batting Avg</div><div class="sv" id="sv-t2-bat"></div>
-      <div class="sv" id="sv-t1-econ"></div><div class="sl">Economy</div><div class="sv" id="sv-t2-econ"></div>
-      <div class="sv" id="sv-t1-h2h"></div><div class="sl">H2H Win %</div><div class="sv" id="sv-t2-h2h"></div>
     </div>
   </div>
 
-  <!-- ── SIMULATION RESULT ── -->
-  <div id="sim-result" style="display:none">
+</div><!-- /setup-card -->
+
+<!-- ════════════════════════════════════════════════════════
+     VIEW: PREDICT
+     ════════════════════════════════════════════════════════ -->
+<section id="predict-view" class="view-section">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Win Prediction</span>
+      <span class="card-tag">XGBoost</span>
+    </div>
+
+    <button class="btn btn-primary btn-full" id="predict-btn" onclick="runPredict()">
+      ⚡ Predict Winner
+    </button>
+
+    <!-- Loading -->
+    <div class="loading-wrap" id="predict-anim">
+      <div class="radar">
+        <div class="radar-ring radar-ring-1"></div>
+        <div class="radar-ring radar-ring-2"></div>
+        <div class="radar-ring radar-ring-3"></div>
+        <div class="radar-sweep"></div>
+        <div class="radar-blip"></div>
+        <div class="radar-blip"></div>
+        <div class="radar-blip"></div>
+        <div class="radar-core">🏏</div>
+      </div>
+      <div class="loading-counter" id="predict-counter"></div>
+      <div class="loading-desc" id="predict-desc">Running prediction…</div>
+      <div class="prog-wrap">
+        <div class="prog-track"><div class="prog-fill" id="predict-bar" style="width:0%"></div></div>
+      </div>
+      <div class="loading-fact" id="predict-fact"></div>
+    </div>
+
+    <!-- Result -->
+    <div id="predict-result" style="display:none">
+      <div class="divider"></div>
+
+      <div class="winner-banner">
+        <div class="winner-left">
+          <div class="winner-logo" id="winner-logo"></div>
+          <div>
+            <div class="winner-name" id="winner-name"></div>
+            <div class="winner-mode" id="winner-sub">Predicted Winner</div>
+          </div>
+        </div>
+        <div class="conf-badge">
+          <div class="conf-value" id="conf-val">—</div>
+          <div class="conf-label">Confidence</div>
+        </div>
+      </div>
+
+      <div class="prob-labels">
+        <span id="p-t1-lbl"></span>
+        <span id="p-t2-lbl"></span>
+      </div>
+      <div class="prob-bar">
+        <div class="prob-fill" id="pf-t1" style="width:50%"></div>
+        <div class="prob-fill" id="pf-t2" style="flex:1"></div>
+      </div>
+
+      <div id="toss-scenarios-wrap" style="display:none">
+        <div class="toss-scenarios">
+          <div class="ts-label">Toss Scenarios</div>
+          <div id="ts-list"></div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="sg-head" id="sg-t1">T1</div>
+        <div class="sg-head">Metric</div>
+        <div class="sg-head" id="sg-t2">T2</div>
+
+        <div class="sg-value" id="sv-t1-sr"></div><div class="sg-label">Strike Rate</div><div class="sg-value" id="sv-t2-sr"></div>
+        <div class="sg-value" id="sv-t1-bat"></div><div class="sg-label">Bat Avg</div><div class="sg-value" id="sv-t2-bat"></div>
+        <div class="sg-value" id="sv-t1-econ"></div><div class="sg-label">Economy</div><div class="sg-value" id="sv-t2-econ"></div>
+        <div class="sg-value" id="sv-t1-h2h"></div><div class="sg-label">H2H Win%</div><div class="sg-value" id="sv-t2-h2h"></div>
+      </div>
+
+      <div class="impact-row" id="impact-row" style="display:none">
+        <div class="impact-card">
+          <div class="impact-badge">Impact Player</div>
+          <div class="impact-team" id="ip-t1-team"></div>
+          <div class="impact-name" id="ip-t1-name"></div>
+          <div class="impact-reason" id="ip-t1-reason"></div>
+          <div class="impact-stat" id="ip-t1-stat"></div>
+          <div class="impact-bench" id="ip-t1-bench"></div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-badge">Impact Player</div>
+          <div class="impact-team" id="ip-t2-team"></div>
+          <div class="impact-name" id="ip-t2-name"></div>
+          <div class="impact-reason" id="ip-t2-reason"></div>
+          <div class="impact-stat" id="ip-t2-stat"></div>
+          <div class="impact-bench" id="ip-t2-bench"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════
+     VIEW: SIMULATE
+     ════════════════════════════════════════════════════════ -->
+<section id="simulate-view" class="view-section hidden">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Monte Carlo Simulation</span>
+      <span class="card-tag">6767 Matches</span>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">XI Style</div>
+      <div class="style-pills">
+        <button class="style-pill active" onclick="setStyle('balanced',this)">Balanced</button>
+        <button class="style-pill" onclick="setStyle('aggressive',this)">Aggressive</button>
+        <button class="style-pill" onclick="setStyle('bowling',this)">Bowling-heavy</button>
+      </div>
+    </div>
+
+    <button class="btn btn-purple btn-full" id="simulate-btn" onclick="runSimulate()">
+      🎲 Run Simulation
+    </button>
+
+    <!-- Loading -->
+    <div class="loading-wrap" id="sim-anim">
+      <div class="radar">
+        <div class="radar-ring radar-ring-1"></div>
+        <div class="radar-ring radar-ring-2"></div>
+        <div class="radar-ring radar-ring-3"></div>
+        <div class="radar-sweep"></div>
+        <div class="radar-blip"></div>
+        <div class="radar-blip"></div>
+        <div class="radar-blip"></div>
+        <div class="radar-core">🎲</div>
+      </div>
+      <div class="loading-counter" id="sim-counter">0</div>
+      <div class="loading-label">matches simulated</div>
+      <div class="loading-desc">Running 6767 matches…</div>
+      <div class="prog-wrap">
+        <div class="prog-track"><div class="prog-fill" id="sim-bar" style="width:0%"></div></div>
+        <div class="prog-phases"><span>Start</span><span>PP</span><span>Middle</span><span>Death</span><span>Done</span></div>
+      </div>
+      <div class="loading-fact" id="sim-fact"></div>
+    </div>
+
+    <!-- Result -->
+    <div id="sim-result" style="display:none">
+      <div class="divider"></div>
+
+      <div class="scoreboard">
+        <div class="score-card" id="sc1">
+          <div class="sc-team" id="sc1-team"></div>
+          <div class="sc-score" id="sc1-score">—</div>
+          <div class="sc-detail" id="sc1-detail"></div>
+          <div class="sc-badge" id="sc1-badge"></div>
+        </div>
+        <div class="score-card" id="sc2">
+          <div class="sc-team" id="sc2-team"></div>
+          <div class="sc-score" id="sc2-score">—</div>
+          <div class="sc-detail" id="sc2-detail"></div>
+          <div class="sc-badge" id="sc2-badge"></div>
+        </div>
+      </div>
+
+      <div class="mc-pills">
+        <div class="mc-pill"><div class="mc-pill-val" id="mc-p10-t1">—</div><div class="mc-pill-lbl">T1 P10</div></div>
+        <div class="mc-pill"><div class="mc-pill-val" id="mc-p90-t1">—</div><div class="mc-pill-lbl">T1 P90</div></div>
+        <div class="mc-pill"><div class="mc-pill-val" id="mc-p10-t2">—</div><div class="mc-pill-lbl">T2 P10</div></div>
+        <div class="mc-pill"><div class="mc-pill-val" id="mc-p90-t2">—</div><div class="mc-pill-lbl">T2 P90</div></div>
+      </div>
+
+      <div class="impact-row" id="sim-impact-row" style="display:none">
+        <div class="impact-card">
+          <div class="impact-badge">Impact Player</div>
+          <div class="impact-team" id="sim-ip-t1-team"></div>
+          <div class="impact-name" id="sim-ip-t1-name"></div>
+          <div class="impact-reason" id="sim-ip-t1-reason"></div>
+          <div class="impact-bench">Replaces 1 bench player after innings</div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-badge">Impact Player</div>
+          <div class="impact-team" id="sim-ip-t2-team"></div>
+          <div class="impact-name" id="sim-ip-t2-name"></div>
+          <div class="impact-reason" id="sim-ip-t2-reason"></div>
+          <div class="impact-bench">Replaces 1 bench player after innings</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('momentum',this)">Momentum</button>
+        <button class="tab-btn" onclick="switchTab('dist',this)">Ball Distribution</button>
+        <button class="tab-btn" onclick="switchTab('inn1',this)">Innings 1</button>
+        <button class="tab-btn" onclick="switchTab('inn2',this)">Innings 2</button>
+        <button class="tab-btn" onclick="switchTab('scorecard',this)">Scorecard</button>
+        <button class="tab-btn" onclick="switchTab('xi-used',this)">Playing XI</button>
+      </div>
+
+      <!-- Momentum -->
+      <div class="tab-panel active" id="tab-momentum">
+        <div class="momentum-wrap">
+          <div class="momentum-header">
+            <div class="momentum-title-txt" id="mom-title-txt">Win probability · hover for details</div>
+            <div id="momentum-legend" class="momentum-legend"></div>
+          </div>
+          <div class="momentum-chart" id="momentum-container">
+            <svg class="momentum-svg" id="momentum-svg" viewBox="0 0 900 240" preserveAspectRatio="none" style="height:260px"></svg>
+            <div class="momentum-tooltip" id="momentum-tooltip">
+              <div class="tt-over" id="tt-over"></div>
+              <div class="tt-prob" id="tt-prob"></div>
+              <div class="tt-team" id="tt-team"></div>
+              <div class="tt-event" id="tt-event"></div>
+              <div class="tt-score" id="tt-score"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Distribution -->
+      <div class="tab-panel" id="tab-dist">
+        <div class="dist-chart-wrap" id="dist-chart"></div>
+        <div class="dist-tags" id="dist-tags"></div>
+      </div>
+
+      <!-- Innings BBB -->
+      <div class="tab-panel" id="tab-inn1">
+        <div class="inn-header" id="inn1-header"></div>
+        <div class="bbb-scroll" id="bbb-inn1"></div>
+      </div>
+      <div class="tab-panel" id="tab-inn2">
+        <div class="inn-header" id="inn2-header"></div>
+        <div class="bbb-scroll" id="bbb-inn2"></div>
+      </div>
+
+      <!-- Scorecard -->
+      <div class="tab-panel" id="tab-scorecard">
+        <div id="scorecard-content"></div>
+      </div>
+
+      <!-- Playing XI -->
+      <div class="tab-panel" id="tab-xi-used">
+        <div class="xi-grid" id="xi-grid"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════
+     VIEW: IDEAL XI
+     ════════════════════════════════════════════════════════ -->
+<section id="ideal-xi-view" class="view-section hidden">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Ideal Playing XI</span>
+      <span class="card-tag">AI Selected</span>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">Strategy</div>
+      <div class="style-pills">
+        <button class="style-pill active" onclick="setXIStyle('balanced',this)">Balanced</button>
+        <button class="style-pill" onclick="setXIStyle('aggressive',this)">Aggressive</button>
+        <button class="style-pill" onclick="setXIStyle('bowling',this)">Bowling-heavy</button>
+      </div>
+    </div>
+
+    <button class="btn btn-gold btn-full" onclick="loadIdealXI()">Generate Ideal XI</button>
     <div class="divider"></div>
-    <div class="sec-label">Simulation — <span id="mc-n">6767</span> matches</div>
+    <div class="xi-grid" id="ideal-xi-grid"></div>
+    <div class="impact-row" id="ideal-impact-row" style="display:none;margin-top:0"></div>
+  </div>
+</section>
 
-    <div class="scoreboard">
-      <div class="score-card" id="sc1">
-        <div class="sc-team" id="sc1-team">—</div>
-        <div class="sc-runs" id="sc1-runs">—</div>
-        <div class="sc-meta" id="sc1-meta">—</div>
-        <div class="sc-badge" id="sc1-badge">—</div>
+<!-- ════════════════════════════════════════════════════════
+     VIEW: BUILDER
+     ════════════════════════════════════════════════════════ -->
+<section id="builder-view" class="view-section hidden">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Build Your XI</span>
+      <span class="card-tag">Manual</span>
+    </div>
+
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px;font-weight:500">
+      Pick 11 players per side. Last 5 bowlers selected will bowl (T20 rules: 5 bowlers, max 4 overs each).
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn btn-ghost btn-sm" onclick="loadDefaultXI(1)">↺ <span id="reset-t1-lbl">T1</span> Default</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadDefaultXI(2)">↺ <span id="reset-t2-lbl">T2</span> Default</button>
+    </div>
+
+    <div class="builder-grid">
+      <div>
+        <div class="builder-col-head" id="builder-t1-head">Team 1</div>
+        <div class="builder-count" id="builder-t1-count">0 / 11</div>
+        <div class="builder-pool" id="pool-t1"></div>
       </div>
-      <div class="score-card" id="sc2">
-        <div class="sc-team" id="sc2-team">—</div>
-        <div class="sc-runs" id="sc2-runs">—</div>
-        <div class="sc-meta" id="sc2-meta">—</div>
-        <div class="sc-badge" id="sc2-badge">—</div>
+      <div>
+        <div class="builder-col-head" id="builder-t2-head">Team 2</div>
+        <div class="builder-count" id="builder-t2-count">0 / 11</div>
+        <div class="builder-pool" id="pool-t2"></div>
       </div>
     </div>
 
-    <div class="mc-grid">
-      <div class="mc-card"><div class="mc-val" id="mc-p10-t1">—</div><div class="mc-lbl">T1 P10 Score</div></div>
-      <div class="mc-card"><div class="mc-val" id="mc-p90-t1">—</div><div class="mc-lbl">T1 P90 Score</div></div>
-      <div class="mc-card"><div class="mc-val" id="mc-p10-t2">—</div><div class="mc-lbl">T2 P10 Score</div></div>
-      <div class="mc-card"><div class="mc-val" id="mc-p90-t2">—</div><div class="mc-lbl">T2 P90 Score</div></div>
-    </div>
-
-    <!-- Playing XI -->
-    <div id="xi-section" style="display:none">
-      <div class="sec-label">Playing XI Used</div>
-      <div class="xi-grid" id="xi-grid"></div>
-    </div>
-
-    <!-- Tabs: dist / innings 1 / innings 2 / scorecard -->
-    <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('dist',this)">Ball Distribution</button>
-      <button class="tab-btn" onclick="switchTab('inn1',this)">Innings 1</button>
-      <button class="tab-btn" onclick="switchTab('inn2',this)">Innings 2</button>
-      <button class="tab-btn" onclick="switchTab('scorecard',this)">Scorecard</button>
-    </div>
-
-    <div class="tab-panel active" id="tab-dist">
-      <div class="dist-title">Probability Distribution — Every Ball Outcome</div>
-      <div class="dist-wrap" id="dist-chart"></div>
-      <div class="dist-tags" id="dist-tags"></div>
-    </div>
-
-    <div class="tab-panel" id="tab-inn1">
-      <div class="inn-header" id="inn1-header">Innings 1</div>
-      <div class="bbb-scroll" id="bbb-inn1"></div>
-    </div>
-
-    <div class="tab-panel" id="tab-inn2">
-      <div class="inn-header" id="inn2-header">Innings 2</div>
-      <div class="bbb-scroll" id="bbb-inn2"></div>
-    </div>
-
-    <div class="tab-panel" id="tab-scorecard">
-      <div id="scorecard-content"></div>
-    </div>
+    <button class="btn btn-orange btn-full" style="margin-top:16px" onclick="runCustomSimulate()">
+      Simulate with My XI
+    </button>
   </div>
-</div>
+</section>
 
-<!-- CUSTOM XI BUILDER CARD -->
-<div class="card" id="builder-card" style="display:none">
-  <div class="sec-label">Build Your Playing XI</div>
-  <p style="font-size:13px;color:var(--txt2);margin-bottom:16px">
-    Select exactly 11 players per team. Players marked 🎳 have bowling stats. The last 4 selected will bowl.
-  </p>
-  <div class="btn-row" style="margin-bottom:14px">
-    <button class="btn btn-ghost btn-sm" onclick="loadDefaultXI(1)">↺ Reset <span id="reset-t1-lbl">T1</span> XI</button>
-    <button class="btn btn-ghost btn-sm" onclick="loadDefaultXI(2)">↺ Reset <span id="reset-t2-lbl">T2</span> XI</button>
-  </div>
-  <div class="builder-grid">
-    <div class="builder-col">
-      <h4 id="builder-t1-head">Team 1</h4>
-      <div class="builder-count" id="builder-t1-count">0 / 11 selected</div>
-      <div class="builder-pool" id="pool-t1"></div>
-    </div>
-    <div class="builder-col">
-      <h4 id="builder-t2-head">Team 2</h4>
-      <div class="builder-count" id="builder-t2-count">0 / 11 selected</div>
-      <div class="builder-pool" id="pool-t2"></div>
-    </div>
-  </div>
-  <div class="btn-row" style="margin-top:16px">
-    <button class="btn btn-orange" onclick="runCustomSimulate()">🚀 Simulate with My XI</button>
-    <button class="btn btn-ghost"  onclick="closeBuilderCard()">✕ Close</button>
-  </div>
-</div>
-
-<!-- SQUAD MODAL -->
-<div id="squad-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);padding:20px;overflow-y:auto">
-  <div style="max-width:880px;margin:0 auto">
-    <div class="card" style="margin:0">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-        <div class="sec-label" style="margin-bottom:0">Squad Viewer — IPL 2026</div>
-        <button class="btn btn-ghost btn-sm" onclick="closeSquadModal()">✕ Close</button>
+<!-- ════════════════════════════════════════════════════════
+     SQUAD MODAL
+     ════════════════════════════════════════════════════════ -->
+<div id="squad-modal">
+  <div class="squad-modal-inner">
+    <div class="squad-modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Squads - IPL 2026</div>
+        <button class="modal-close" onclick="closeSquadModal()">✕</button>
       </div>
-      <div class="btn-row" style="margin-bottom:14px;align-items:center">
-        <div class="select-wrap"><select id="squad-team-select">{% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select></div>
+
+      <div class="squad-controls">
+        <div style="flex:1;position:relative">
+          <select class="team-select" id="squad-team-sel" style="font-size:13px;padding:9px 36px 9px 12px">
+            {% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}
+          </select>
+        </div>
         <button class="btn btn-primary btn-sm" onclick="loadSquad()">Load</button>
       </div>
+
       <div class="squad-filters">
-        <button class="squad-filter-btn active" onclick="filterSquad('all',this)">All Players</button>
-        <button class="squad-filter-btn" onclick="filterSquad('bat',this)">Batters</button>
-        <button class="squad-filter-btn" onclick="filterSquad('bowl',this)">Bowlers</button>
-        <button class="squad-filter-btn" onclick="filterSquad('ar',this)">All-Rounders</button>
+        <button class="sq-filter active" onclick="filterSquad('all',this)">All</button>
+        <button class="sq-filter" onclick="filterSquad('bat',this)">Batters</button>
+        <button class="sq-filter" onclick="filterSquad('bowl',this)">Bowlers</button>
+        <button class="sq-filter" onclick="filterSquad('ar',this)">All-rounders</button>
       </div>
-      <div id="squad-table-wrap"><p style="text-align:center;padding:30px;color:var(--txt2);font-size:13px">Select a team above</p></div>
+
+      <div id="squad-table-wrap">
+        <p style="text-align:center;padding:30px;color:var(--t2);font-size:13px">Select a team and click Load</p>
+      </div>
+
       <div style="margin-top:14px">
-        <button class="btn btn-secondary btn-sm" onclick="openBuilderFromSquad()">🔧 Build XI from this squad</button>
+        <button class="btn btn-ghost btn-sm" onclick="openBuilderFromSquad()">Build XI from squad →</button>
       </div>
     </div>
   </div>
-</div>
-
-<div class="footer">IPL Intelligence 2026 · XGBoost + 6767-match simulations · Hard-coded IPL 2026 squads</div>
 </div>
 
 <script>
-const TC={
-  'Chennai Super Kings':'#F9CD05','Mumbai Indians':'#004BA0',
-  'Royal Challengers Bengaluru':'#EC1C24','Kolkata Knight Riders':'#3A225D',
-  'Delhi Capitals':'#174A92','Rajasthan Royals':'#EA1A85',
-  'Sunrisers Hyderabad':'#F26522','Punjab Kings':'#DD1F2D',
-  'Lucknow Super Giants':'#00B5DF','Gujarat Titans':'#1B2133',
+/* ══ Team colors ══════════════════════════════════════════ */
+const TC = {
+  'Chennai Super Kings'        :'#F9CD05',
+  'Mumbai Indians'             :'#004BA0',
+  'Royal Challengers Bengaluru':'#EC1C24',
+  'Kolkata Knight Riders'      :'#3A225D',
+  'Delhi Capitals'             :'#174A92',
+  'Rajasthan Royals'           :'#EA1A85',
+  'Sunrisers Hyderabad'        :'#F26522',
+  'Punjab Kings'               :'#DD1F2D',
+  'Lucknow Super Giants'       :'#00B5DF',
+  'Gujarat Titans'             :'#1B2133',
 };
-const OC={'0':'#445066','1':'#0ea5e9','2':'#38bdf8','3':'#fbbf24','4':'#34d399','6':'#a78bfa','W':'#f87171'};
-const OL={'0':'Dot','1':'1','2':'2','3':'3','4':'FOUR','6':'SIX','W':'Wicket'};
+
+const OC={'0':'#4B5563','1':'#3B82F6','2':'#60A5FA','3':'#FBBF24','4':'#22C55E','6':'#A855F7','W':'#EF4444'};
+const OL={'0':'Dot','1':'1','2':'2','3':'3','4':'Four','6':'Six','W':'Wicket'};
+
 const FACTS=[
-  'Analysing 120 balls per match…','Computing batting strike rates…',
-  'Evaluating bowling economies…','Simulating toss decisions…',
-  'Checking head-to-head history…','Running powerplay analysis…',
-  'Factoring death-over aggression…','Weighing home-ground advantage…',
-  'Collating ball outcomes…','Calculating win probabilities…',
-  'Almost done, processing final results…'
+  'Simulating powerplay aggression…','Evaluating death-over bowling…',
+  'Checking head-to-head records…','Applying toss probabilities…',
+  'Computing strike rates…','Weighing economy rates…',
+  'Running impact player scenarios…','Finalising win percentages…',
+  'Crunching 6767 match outcomes…','Almost done…',
 ];
 
-function $id(id){return document.getElementById(id);}
-function fill(id,v){const el=$id(id);if(el)el.textContent=v;}
-function color(t){return TC[t]||'#38bdf8';}
-function initials(n){return n.split(' ').map(w=>w[0]).join('').slice(0,3);}
+/* ══ Helpers ══════════════════════════════════════════════ */
+function $id(id){return document.getElementById(id)}
+function txt(id,v){const e=$id(id);if(e)e.textContent=v}
+function clr(t){return TC[t]||'#3B82F6'}
+function abbr(n){return n.split(' ').map(w=>w[0]).join('').slice(0,3)}
 
-/* ── UI init ── */
-function updateChips(){
-  const t1=$id('team1').value,t2=$id('team2').value;
-  $id('t1-dot').style.background=color(t1);$id('t1-chip').textContent=t1;
-  $id('t2-dot').style.background=color(t2);$id('t2-chip').textContent=t2;
-  const tw=$id('toss_winner'),prev=tw.value;
-  tw.innerHTML=`<option value="${t1}">${t1}</option><option value="${t2}">${t2}</option>`;
-  if(prev===t2)tw.value=t2;
-  fill('reset-t1-lbl',initials(t1)); fill('reset-t2-lbl',initials(t2));
-  $id('builder-t1-head').textContent=t1; $id('builder-t2-head').textContent=t2;
+/* ══ View switching ═══════════════════════════════════════ */
+function showView(viewId,btn){
+  document.querySelectorAll('.view-section').forEach(s=>{
+    s.classList.toggle('hidden',s.id!==viewId);
+  });
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
 }
+
+/* ══ Style pickers ════════════════════════════════════════ */
+let simStyle='balanced';
+function setStyle(s,btn){
+  simStyle=s;
+  document.querySelectorAll('#simulate-view .style-pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+let xiStyle='balanced';
+function setXIStyle(s,btn){
+  xiStyle=s;
+  document.querySelectorAll('#ideal-xi-view .style-pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* ══ UI init ══════════════════════════════════════════════ */
+function updateChips(){
+  const t1=$id('team1').value, t2=$id('team2').value;
+  const c1=clr(t1), c2=clr(t2);
+  $id('t1-bar').style.background=c1;
+  $id('t2-bar').style.background=c2;
+
+  const tw=$id('toss_winner'), prev=tw.value;
+  tw.innerHTML=`<option value="${t1}">${t1}</option><option value="${t2}">${t2}</option>`;
+  if(prev===t2) tw.value=t2;
+
+  txt('reset-t1-lbl',abbr(t1));
+  txt('reset-t2-lbl',abbr(t2));
+  txt('builder-t1-head',t1);
+  txt('builder-t2-head',t2);
+}
+
 $id('team1').addEventListener('change',updateChips);
 $id('team2').addEventListener('change',updateChips);
 window.addEventListener('DOMContentLoaded',()=>{
   const opts=$id('team2').options;
-  if(opts.length>1)$id('team2').selectedIndex=1;
+  if(opts.length>1) $id('team2').selectedIndex=1;
   updateChips();
 });
-function swapTeams(){const t1=$id('team1'),t2=$id('team2');[t1.value,t2.value]=[t2.value,t1.value];updateChips();}
 
-/* ── Tabs ── */
+function swapTeams(){
+  const t1=$id('team1'),t2=$id('team2');
+  [t1.value,t2.value]=[t2.value,t1.value];
+  updateChips();
+}
+
+/* ══ Toss toggle ══════════════════════════════════════════ */
+function onTossToggle(){
+  const known=$id('toss-toggle').checked;
+  $id('toss-fields').classList.toggle('collapsed',!known);
+  $id('toss-notice').classList.toggle('show',!known);
+}
+
+/* ══ Tab switching ════════════════════════════════════════ */
 function switchTab(id,btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  $id('tab-'+id).classList.add('active');btn.classList.add('active');
+  $id('tab-'+id).classList.add('active');
+  btn.classList.add('active');
 }
 
-/* ── Animation ── */
-let animIv=null,animFact=0;
-function startAnim(label,isMatch){
-  $id('predict-result').style.display='none';
-  $id('sim-result').style.display='none';
-  const c=$id('anim-container');c.classList.add('visible');
-  fill('anim-label',label||'Processing…');
-  fill('anim-counter','0');
-  fill('anim-sublabel',isMatch?'matches simulated':'');
-  $id('anim-bar').style.width='0%';
-  fill('anim-facts','');
-  animFact=0;
-  const total=isMatch?6767:100;
+/* ══ Animation system ════════════════════════════════════ */
+let animTimers=[];
+function clearAnimTimers(){animTimers.forEach(clearInterval);animTimers=[]}
+
+function runCounter(counterId,factId,barId,total,isMatch){
+  clearAnimTimers();
   let count=0;
   const step=Math.max(1,Math.floor(total/100));
-  animIv=setInterval(()=>{
-    count=Math.min(count+step+Math.floor(Math.random()*step*0.5),total);
-    fill('anim-counter',count.toLocaleString());
-    $id('anim-bar').style.width=(count/total*100)+'%';
-    if(Math.random()<0.05){fill('anim-facts',FACTS[animFact%FACTS.length]);animFact++;}
-    if(count>=total)clearInterval(animIv);
+  const iv=setInterval(()=>{
+    const progress=count/total;
+    const speed=0.5+Math.sin(progress*Math.PI)*2.0;
+    count=Math.min(count+Math.ceil(speed*step),total);
+    if(counterId) txt(counterId,isMatch?count.toLocaleString():'');
+    if(barId) $id(barId).style.width=(count/total*100)+'%';
+    if(Math.random()<0.07) txt(factId,FACTS[Math.floor(Math.random()*FACTS.length)]);
+    if(count>=total) clearInterval(iv);
   },55);
-  setAllBtns(true);
+  animTimers.push(iv);
 }
-function stopAnim(){clearInterval(animIv);$id('anim-container').classList.remove('visible');setAllBtns(false);}
-function setAllBtns(d){['predict-btn','simulate-btn','squad-btn','builder-btn'].forEach(id=>{const el=$id(id);if(el)el.disabled=d;});}
 
-/* ── Predict ── */
-async function runPredict(){
-  const t1=$id('team1').value,t2=$id('team2').value;
-  if(t1===t2){alert('Select different teams');return;}
-  startAnim('Running XGBoost prediction…',false);
-  try{
-    const res=await fetch('/predict',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({team1:t1,team2:t2,team1_venue_status:$id('venue_status').value,
-        toss_winner:$id('toss_winner').value,toss_decision:$id('toss_decision').value})});
-    const d=await res.json();
-    if(d.error){alert(d.error);return;}
-    renderPredict(d,t1,t2);
-  }catch(e){alert('Connection error — is the backend running on port 8000?');}
-  finally{stopAnim();}
+function showAnim(id){$id(id).classList.add('show')}
+function hideAnim(id){$id(id).classList.remove('show')}
+function setBtn(id,dis){const e=$id(id);if(e)e.disabled=dis}
+
+/* ══ API ═════════════════════════════════════════════════ */
+async function api(endpoint,payload){
+  const res=await fetch(endpoint,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  });
+  const d=await res.json();
+  if(d.error) throw new Error(d.error);
+  return d;
 }
+
+/* ════════════════════════════════════════════════════════
+   PREDICT
+   ════════════════════════════════════════════════════════ */
+async function runPredict(){
+  const t1=$id('team1').value, t2=$id('team2').value;
+  if(t1===t2){alert('Select two different teams');return}
+  const tossKnown=$id('toss-toggle').checked;
+
+  $id('predict-result').style.display='none';
+  setBtn('predict-btn',true); showAnim('predict-anim');
+  txt('predict-desc',tossKnown?'Running XGBoost prediction…':'Averaging 4 toss scenarios…');
+  runCounter(null,'predict-fact','predict-bar',100,false);
+
+  try{
+    const d=await api('/predict',{
+      team1:t1,team2:t2,
+      team1_venue_status:$id('venue_status').value,
+      toss_known:tossKnown,
+      toss_winner:tossKnown?$id('toss_winner').value:'',
+      toss_decision:tossKnown?$id('toss_decision').value:'bat',
+    });
+    hideAnim('predict-anim');
+    renderPredict(d,t1,t2);
+  }catch(e){
+    hideAnim('predict-anim');
+    alert('Error: '+e.message);
+  }finally{
+    clearAnimTimers(); setBtn('predict-btn',false);
+  }
+}
+
 function renderPredict(d,t1,t2){
-  const wc=color(d.winner);
-  $id('winner-logo').textContent=initials(d.winner);
-  $id('winner-logo').style.background=wc;
-  $id('winner-logo').style.boxShadow=`0 0 24px ${wc}66`;
-  fill('winner-name',d.winner);fill('conf-val',d.confidence+'%');
+  const wc=clr(d.winner);
+  $id('winner-logo').textContent=abbr(d.winner);
+  $id('winner-logo').style.cssText=`background:${wc};box-shadow:0 0 28px ${wc}66`;
+  txt('winner-name',d.winner);
+  txt('winner-sub',d.toss_known?'Predicted Winner · XGBoost':'Predicted Winner · Toss-Averaged');
+  txt('conf-val',d.confidence+'%');
+
   const t1w=d.winner===t1;
   const t1p=t1w?d.probability:+(100-d.probability).toFixed(1);
   const t2p=t1w?+(100-d.probability).toFixed(1):d.probability;
-  fill('p-t1-lbl',`${initials(t1)} ${t1p}%`);fill('p-t2-lbl',`${t2p}% ${initials(t2)}`);
-  $id('pf-t1').style.width=t1p+'%';$id('pf-t1').style.background=color(t1);
-  $id('pf-t2').style.background=color(t2);
-  fill('sh-t1',initials(t1));fill('sh-t2',initials(t2));
-  const s1=d.team1_stats,s2=d.team2_stats;
-  fill('sv-t1-sr',s1.sr);fill('sv-t2-sr',s2.sr);
-  fill('sv-t1-bat',s1.bat_avg);fill('sv-t2-bat',s2.bat_avg);
-  fill('sv-t1-econ',s1.econ);fill('sv-t2-econ',s2.econ);
-  fill('sv-t1-h2h',s1.h2h+'%');fill('sv-t2-h2h',s2.h2h+'%');
-  hl('sv-t1-sr','sv-t2-sr',true);hl('sv-t1-bat','sv-t2-bat',true);
-  hl('sv-t1-econ','sv-t2-econ',false);hl('sv-t1-h2h','sv-t2-h2h',true);
+  txt('p-t1-lbl',`${abbr(t1)} ${t1p}%`);
+  txt('p-t2-lbl',`${t2p}% ${abbr(t2)}`);
+  $id('pf-t1').style.width=t1p+'%';
+  $id('pf-t1').style.background=clr(t1);
+  $id('pf-t2').style.background=clr(t2);
+
+  const tsWrap=$id('toss-scenarios-wrap');
+  if(d.toss_scenarios?.length){
+    const list=$id('ts-list'); list.innerHTML='';
+    d.toss_scenarios.forEach(sc=>{
+      const row=document.createElement('div'); row.className='ts-row';
+      row.innerHTML=`<span>${sc.scenario}</span><span class="ts-pct">${sc.team1_win_pct}% ${abbr(t1)}</span>`;
+      list.appendChild(row);
+    });
+    tsWrap.style.display='block';
+  } else tsWrap.style.display='none';
+
+  txt('sg-t1',abbr(t1)); txt('sg-t2',abbr(t2));
+  setStatHL('sv-t1-sr',d.team1_stats.sr,'sv-t2-sr',d.team2_stats.sr,true);
+  setStatHL('sv-t1-bat',d.team1_stats.bat_avg,'sv-t2-bat',d.team2_stats.bat_avg,true);
+  setStatHL('sv-t1-econ',d.team1_stats.econ,'sv-t2-econ',d.team2_stats.econ,false);
+  setStatHL('sv-t1-h2h',d.team1_stats.h2h+'%','sv-t2-h2h',d.team2_stats.h2h+'%',true);
+
+  if(d.impact_players){
+    const ip1=d.impact_players[t1]||{}, ip2=d.impact_players[t2]||{};
+    txt('ip-t1-team',t1); txt('ip-t1-name',ip1.name||'—');
+    txt('ip-t1-reason',ip1.reason||''); txt('ip-t1-stat',ip1.stat||'');
+    txt('ip-t1-bench',ip1.bench_player?`Replaces: ${ip1.bench_player}`:'Replaces 1 bench player after innings');
+    txt('ip-t2-team',t2); txt('ip-t2-name',ip2.name||'—');
+    txt('ip-t2-reason',ip2.reason||''); txt('ip-t2-stat',ip2.stat||'');
+    txt('ip-t2-bench',ip2.bench_player?`Replaces: ${ip2.bench_player}`:'Replaces 1 bench player after innings');
+    $id('impact-row').style.display='grid';
+  }
+
   $id('predict-result').style.display='block';
 }
-function hl(id1,id2,hi){
-  const v1=parseFloat($id(id1).textContent),v2=parseFloat($id(id2).textContent);
-  const b=hi?v1>v2:v1<v2;
-  $id(id1).style.color=b?'var(--green)':'var(--txt2)';
-  $id(id2).style.color=b?'var(--txt2)':'var(--green)';
+
+function setStatHL(id1,v1,id2,v2,hiGood){
+  txt(id1,v1); txt(id2,v2);
+  const n1=parseFloat(v1), n2=parseFloat(v2);
+  const t1b=hiGood?n1>n2:n1<n2;
+  $id(id1).className='sg-value '+(t1b?'better':'worse');
+  $id(id2).className='sg-value '+(t1b?'worse':'better');
 }
 
-/* ── Simulate ── */
+/* ════════════════════════════════════════════════════════
+   SIMULATE
+   ════════════════════════════════════════════════════════ */
 async function runSimulate(){
-  const t1=$id('team1').value,t2=$id('team2').value;
-  if(t1===t2){alert('Select different teams');return;}
-  startAnim('Simulating 6767 matches…',true);
+  const t1=$id('team1').value, t2=$id('team2').value;
+  if(t1===t2){alert('Select two different teams');return}
+  const tossKnown=$id('toss-toggle').checked;
+
+  $id('sim-result').style.display='none';
+  setBtn('simulate-btn',true); showAnim('sim-anim');
+  runCounter('sim-counter','sim-fact','sim-bar',6767,true);
+
   try{
-    const res=await fetch('/simulate',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({team1:t1,team2:t2,n_matches:6767})});
-    const d=await res.json();
-    if(d.error){alert(d.error);return;}
+    const d=await api('/simulate',{
+      team1:t1,team2:t2,
+      toss_known:tossKnown,
+      toss_winner:tossKnown?$id('toss_winner').value:'',
+      toss_decision:tossKnown?$id('toss_decision').value:'bat',
+      style1:simStyle,style2:simStyle,
+      n_matches:6767,
+    });
+    hideAnim('sim-anim');
     renderSim(d,t1,t2);
-  }catch(e){alert('Connection error — is the backend running?');}
-  finally{stopAnim();}
+  }catch(e){
+    hideAnim('sim-anim');
+    alert('Error: '+e.message);
+  }finally{
+    clearAnimTimers(); setBtn('simulate-btn',false);
+  }
 }
 
 async function runCustomSimulate(){
-  const t1=$id('team1').value,t2=$id('team2').value;
+  const t1=$id('team1').value, t2=$id('team2').value;
   if(custXI.t1.length<11||custXI.t2.length<11){
-    alert(`Select 11 players each.\n${t1}: ${custXI.t1.length}/11\n${t2}: ${custXI.t2.length}/11`);return;
+    alert(`Select 11 per team.\n${t1}: ${custXI.t1.length}/11\n${t2}: ${custXI.t2.length}/11`);
+    return;
   }
-  closeBuilderCard();
-  startAnim('Simulating 6767 matches with your XI…',true);
+  showView('simulate-view',document.querySelectorAll('.nav-item')[1]);
+  $id('sim-result').style.display='none';
+  setBtn('simulate-btn',true); showAnim('sim-anim');
+  runCounter('sim-counter','sim-fact','sim-bar',6767,true);
+  const tossKnown=$id('toss-toggle').checked;
   try{
-    const bowl1=custXI.t1.slice(-4);const bowl2=custXI.t2.slice(-4);
-    const res=await fetch('/simulate-custom',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({team1:t1,team2:t2,
-        team1_batting:custXI.t1,team1_bowling:bowl1,
-        team2_batting:custXI.t2,team2_bowling:bowl2,n_matches:6767})});
-    const d=await res.json();
-    if(d.error){alert(d.error);return;}
-    renderSim(d,t1,t2);
-  }catch(e){alert('Connection error.');}
-  finally{stopAnim();}
+    const d=await api('/simulate-custom',{
+      team1:t1,team2:t2,
+      team1_batting:custXI.t1,
+      team1_bowling:custXI.t1.slice(-5), // T20: 5 bowlers
+      team2_batting:custXI.t2,
+      team2_bowling:custXI.t2.slice(-5),
+      toss_known:tossKnown,
+      toss_winner:tossKnown?$id('toss_winner').value:'',
+      toss_decision:tossKnown?$id('toss_decision').value:'bat',
+      n_matches:6767,
+    });
+    hideAnim('sim-anim'); renderSim(d,t1,t2);
+  }catch(e){hideAnim('sim-anim');alert('Error: '+e.message)}
+  finally{clearAnimTimers();setBtn('simulate-btn',false)}
 }
 
-/* ── Render Sim ── */
 function renderSim(d,t1,t2){
-  const c1=color(t1),c2=color(t2);
-  const s1=d.predicted_scores[t1],s2=d.predicted_scores[t2];
+  const c1=clr(t1), c2=clr(t2);
+  const s1=d.predicted_scores[t1], s2=d.predicted_scores[t2];
   const wp=d.win_probability;
-  fill('mc-n',(d.n_matches||d.n_simulations||6767).toLocaleString());
-  // Scoreboard
+
   ['1','2'].forEach((i,idx)=>{
-    const team=idx===0?t1:t2,s=idx===0?s1:s2,c=idx===0?c1:c2;
-    fill(`sc${i}-team`,team);
-    $id(`sc${i}-runs`).textContent=Math.round(s.mean);
-    $id(`sc${i}-runs`).style.color=c;
-    fill(`sc${i}-meta`,`avg ${s.mean} ± ${s.std} · range ${s.p10}–${s.p90}`);
+    const team=idx===0?t1:t2, s=idx===0?s1:s2, c=idx===0?c1:c2;
+    txt(`sc${i}-team`,team);
+    $id(`sc${i}-score`).textContent=Math.round(s.mean);
+    $id(`sc${i}-score`).style.color=c;
+    txt(`sc${i}-detail`,`avg ${s.mean} ± ${s.std}  ·  range ${s.p10}–${s.p90}`);
     const badge=$id(`sc${i}-badge`);
-    badge.textContent=`${wp[team]}% win rate`;
-    badge.style.cssText=`background:${c}18;border:1px solid ${c}44;color:${c}`;
+    badge.textContent=`${wp[team]}% win`;
+    badge.style.cssText=`background:${c}18;border:1px solid ${c}40;color:${c}`;
     $id(`sc${i}`).style.borderColor=c+'44';
+    $id(`sc${i}`).style.boxShadow=`0 0 20px ${c}0d`;
+    const bar=$id(`sc${i}`).querySelector('.score-card::before');
+    if(bar) bar.style.background=c;
   });
-  fill('mc-p10-t1',s1.p10);fill('mc-p90-t1',s1.p90);
-  fill('mc-p10-t2',s2.p10);fill('mc-p90-t2',s2.p90);
-  // XI
-  if(d.playing11)renderXI(d.playing11,t1,t2);
-  // Dist
-  renderDistChart(d.ball_outcome_distribution);
-  renderDistTags(d.ball_outcome_distribution,d.total_balls_simulated);
-  // Both innings BBB
-  if(d.representative_match){
-    const rm=d.representative_match;
+
+  txt('mc-p10-t1',s1.p10); txt('mc-p90-t1',s1.p90);
+  txt('mc-p10-t2',s2.p10); txt('mc-p90-t2',s2.p90);
+
+  if(d.impact_players){
+    const ip1=d.impact_players[t1]||{}, ip2=d.impact_players[t2]||{};
+    txt('sim-ip-t1-team',t1); txt('sim-ip-t1-name',ip1.name||'—'); txt('sim-ip-t1-reason',ip1.reason||'');
+    txt('sim-ip-t2-team',t2); txt('sim-ip-t2-name',ip2.name||'—'); txt('sim-ip-t2-reason',ip2.reason||'');
+    $id('sim-impact-row').style.display='grid';
+  }
+
+  firstTeam=t1;
+  const rm=d.representative_match;
+  if(rm){
+    renderMomentum(rm.momentum||[],t1,t2);
     renderBBB('bbb-inn1',rm.innings1);
     renderBBB('bbb-inn2',rm.innings2);
-    fill('inn1-header',`${rm.innings1.team} — ${rm.innings1.score}/${rm.innings1.wickets} (Rep. Match)`);
-    fill('inn2-header',`${rm.innings2.team} — ${rm.innings2.score}/${rm.innings2.wickets} (Rep. Match)`);
-    renderScorecard(d.representative_match,t1,t2);
+    txt('inn1-header',`${rm.innings1?.team||t1} - ${rm.innings1?.score||'?'}/${rm.innings1?.wickets||'?'}`);
+    txt('inn2-header',`${rm.innings2?.team||t2} - ${rm.innings2?.score||'?'}/${rm.innings2?.wickets||'?'}`);
+    renderScorecard(rm,t1,t2);
   }
+  renderDist(d.ball_outcome_distribution,d.total_balls_simulated);
+  if(d.playing11) renderXI(d.playing11,t1,t2);
+
   $id('sim-result').style.display='block';
 }
 
-function renderXI(xi,t1,t2){
-  const grid=$id('xi-grid');grid.innerHTML='';
-  [t1,t2].forEach(team=>{
-    const players=xi[team]||[];
-    const col=document.createElement('div');col.className='xi-card';
-    col.innerHTML=`<div class="xi-card-head">${team}</div>`+
-      players.map((p,i)=>`<div class="xi-player">
-        <span class="xi-num">${i+1}</span>
-        <span class="xi-pname">${p}</span>
-      </div>`).join('');
-    grid.appendChild(col);
-  });
-  $id('xi-section').style.display='block';
-}
+/* ════════════════════════════════════════════════════════
+   MOMENTUM GRAPH - high quality canvas-like SVG
+   ════════════════════════════════════════════════════════ */
+let firstTeam='Team 1';
 
-function renderDistChart(dist){
-  const c=$id('dist-chart');c.innerHTML='';
-  const keys=['0','1','2','3','4','6','W'];
-  const maxP=Math.max(...keys.map(k=>dist[k]||0));
-  keys.forEach(k=>{
-    const p=dist[k]||0;
-    const h=maxP>0?(p/maxP*100):0;
-    const col=document.createElement('div');col.className='dist-col';
-    col.innerHTML=`
-      <div class="dist-pct">${(p*100).toFixed(1)}%</div>
-      <div class="dist-bar" style="height:${Math.max(h,2)}%;background:${OC[k]}66;border:1px solid ${OC[k]};box-shadow:0 0 8px ${OC[k]}33"></div>
-      <div class="dist-bar-lbl" style="color:${OC[k]}">${k==='W'?'W':k}</div>
-    `;
-    c.appendChild(col);
-  });
-}
+function renderMomentum(points,t1,t2){
+  const svg=$id('momentum-svg');
+  svg.innerHTML='';
+  $id('mom-title-txt').textContent=`${t1} win probability - hover any point`;
 
-function renderDistTags(dist,total){
-  const c=$id('dist-tags');c.innerHTML='';
-  Object.entries(OL).forEach(([k,label])=>{
-    const p=dist[k]||0;
-    const tag=document.createElement('div');tag.className='dist-tag';
-    tag.style.cssText=`border-color:${OC[k]}55;color:${OC[k]};background:${OC[k]}0f`;
-    tag.textContent=`${label}: ${(p*100).toFixed(2)}%`;
-    c.appendChild(tag);
-  });
-  const tot=document.createElement('div');tot.className='dist-tag';
-  tot.style.cssText='border-color:var(--border2);color:var(--txt2)';
-  tot.textContent=`Total balls: ${(total||0).toLocaleString()}`;
-  c.appendChild(tot);
-}
+  if(!points?.length){
+    const noData=mkEl('text');
+    setAttr(noData,{x:'450',y:'120',fill:'#475569','font-size':'12','text-anchor':'middle','font-family':'Inter'});
+    noData.textContent='No momentum data';
+    svg.appendChild(noData);
+    return;
+  }
 
-function renderBBB(containerId,innings){
-  const c=$id(containerId);c.innerHTML='';
-  if(!innings?.ball_log?.length){c.innerHTML='<p style="color:var(--txt2);font-size:13px;padding:10px">No data</p>';return;}
-  let prev=0;
-  innings.ball_log.forEach((b,i)=>{
-    if(b.over!==prev){
-      const sep=document.createElement('div');sep.className='bbb-sep';
-      sep.textContent=`OVER ${b.over}`;c.appendChild(sep);prev=b.over;
+  const W=900, H=240;
+  const PAD={top:24,right:24,bottom:36,left:48};
+  const plotW=W-PAD.left-PAD.right;
+  const plotH=H-PAD.top-PAD.bottom;
+  const maxOver=Math.max(...points.map(p=>p.over),40);
+
+  const px=over=>PAD.left+(over/maxOver)*plotW;
+  const py=prob=>PAD.top+(1-prob)*plotH;
+
+  // ── Defs: gradients ──
+  const defs=mkEl('defs');
+
+  // T1 area gradient
+  const gT1=mkEl('linearGradient');
+  setAttr(gT1,{id:'gradT1',x1:'0',x2:'0',y1:'0',y2:'1'});
+  addStop(gT1,'0%',clr(t1),0.28);
+  addStop(gT1,'100%',clr(t1),0);
+  defs.appendChild(gT1);
+
+  // T2 area gradient (below 50%)
+  const gT2=mkEl('linearGradient');
+  setAttr(gT2,{id:'gradT2',x1:'0',x2:'0',y1:'0',y2:'1'});
+  addStop(gT2,'0%',clr(t2),0);
+  addStop(gT2,'100%',clr(t2),0.28);
+  defs.appendChild(gT2);
+
+  // Line animation
+  const cssAnim=mkEl('style');
+  cssAnim.textContent='@keyframes drawLine{to{stroke-dashoffset:0}} @keyframes areaPop{from{opacity:0}to{opacity:1}}';
+  defs.appendChild(cssAnim);
+  svg.appendChild(defs);
+
+  // ── Phase zone backgrounds ──
+  const phases=[
+    {from:0,to:6,fill:'rgba(59,130,246,0.035)',label:'PP',labelX:3},
+    {from:6,to:15,fill:'transparent',label:'MIDDLE',labelX:6},
+    {from:15,to:20,fill:'rgba(239,68,68,0.03)',label:'DEATH',labelX:15.5},
+    {from:20,to:26,fill:'rgba(59,130,246,0.035)',label:'PP',labelX:23},
+    {from:26,to:35,fill:'transparent',label:'MIDDLE',labelX:26},
+    {from:35,to:40,fill:'rgba(239,68,68,0.03)',label:'DEATH',labelX:35.5},
+  ];
+  phases.forEach(ph=>{
+    const r=mkEl('rect');
+    setAttr(r,{x:px(ph.from),y:PAD.top,width:px(ph.to)-px(ph.from),height:plotH,fill:ph.fill});
+    svg.appendChild(r);
+    if(ph.fill!=='transparent'){
+      const lbl=mkEl('text');
+      setAttr(lbl,{x:px(ph.labelX)+3,y:PAD.top+11,fill:'rgba(255,255,255,0.18)','font-size':'8','font-family':'Inter','font-weight':'700','letter-spacing':'0.5'});
+      lbl.textContent=ph.label;
+      svg.appendChild(lbl);
     }
-    const cls=b.wicket?'bW':`b${b.runs}`;
-    const ball=document.createElement('div');ball.className=`ball ${cls}`;
-    ball.title=`${b.batter} vs ${b.bowler} | ${b.wicket?'OUT':b.runs+' runs'} | ${b.phase}`;
-    ball.textContent=b.wicket?'W':b.runs;
-    ball.style.animationDelay=Math.min(i*12,700)+'ms';
-    c.appendChild(ball);
   });
+
+  // ── Y-axis grid lines ──
+  [0.25,0.5,0.75].forEach(v=>{
+    const line=mkEl('line');
+    setAttr(line,{x1:PAD.left,x2:PAD.left+plotW,y1:py(v),y2:py(v),
+      stroke:v===0.5?'rgba(255,255,255,0.12)':'rgba(255,255,255,0.05)',
+      'stroke-dasharray':v===0.5?'6,4':'2,4'});
+    svg.appendChild(line);
+    const lbl=mkEl('text');
+    setAttr(lbl,{x:PAD.left-5,y:py(v)+4,fill:'rgba(255,255,255,0.25)','font-size':'9','font-family':'Inter','font-weight':'600','text-anchor':'end'});
+    lbl.textContent=(v*100)+'%';
+    svg.appendChild(lbl);
+  });
+
+  // ── Innings separator ──
+  const sepX=px(20);
+  const sepLine=mkEl('line');
+  setAttr(sepLine,{x1:sepX,x2:sepX,y1:PAD.top,y2:PAD.top+plotH,
+    stroke:'rgba(255,255,255,0.18)','stroke-dasharray':'5,3'});
+  svg.appendChild(sepLine);
+  const sepLbl=mkEl('text');
+  setAttr(sepLbl,{x:sepX+4,y:PAD.top+14,fill:'rgba(255,255,255,0.3)','font-size':'8','font-family':'Inter','font-weight':'700'});
+  sepLbl.textContent='INN 2';
+  svg.appendChild(sepLbl);
+
+  // ── Build path data ──
+  const lineD=points.map((p,i)=>`${i===0?'M':'L'}${px(p.over)},${py(p.win_prob_t1)}`).join(' ');
+  const first=points[0], last=points[points.length-1];
+  const midY=py(0.5);
+
+  // Area above 50% (T1 advantage)
+  const areaAbove=mkEl('path');
+  const areaAboveD=`M${px(first.over)},${midY} ` +
+    points.map(p=>`L${px(p.over)},${py(Math.max(p.win_prob_t1,0.5))}`).join(' ') +
+    ` L${px(last.over)},${midY} Z`;
+  setAttr(areaAbove,{d:areaAboveD,fill:'url(#gradT1)',opacity:'0',style:'animation:areaPop .8s ease .3s forwards'});
+  svg.appendChild(areaAbove);
+
+  // Area below 50% (T2 advantage)
+  const areaBelow=mkEl('path');
+  const areaBelowD=`M${px(first.over)},${midY} ` +
+    points.map(p=>`L${px(p.over)},${py(Math.min(p.win_prob_t1,0.5))}`).join(' ') +
+    ` L${px(last.over)},${midY} Z`;
+  setAttr(areaBelow,{d:areaBelowD,fill:'url(#gradT2)',opacity:'0',style:'animation:areaPop .8s ease .5s forwards'});
+  svg.appendChild(areaBelow);
+
+  // Main line
+  const line=mkEl('path');
+  setAttr(line,{d:lineD,fill:'none',stroke:clr(t1),'stroke-width':'2.5','stroke-linejoin':'round','stroke-linecap':'round'});
+  // Animate draw
+  line.style.strokeDasharray='3000';
+  line.style.strokeDashoffset='3000';
+  line.style.animation='drawLine 1.8s cubic-bezier(0.16,1,0.3,1) forwards';
+  svg.appendChild(line);
+
+  // ── Interactive dots ──
+  const tooltip=$id('momentum-tooltip');
+  const container=$id('momentum-container');
+
+  points.forEach((p,i)=>{
+    // Show: all wickets + every 3rd over boundary + key events
+    const show=p.is_wicket||(i%3===0)||(p.over===6||p.over===10||p.over===15||p.over===20);
+    if(!show) return;
+
+    const cx=px(p.over), cy=py(p.win_prob_t1);
+    const isW=p.is_wicket;
+    const r=isW?5.5:3.5;
+
+    const circle=mkEl('circle');
+    setAttr(circle,{cx,cy,r,
+      fill:isW?'#EF4444':clr(t1),
+      stroke:isW?'rgba(239,68,68,0.5)':'rgba(255,255,255,0.2)',
+      'stroke-width':isW?'2':'1.5'
+    });
+    if(isW) circle.setAttribute('filter','drop-shadow(0 0 5px rgba(239,68,68,0.9))');
+    circle.style.cursor='pointer';
+    circle.style.transition='r .12s,filter .12s';
+    circle.style.animationDelay=Math.min(i*30,1200)+'ms';
+
+    circle.addEventListener('mouseenter',(e)=>{
+      circle.setAttribute('r',isW?8:6);
+      if(!isW) circle.setAttribute('filter','drop-shadow(0 0 5px '+clr(t1)+'cc)');
+
+      const cRect=container.getBoundingClientRect();
+      const svgRect=svg.getBoundingClientRect();
+      // Compute pixel position in container
+      const scaleX=svgRect.width/W;
+      const scaleY=svgRect.height/H;
+      const dotX=cx*scaleX, dotY=cy*scaleY;
+      const tipW=160, tipH=100;
+      const leftPos=dotX+tipW+20>cRect.width ? dotX-tipW-10 : dotX+12;
+      const topPos=Math.max(4,Math.min(dotY-30, cRect.height-tipH-10));
+
+      tooltip.style.left=leftPos+'px';
+      tooltip.style.top=topPos+'px';
+      txt('tt-over',`${p.innings===1?'Innings 1':'Innings 2'} · Over ${p.innings===1?p.over:p.over-20}`);
+      txt('tt-prob',`${(p.win_prob_t1*100).toFixed(1)}%`);
+      txt('tt-team',`${firstTeam} lead`);
+      txt('tt-event',isW?`Wicket - ${p.event||'out'}`:`${p.event} runs`);
+      $id('tt-event').className='tt-event'+(isW?' tt-wicket':'');
+      txt('tt-score',`${p.runs||0}/${p.wickets||0}`);
+      tooltip.classList.add('show');
+    });
+    circle.addEventListener('mouseleave',()=>{
+      circle.setAttribute('r',r);
+      circle.removeAttribute('filter');
+      if(isW) circle.setAttribute('filter','drop-shadow(0 0 5px rgba(239,68,68,0.9))');
+      tooltip.classList.remove('show');
+    });
+    svg.appendChild(circle);
+  });
+
+  // X axis over labels
+  [0,6,10,15,20,26,30,35,40].filter(o=>o<=maxOver).forEach(o=>{
+    const lbl=mkEl('text');
+    setAttr(lbl,{x:px(o),y:PAD.top+plotH+16,fill:'rgba(255,255,255,0.25)','font-size':'9','font-family':'Inter','font-weight':'600','text-anchor':'middle'});
+    lbl.textContent=o;
+    svg.appendChild(lbl);
+  });
+
+  // Legend
+  $id('momentum-legend').innerHTML=`
+    <div class="mom-leg-item">
+      <div class="mom-leg-dot" style="background:${clr(t1)};box-shadow:0 0 6px ${clr(t1)}88"></div>${t1}
+    </div>
+    <div class="mom-leg-item">
+      <div class="mom-leg-dot" style="background:${clr(t2)};box-shadow:0 0 6px ${clr(t2)}88"></div>${t2}
+    </div>
+    <div class="mom-leg-item">
+      <div class="mom-leg-dot" style="background:#EF4444;box-shadow:0 0 6px rgba(239,68,68,.6)"></div>Wicket
+    </div>
+  `;
 }
 
-function renderScorecard(match,t1,t2){
-  const wrap=$id('scorecard-content');
-  if(!match){wrap.textContent='No data';return;}
-  let html='';
-  [match.innings1,match.innings2].forEach((inn,idx)=>{
-    if(!inn)return;
-    const c=idx===0?color(t1):color(t2);
-    html+=`<div style="margin-bottom:22px">
-      <div style="font-size:13px;font-weight:600;color:${c};margin-bottom:10px;padding:8px 12px;background:${c}18;border-radius:8px;border-left:3px solid ${c}">
-        ${inn.team} — ${inn.score}/${inn.wickets}
-      </div>
-      <table class="squad-table"><thead><tr><th>Batter</th><th>R</th><th>B</th><th>SR</th></tr></thead><tbody>`;
-    (inn.scorecard?.batting||[]).forEach(r=>{
-      html+=`<tr><td class="player-name">${r.batter}</td><td>${r.runs}</td><td>${r.balls}</td><td class="${r.sr>150?'stat-good':r.sr>120?'stat-avg':'stat-bad'}">${r.sr}</td></tr>`;
-    });
-    html+=`</tbody></table>
-      <table class="squad-table" style="margin-top:8px"><thead><tr><th>Bowler</th><th>W</th><th>R</th><th>Balls</th><th>Econ</th></tr></thead><tbody>`;
-    (inn.scorecard?.bowling||[]).forEach(r=>{
-      html+=`<tr><td class="player-name">${r.bowler}</td><td>${r.wickets}</td><td>${r.runs}</td><td>${r.balls}</td><td class="${r.econ<8?'stat-good':r.econ<10?'stat-avg':'stat-bad'}">${r.econ}</td></tr>`;
-    });
-    html+=`</tbody></table></div>`;
-  });
-  wrap.innerHTML=html;
+function mkEl(tag){return document.createElementNS('http://www.w3.org/2000/svg',tag)}
+function setAttr(el,attrs){Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v))}
+function addStop(grad,offset,color,opacity){
+  const s=mkEl('stop');
+  s.setAttribute('offset',offset);
+  s.setAttribute('stop-color',color);
+  s.setAttribute('stop-opacity',opacity);
+  grad.appendChild(s);
 }
 
-/* ── Squad modal ── */
-let squadCache={};let squadFilter='all';let squadSortCol='bat_runs';let squadSortDir=-1;
-function openSquadModal(){$id('squad-modal').style.display='block';document.body.style.overflow='hidden';}
-function closeSquadModal(){$id('squad-modal').style.display='none';document.body.style.overflow='';}
-async function loadSquad(){
-  const team=$id('squad-team-select').value;
-  $id('squad-table-wrap').innerHTML='<p style="text-align:center;padding:24px;color:var(--txt2);font-size:13px">Loading…</p>';
+/* ════════════════════════════════════════════════════════
+   IDEAL XI
+   ════════════════════════════════════════════════════════ */
+async function loadIdealXI(){
+  const t1=$id('team1').value, t2=$id('team2').value;
+  const grid=$id('ideal-xi-grid');
+  grid.innerHTML='<p style="color:var(--t2);font-size:13px;padding:8px">Loading…</p>';
+  const impactRow=$id('ideal-impact-row');
+  impactRow.style.display='none';
+
   try{
-    const res=await fetch(`/squad/${encodeURIComponent(team)}`);
-    const d=await res.json();
-    if(d.error){$id('squad-table-wrap').innerHTML=`<p style="color:var(--red);text-align:center;padding:20px">${d.error}</p>`;return;}
-    squadCache[team]=d.squad;renderSquadTable(d.squad);
-  }catch(e){$id('squad-table-wrap').innerHTML='<p style="color:var(--red);text-align:center;padding:20px">Failed to load squad</p>';}
+    const [r1,r2]=await Promise.all([
+      fetch(`/ideal-xi/${encodeURIComponent(t1)}?style=${xiStyle}`).then(r=>r.json()),
+      fetch(`/ideal-xi/${encodeURIComponent(t2)}?style=${xiStyle}`).then(r=>r.json()),
+    ]);
+    grid.innerHTML='';
+    [r1,r2].forEach((xi,idx)=>{
+      const team=idx===0?t1:t2;
+      const col=document.createElement('div'); col.className='xi-card';
+      col.innerHTML=`<div class="xi-card-head">${team}</div>`+
+        (xi.batting||[]).map((p,i)=>{
+          const role=p.role||'';
+          const tag=
+            role==='Wicketkeeper'?'<span class="xi-role-tag role-wk">WK</span>':
+            p.is_bowler?'<span class="xi-role-tag role-bowl">Bowl</span>':
+            role==='All-rounder'?'<span class="xi-role-tag role-ar">AR</span>':
+            '<span class="xi-role-tag role-bat">Bat</span>';
+          return `<div class="xi-player" style="animation-delay:${i*0.04}s">
+            <span class="xi-num">${i+1}</span>
+            <span class="xi-pos" title="${p.position||''}">${(p.position||'').slice(0,4)}</span>
+            <span class="xi-name">${p.name}</span>${tag}
+          </div>`;
+        }).join('');
+      grid.appendChild(col);
+    });
+
+    if(r1.impact_player||r2.impact_player){
+      const ip1=r1.impact_player||{}, ip2=r2.impact_player||{};
+      impactRow.innerHTML=`
+        <div class="impact-card">
+          <div class="impact-badge">Impact Player</div>
+          <div class="impact-team">${t1}</div>
+          <div class="impact-name">${ip1.name||'—'}</div>
+          <div class="impact-reason">${ip1.reason||''}</div>
+          <div class="impact-stat">${ip1.stat||''}</div>
+          <div class="impact-bench">${ip1.bench_player?'Replaces: '+ip1.bench_player:'Replaces 1 bench player after innings'}</div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-badge">Impact Player</div>
+          <div class="impact-team">${t2}</div>
+          <div class="impact-name">${ip2.name||'—'}</div>
+          <div class="impact-reason">${ip2.reason||''}</div>
+          <div class="impact-stat">${ip2.stat||''}</div>
+          <div class="impact-bench">${ip2.bench_player?'Replaces: '+ip2.bench_player:'Replaces 1 bench player after innings'}</div>
+        </div>
+      `;
+      impactRow.style.display='grid';
+    }
+  }catch(e){
+    grid.innerHTML=`<p style="color:var(--red)">Error: ${e.message}</p>`;
+  }
 }
+
+/* ════════════════════════════════════════════════════════
+   SQUAD MODAL
+   ════════════════════════════════════════════════════════ */
+let squadCache={}, sqFilter='all', sqSortCol='bat_runs', sqSortDir=-1;
+function openSquadModal(){$id('squad-modal').style.display='block';document.body.style.overflow='hidden'}
+function closeSquadModal(){$id('squad-modal').style.display='none';document.body.style.overflow=''}
+
+async function loadSquad(){
+  const team=$id('squad-team-sel').value;
+  $id('squad-table-wrap').innerHTML='<p style="text-align:center;padding:24px;color:var(--t2);font-size:13px">Loading…</p>';
+  try{
+    const d=await fetch(`/squad/${encodeURIComponent(team)}`).then(r=>r.json());
+    if(d.error){$id('squad-table-wrap').innerHTML=`<p style="color:var(--red);text-align:center;padding:20px">${d.error}</p>`;return}
+    squadCache[team]=d.squad; renderSquadTable(d.squad);
+  }catch(e){$id('squad-table-wrap').innerHTML='<p style="color:var(--red);text-align:center;padding:20px">Failed</p>'}
+}
+
 function filterSquad(f,btn){
-  squadFilter=f;
-  document.querySelectorAll('.squad-filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
-  const team=$id('squad-team-select').value;
-  if(squadCache[team])renderSquadTable(squadCache[team]);
+  sqFilter=f;
+  document.querySelectorAll('.sq-filter').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const t=$id('squad-team-sel').value;
+  if(squadCache[t]) renderSquadTable(squadCache[t]);
 }
+
 function renderSquadTable(players){
-  let f=players;
-  if(squadFilter==='bat')f=players.filter(p=>p.bowl_wkts<10&&p.bat_runs>100);
-  else if(squadFilter==='bowl')f=players.filter(p=>p.bowl_wkts>5);
-  else if(squadFilter==='ar')f=players.filter(p=>p.bat_runs>100&&p.bowl_wkts>5);
-  f=[...f].sort((a,b)=>(a[squadSortCol]-b[squadSortCol])*squadSortDir);
-  if(!f.length){$id('squad-table-wrap').innerHTML='<p style="text-align:center;padding:16px;color:var(--txt2);font-size:13px">No players match</p>';return;}
-  const th=(col,label)=>`<th style="cursor:pointer" onclick="sortSquad('${col}')">${label}${squadSortCol===col?(squadSortDir>0?' ↑':' ↓'):''}</th>`;
+  let f=[...players];
+  if(sqFilter==='bat') f=players.filter(p=>p.bowl_wkts<10&&p.bat_runs>80);
+  else if(sqFilter==='bowl') f=players.filter(p=>p.bowl_wkts>5);
+  else if(sqFilter==='ar') f=players.filter(p=>p.bat_runs>80&&p.bowl_wkts>5);
+  f.sort((a,b)=>(a[sqSortCol]-b[sqSortCol])*sqSortDir);
+  if(!f.length){$id('squad-table-wrap').innerHTML='<p style="text-align:center;padding:16px;color:var(--t2)">No players match</p>';return}
+  const th=(col,label)=>`<th onclick="sortSq('${col}')" style="user-select:none">${label}${sqSortCol===col?sqSortDir>0?' ↑':' ↓':''}</th>`;
   $id('squad-table-wrap').innerHTML=`<div style="overflow-x:auto"><table class="squad-table">
     <thead><tr>
-      ${th('bat_runs','Player')}${th('bat_runs','Runs')}${th('bat_sr','SR')}${th('bat_avg','Avg')}${th('boundary_pct','Bdry%')}${th('bowl_wkts','Wkts')}${th('bowl_econ','Econ')}
-    </tr></thead><tbody>
-    ${f.map(p=>`<tr>
-      <td><div class="player-name">${p.name}</div><div style="font-size:10px;color:var(--txt3)">${p.role||''}</div></td>
+      ${th('bat_runs','Player')}
+      ${th('bat_runs','Runs')}
+      ${th('bat_sr','SR')}
+      ${th('bat_avg','Avg')}
+      ${th('boundary_pct','Bdry%')}
+      ${th('bowl_wkts','Wkts')}
+      ${th('bowl_econ','Econ')}
+    </tr></thead>
+    <tbody>${f.map((p,i)=>`<tr style="animation-delay:${i*.015}s">
+      <td><div class="player-name">${p.name}</div><div class="player-role">${p.role||''}</div></td>
       <td>${p.bat_runs}</td>
       <td class="${p.bat_sr>155?'stat-good':p.bat_sr>130?'stat-avg':'stat-bad'}">${p.bat_sr}</td>
       <td>${p.bat_avg}</td>
       <td>${p.boundary_pct}%</td>
       <td class="${p.bowl_wkts>50?'stat-good':p.bowl_wkts>15?'stat-avg':'stat-bad'}">${p.bowl_wkts}</td>
       <td class="${p.bowl_econ>0&&p.bowl_econ<8?'stat-good':p.bowl_econ<10?'stat-avg':p.bowl_econ>0?'stat-bad':''}">${p.bowl_econ>0?p.bowl_econ:'—'}</td>
-    </tr>`).join('')}
-    </tbody></table></div>`;
+    </tr>`).join('')}</tbody>
+  </table></div>`;
 }
-function sortSquad(col){if(squadSortCol===col)squadSortDir*=-1;else{squadSortCol=col;squadSortDir=-1;}const t=$id('squad-team-select').value;if(squadCache[t])renderSquadTable(squadCache[t]);}
 
-/* ── Custom XI Builder ── */
-let custXI={t1:[],t2:[]};let custSquad={t1:[],t2:[]};
-function openBuilderCard(){$id('builder-card').style.display='block';$id('builder-card').scrollIntoView({behavior:'smooth'});loadBothPools();}
-function closeBuilderCard(){$id('builder-card').style.display='none';}
-function openBuilderFromSquad(){closeSquadModal();openBuilderCard();}
+function sortSq(col){
+  if(sqSortCol===col) sqSortDir*=-1; else{sqSortCol=col;sqSortDir=-1}
+  const t=$id('squad-team-sel').value;
+  if(squadCache[t]) renderSquadTable(squadCache[t]);
+}
+
+function openBuilderFromSquad(){closeSquadModal();showView('builder-view',document.querySelectorAll('.nav-item')[3]);loadBothPools()}
+
+/* ════════════════════════════════════════════════════════
+   CUSTOM XI BUILDER - T20 rules: 5 bowlers max 4 overs each
+   ════════════════════════════════════════════════════════ */
+let custXI={t1:[],t2:[]}, custSquad={t1:[],t2:[]};
+
 async function loadBothPools(){
   await Promise.all([loadPool('t1',$id('team1').value),loadPool('t2',$id('team2').value)]);
 }
+
 async function loadPool(side,team){
-  const el=$id(`pool-${side}`);el.innerHTML='<p style="color:var(--txt2);font-size:12px;padding:8px">Loading…</p>';
+  const el=$id(`pool-${side}`);
+  el.innerHTML='<p style="color:var(--t2);font-size:12px;padding:8px">Loading…</p>';
   try{
-    const res=await fetch(`/squad/${encodeURIComponent(team)}`);
-    const d=await res.json();
-    if(d.error){el.innerHTML=`<p style="color:var(--red);font-size:12px;padding:8px">${d.error}</p>`;return;}
-    custSquad[side]=d.squad;custXI[side]=[];renderPool(side);
-  }catch(e){el.innerHTML='<p style="color:var(--red);font-size:12px;padding:8px">Failed</p>';}
+    const d=await fetch(`/squad/${encodeURIComponent(team)}`).then(r=>r.json());
+    if(d.error){el.innerHTML=`<p style="color:var(--red);font-size:12px">${d.error}</p>`;return}
+    custSquad[side]=d.squad; custXI[side]=[]; renderPool(side);
+  }catch(e){el.innerHTML='<p style="color:var(--red);font-size:12px">Failed</p>'}
 }
+
 function renderPool(side){
-  const el=$id(`pool-${side}`),squad=custSquad[side];
-  if(!squad?.length){el.innerHTML='<p style="color:var(--txt2);font-size:12px;padding:8px">No players found</p>';return;}
+  const el=$id(`pool-${side}`), squad=custSquad[side];
+  if(!squad?.length){el.innerHTML='<p style="color:var(--t2);font-size:12px;padding:8px">No players</p>';return}
   el.innerHTML=squad.map(p=>{
     const sel=custXI[side].includes(p.name);
     const idx=sel?custXI[side].indexOf(p.name)+1:'';
-    const bowl=p.bowl_wkts>5;
-    return `<div class="builder-player${sel?' selected':''}" onclick="togglePlayer('${side}','${p.name.replace(/'/g,"\\'")}')">
-      <span>${sel?`<span class="bp-num">${idx}</span>`:''}${p.name}</span>
+    const isBowler=p.bowl_wkts>5;
+    const safeName=p.name.replace(/'/g,"\\'");
+    return `<div class="builder-player${sel?' selected':''}" onclick="togglePlayer('${side}','${safeName}')">
+      <span style="display:flex;align-items:center">
+        ${sel?`<span class="bp-order">${idx}</span>`:''}
+        ${p.name}
+        ${isBowler?'<span style="font-size:10px;color:var(--t2);margin-left:5px;font-weight:700">·B</span>':''}
+      </span>
       <span style="display:flex;align-items:center;gap:5px">
-        ${bowl?'<span style="font-size:11px">🎳</span>':''}
-        <span class="bp-sr">${p.bat_sr}SR</span>
-        ${sel?'<span style="color:var(--green);font-weight:700">✓</span>':''}
+        <span class="bp-sr">${p.bat_sr}</span>
+        ${sel?'<span class="bp-check">✓</span>':''}
       </span>
     </div>`;
   }).join('');
-  fill(`builder-${side}-count`,`${custXI[side].length} / 11 selected`);
+  txt(`builder-${side}-count`,`${custXI[side].length} / 11`);
 }
+
 function togglePlayer(side,name){
-  const xi=custXI[side],idx=xi.indexOf(name);
-  if(idx===-1){if(xi.length>=11){alert('Already 11 selected');return;}xi.push(name);}
-  else xi.splice(idx,1);
+  const xi=custXI[side], idx=xi.indexOf(name);
+  if(idx===-1){
+    if(xi.length>=11){alert('Already 11 selected - deselect one first');return}
+    xi.push(name);
+  } else xi.splice(idx,1);
   renderPool(side);
 }
+
 async function loadDefaultXI(num){
-  const side=num===1?'t1':'t2',team=$id(`team${num}`).value;
+  const side=num===1?'t1':'t2', team=$id(`team${num}`).value;
   try{
-    const res=await fetch(`/playing11/${encodeURIComponent(team)}`);
-    const d=await res.json();
-    if(d.error){alert(d.error);return;}
-    custXI[side]=d.playing11.map(p=>p.name);
-    if(!custSquad[side]||!custSquad[side].length)await loadPool(side,team);
+    const d=await fetch(`/playing11/${encodeURIComponent(team)}`).then(r=>r.json());
+    if(d.error){alert(d.error);return}
+    custXI[side]=(d.playing11||[]).map(p=>typeof p==='object'?p.name||p:p);
+    if(!custSquad[side]?.length) await loadPool(side,team);
     else renderPool(side);
-  }catch(e){alert('Failed to load default XI');}
+  }catch(e){alert('Failed: '+e.message)}
 }
+
+/* ════════════════════════════════════════════════════════
+   BALL-BY-BALL
+   ════════════════════════════════════════════════════════ */
+function renderBBB(cid,innings){
+  const c=$id(cid); c.innerHTML='';
+  if(!innings?.ball_log?.length){
+    c.innerHTML='<p style="color:var(--t2);font-size:13px;padding:10px">No data</p>'; return;
+  }
+  let prev=0;
+  innings.ball_log.forEach((b,i)=>{
+    if(b.over!==prev){
+      const sep=document.createElement('div'); sep.className='bbb-over-sep';
+      sep.textContent=`OVER ${b.over}`; c.appendChild(sep); prev=b.over;
+    }
+    const cls=b.wicket?'bW':`b${b.runs}`;
+    const ball=document.createElement('div'); ball.className=`ball ${cls}`;
+    ball.title=`${b.batter} vs ${b.bowler} · ${b.wicket?'OUT':b.runs+' run'+(b.runs!==1?'s':'')} · ${b.score||0}/${b.wkts||0}`;
+    ball.textContent=b.wicket?'W':b.runs;
+    ball.style.animationDelay=Math.min(i*8,600)+'ms';
+    c.appendChild(ball);
+  });
+}
+
+/* ── Distribution ─────────────────────────────────────── */
+function renderDist(dist,total){
+  const c=$id('dist-chart'); c.innerHTML='';
+  const keys=['0','1','2','3','4','6','W'];
+  const maxP=Math.max(...keys.map(k=>dist[k]||0));
+  keys.forEach((k,i)=>{
+    const p=dist[k]||0, h=maxP>0?(p/maxP*100):0;
+    const col=document.createElement('div'); col.className='dist-col';
+    col.innerHTML=`
+      <div class="dist-pct">${(p*100).toFixed(1)}%</div>
+      <div class="dist-bar" title="${OL[k]}: ${(p*100).toFixed(2)}%"
+           style="height:${Math.max(h,2)}%;background:${OC[k]}55;border:1px solid ${OC[k]};animation-delay:${i*0.06}s"></div>
+      <div class="dist-key" style="color:${OC[k]}">${k==='W'?'W':k}</div>
+    `;
+    c.appendChild(col);
+  });
+  const tags=$id('dist-tags'); tags.innerHTML='';
+  Object.entries(OL).forEach(([k,label])=>{
+    const p=dist[k]||0;
+    const tag=document.createElement('div'); tag.className='dist-tag';
+    tag.style.cssText=`border-color:${OC[k]}55;color:${OC[k]};background:${OC[k]}0d`;
+    tag.title=`${Math.round(p*(total||0)).toLocaleString()} deliveries`;
+    tag.textContent=`${label}: ${(p*100).toFixed(1)}%`;
+    tags.appendChild(tag);
+  });
+}
+
+/* ── Playing XI ───────────────────────────────────────── */
+function renderXI(xi,t1,t2){
+  const grid=$id('xi-grid'); grid.innerHTML='';
+  [t1,t2].forEach(team=>{
+    const players=xi[team]||[];
+    const col=document.createElement('div'); col.className='xi-card';
+    col.innerHTML=`<div class="xi-card-head">${team}</div>`+
+      players.map((p,i)=>`<div class="xi-player" style="animation-delay:${i*0.03}s">
+        <span class="xi-num">${i+1}</span>
+        <span class="xi-name">${typeof p==='object'?p.name||p:p}</span>
+      </div>`).join('');
+    grid.appendChild(col);
+  });
+}
+
+/* ── Scorecard ────────────────────────────────────────── */
+function renderScorecard(match,t1,t2){
+  const wrap=$id('scorecard-content');
+  if(!match){wrap.innerHTML='<p style="color:var(--t2)">No data</p>';return}
+  let html='';
+  [match.innings1,match.innings2].forEach((inn,idx)=>{
+    if(!inn) return;
+    const c=idx===0?clr(t1):clr(t2);
+    html+=`<div style="margin-bottom:22px">
+      <div style="font-size:12px;font-weight:700;color:${c};margin:10px 0 8px;padding:7px 12px;
+                  background:${c}14;border-radius:7px;border-left:2px solid ${c}">
+        ${inn.team||''} - ${inn.score||'?'}/${inn.wickets||'?'}
+      </div>
+      <table class="squad-table"><thead><tr><th>Batter</th><th>R</th><th>B</th><th>SR</th></tr></thead><tbody>`;
+    (inn.scorecard?.batting||[]).forEach(r=>{
+      html+=`<tr><td><div class="player-name">${r.batter}</div></td><td>${r.runs}</td><td>${r.balls}</td>
+             <td class="${r.sr>150?'stat-good':r.sr>120?'stat-avg':'stat-bad'}">${r.sr}</td></tr>`;
+    });
+    html+=`</tbody></table>
+    <table class="squad-table" style="margin-top:6px">
+      <thead><tr><th>Bowler</th><th>W</th><th>R</th><th>Balls</th><th>Econ</th></tr></thead><tbody>`;
+    (inn.scorecard?.bowling||[]).forEach(r=>{
+      html+=`<tr><td><div class="player-name">${r.bowler}</div></td><td>${r.wickets}</td><td>${r.runs}</td><td>${r.balls}</td>
+             <td class="${r.econ<8?'stat-good':r.econ<10?'stat-avg':'stat-bad'}">${r.econ}</td></tr>`;
+    });
+    html+='</tbody></table></div>';
+  });
+  wrap.innerHTML=html;
+}
+
+/* Close squad modal on backdrop click */
+$id('squad-modal').addEventListener('click',function(e){
+  if(e.target===this) closeSquadModal();
+});
 </script>
 </body>
 </html>

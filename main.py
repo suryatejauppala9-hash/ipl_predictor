@@ -1,7 +1,11 @@
 """
-main.py — IPL Match Predictor API v4
-All bugs fixed. IPL 2026 squads hard-coded. Realistic scoring (avg ~185).
-6767 MATCHES simulated (not 6767 balls/runs).
+main.py — IPL Intelligence API v6
+New in v6:
+  - Momentum graph: over-by-over win probability with event annotations
+  - Impact Player designation per team (IPL rule: 1 substitute allowed)
+  - Ideal Playing XI endpoint with position-aware selection
+  - Varied XI archetypes for simulation (aggressive/balanced/defensive)
+  - Cleaner, human-readable code structure
 """
 from __future__ import annotations
 import math, random, os
@@ -19,10 +23,12 @@ from pydantic import BaseModel
 from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBClassifier
 
-# ── Auto-generate squad/matchup CSVs if missing ───────────────────────────────
+# ---------------------------------------------------------------------------
+# Auto-generate squad CSVs if missing
+# ---------------------------------------------------------------------------
 def ensure_squad_csvs():
     if not os.path.exists("player_stats.csv") or not os.path.exists("matchup_stats.csv"):
-        print("Generating squad CSVs from hard-coded 2026 squads...")
+        print("Generating IPL 2026 squad CSVs from hard-coded squads...")
         import ipl_squads
         ipl_squads.generate_player_stats()
         pdf = pd.read_csv("player_stats.csv")
@@ -30,65 +36,69 @@ def ensure_squad_csvs():
 
 ensure_squad_csvs()
 
-# ── Constants ─────────────────────────────────────────────────────────────────
-N_MATCHES = 6767          # number of FULL MATCH simulations
-# Ball outcomes: 0,1,2,3,4,5,6 — 5 is legal (e.g. no-ball + run) — kept distinct
-BALL_OUTCOMES = [0, 1, 2, 3, 4, 6]  # 5 excluded (treated as run-off error, not a standard shot)
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+N_MATCHES     = 6767
+BALL_OUTCOMES = [0, 1, 2, 3, 4, 6]          # 5 excluded intentionally
 
-# Realistic 2024/2025 IPL calibration constants
-# Average team score in IPL 2024 = 191, 2025 even higher
-DEFAULT_BAT_SR         = 148.0   # league avg SR calibrated to ~191 total
-DEFAULT_BOWL_ECON      = 9.0     # league avg economy
-DEFAULT_DISMISS_PROB   = 0.048   # 1 wicket per ~20.8 balls (IPL avg)
-DEFAULT_BAT_AVG        = 28.0
+DEFAULT_BAT_SR       = 148.0   # IPL 2024/25 calibrated
+DEFAULT_BOWL_ECON    = 9.0
+DEFAULT_DISMISS_PROB = 0.048   # ~1 wkt per 20.8 balls
 
-# Phase-specific run rate targets (runs per ball):
-# Powerplay (0-5): ~8.5 RPO -> 0.142 rpb (SRH avg PP 2024 = 10+ RPO)
-# Middle (6-14):   ~8.8 RPO -> 0.147 rpb
-# Death (15-19):   ~11.5 RPO -> 0.192 rpb
-PHASE_RPB = {"powerplay": 0.148, "middle": 0.148, "death": 0.192}
+# Runs per ball per phase (IPL 2024 avg score = 191, 2025 higher)
+PHASE_RPB = {"powerplay": 0.150, "middle": 0.148, "death": 0.195}
 
-app = FastAPI(title="IPL Match Predictor", version="4.0")
+# ---------------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------------
+app = FastAPI(title="IPL Intelligence", version="6.0")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# ── Load Data ─────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Data loading
+# ---------------------------------------------------------------------------
 print("Loading data...")
 matches    = pd.read_csv("ml_ready_data.csv")
 team_stats = pd.read_csv("team_stats.csv", index_col=0)
 h2h_df     = pd.read_csv("h2h_stats.csv")
 player_df  = pd.read_csv("player_stats.csv")
 matchup_df = pd.read_csv("matchup_stats.csv")
-print(f"  -> {len(player_df)} players, {len(matchup_df)} matchup records loaded")
+print(f"  → {len(player_df)} players | {len(matchup_df)} matchup records")
 
 try:
     ball_data = pd.read_csv("ball_model_data.csv")
-    print(f"  -> ball_model_data.csv loaded ({len(ball_data)} rows)")
+    print(f"  → ball_model_data.csv: {len(ball_data)} rows")
 except FileNotFoundError:
     ball_data = pd.DataFrame()
-    print("  ! ball_model_data.csv missing — will use calibrated heuristics")
+    print("  ! ball_model_data.csv missing — using calibrated heuristics")
 
-# ── H2H Lookup ────────────────────────────────────────────────────────────────
-h2h_lookup: dict[tuple[str,str], float] = {}
+# ---------------------------------------------------------------------------
+# Lookup tables
+# ---------------------------------------------------------------------------
+h2h_lookup: dict[tuple[str, str], float] = {}
 for _, row in h2h_df.iterrows():
     val = row["team_A_h2h_win_pct"]
     if pd.notna(val):
         pair = tuple(sorted([str(row["team_A"]), str(row["team_B"])]))
         h2h_lookup[pair] = float(val)
 
+
 def get_h2h(t1: str, t2: str) -> float:
     pair = tuple(sorted([t1, t2]))
     raw  = float(h2h_lookup.get(pair, 0.5))
-    if math.isnan(raw): raw = 0.5
+    if math.isnan(raw):
+        raw = 0.5
     return raw if t1 == pair[0] else (1.0 - raw)
 
-# ── Player Lookups ────────────────────────────────────────────────────────────
+
 player_lookup: dict[str, dict[str, Any]] = {}
 team_roster:   dict[str, list[str]]      = defaultdict(list)
 
 for _, row in player_df.iterrows():
-    name = str(row.get("player","")).strip()
-    team = str(row.get("team","")).strip()
+    name = str(row.get("player", "")).strip()
+    team = str(row.get("team", "")).strip()
     if name and name != "nan":
         d = {k: (None if (isinstance(v, float) and math.isnan(v)) else v)
              for k, v in row.to_dict().items()}
@@ -96,141 +106,139 @@ for _, row in player_df.iterrows():
         if team and team != "nan":
             team_roster[team].append(name)
 
-matchup_lookup: dict[tuple[str,str], dict] = {}
+matchup_lookup: dict[tuple[str, str], dict] = {}
 for _, row in matchup_df.iterrows():
     matchup_lookup[(str(row["batter"]), str(row["bowler"]))] = row.to_dict()
 
-# ── Match-Level XGBoost ───────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# ML models
+# ---------------------------------------------------------------------------
 MATCH_FEATURES = [
-    "team1_sr","team2_sr","team1_econ","team2_econ",
-    "team1_bat_avg","team2_bat_avg","team1_bowl_avg","team2_bowl_avg",
-    "team1_is_home","team2_is_home","toss_winner_is_team1","toss_decision_bat",
+    "team1_sr", "team2_sr", "team1_econ", "team2_econ",
+    "team1_bat_avg", "team2_bat_avg", "team1_bowl_avg", "team2_bowl_avg",
+    "team1_is_home", "team2_is_home", "toss_winner_is_team1", "toss_decision_bat",
     "team1_h2h_win_pct",
 ]
+
 print("Training match-winner model...")
 match_model = XGBClassifier(
     n_estimators=200, learning_rate=0.05, max_depth=4,
     subsample=0.8, colsample_bytree=0.8, random_state=42, eval_metric="logloss")
 match_model.fit(matches[MATCH_FEATURES], matches["target"])
-print("  -> match model ready")
+print("  → match model ready")
 
-# ── Ball-Level XGBoost ────────────────────────────────────────────────────────
 BALL_FEATURES = [
-    "batter_roll_sr","batter_cum_runs","batter_cum_balls",
-    "bowler_roll_econ","bowler_roll_wktr","bowler_cum_balls",
-    "phase_pp","phase_mid","phase_death","innings",
+    "batter_roll_sr", "batter_cum_runs", "batter_cum_balls",
+    "bowler_roll_econ", "bowler_roll_wktr", "bowler_cum_balls",
+    "phase_pp", "phase_mid", "phase_death", "innings",
 ]
-ball_model = None
+
+ball_model         = None
 ball_model_classes = BALL_OUTCOMES
 
 if not ball_data.empty:
     print("Training ball-outcome model...")
     Xb     = ball_data[BALL_FEATURES].fillna(0)
-    yb_raw = ball_data["ball_outcome"].astype(int)
-    # Remove outcome=5 (not a standard shot boundary, already excluded)
-    yb_raw = yb_raw.replace(5, -1)
+    yb_raw = ball_data["ball_outcome"].astype(int).replace(5, -1)
     mask   = yb_raw != -1
     Xb, yb_raw = Xb[mask], yb_raw[mask]
-    le     = LabelEncoder()
-    yb     = le.fit_transform(yb_raw)
+    le = LabelEncoder()
+    yb = le.fit_transform(yb_raw)
     ball_model = XGBClassifier(
         n_estimators=150, learning_rate=0.08, max_depth=5,
         subsample=0.8, colsample_bytree=0.8, random_state=42, eval_metric="mlogloss")
     ball_model.fit(Xb, yb)
     ball_model_classes = list(le.classes_)
-    print(f"  -> ball model ready | classes: {ball_model_classes}")
+    print(f"  → ball model ready | classes: {ball_model_classes}")
 
-# ── Utility ───────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------------------
 def _sf(v: Any, default: float = 0.0) -> float:
+    """Safe float conversion — returns default for NaN/None/errors."""
     try:
         f = float(v)
         return default if (math.isnan(f) or math.isinf(f)) else f
     except (TypeError, ValueError):
         return default
 
+
 def _bat_sr(name: str) -> float:
-    return _sf(player_lookup.get(name,{}).get("bat_sr"), DEFAULT_BAT_SR)
+    return _sf(player_lookup.get(name, {}).get("bat_sr"), DEFAULT_BAT_SR)
+
 
 def _bowl_econ(name: str) -> float:
-    return _sf(player_lookup.get(name,{}).get("bowl_econ"), DEFAULT_BOWL_ECON)
+    return _sf(player_lookup.get(name, {}).get("bowl_econ"), DEFAULT_BOWL_ECON)
+
 
 def _bowl_wktr(name: str) -> float:
-    return _sf(player_lookup.get(name,{}).get("wicket_rate"), DEFAULT_DISMISS_PROB)
+    return _sf(player_lookup.get(name, {}).get("wicket_rate"), DEFAULT_DISMISS_PROB)
 
-# ── Ball Distribution — CALIBRATED to IPL 2024/25 scoring rates ─────────────
+
 def _heuristic_dist(bat_sr: float, bowl_econ: float, phase: str, ball_in_over: int) -> dict[int, float]:
-    """
-    Probability distribution over [0,1,2,3,4,6] calibrated so that
-    expected runs per ball matches IPL 2024 averages:
-      powerplay: ~9.0 RPO (0.150 rpb)
-      middle:    ~8.8 RPO (0.147 rpb)
-      death:     ~11.5 RPO (0.192 rpb)
-    """
+    """Calibrated ball-outcome distribution matching IPL 2024/25 scoring rates."""
     target_rpb = PHASE_RPB.get(phase, 0.148)
-
-    # Player-adjusted RPB
-    sr_norm    = bat_sr / DEFAULT_BAT_SR        # >1 = better than avg
-    econ_norm  = DEFAULT_BOWL_ECON / max(bowl_econ, 6.0)  # <1 = tighter bowler
+    sr_norm    = bat_sr / DEFAULT_BAT_SR
+    econ_norm  = DEFAULT_BOWL_ECON / max(bowl_econ, 6.0)
     adj_rpb    = target_rpb * sr_norm * econ_norm
 
-    # Death-over ball aggression escalates within the over
     if phase == "death":
         adj_rpb *= (1.0 + ball_in_over * 0.015)
 
-    # Boundary probabilities derived from adjusted RPB
-    p6  = max(0.04, min(0.22, adj_rpb * 0.38))
-    p4  = max(0.08, min(0.28, adj_rpb * 0.62))
-    p3  = 0.012
-    p2  = max(0.05, min(0.14, 0.09))
-    # Dot ball: calibrated so dots are ~32% (IPL avg)
-    p0  = max(0.20, min(0.52, 0.60 - adj_rpb * 1.5))
-    p1  = max(0.0,  1.0 - p0 - p2 - p3 - p4 - p6)
+    p6 = max(0.04, min(0.22, adj_rpb * 0.38))
+    p4 = max(0.08, min(0.28, adj_rpb * 0.62))
+    p3 = 0.012
+    p2 = max(0.05, min(0.14, 0.09))
+    p0 = max(0.20, min(0.52, 0.60 - adj_rpb * 1.5))
+    p1 = max(0.0, 1.0 - p0 - p2 - p3 - p4 - p6)
 
-    raw   = {0:p0, 1:p1, 2:p2, 3:p3, 4:p4, 6:p6}
+    raw   = {0: p0, 1: p1, 2: p2, 3: p3, 4: p4, 6: p6}
     total = sum(raw.values())
-    return {k: v/total for k,v in raw.items()}
+    return {k: v / total for k, v in raw.items()}
 
-def _model_dist(bat_sr, bat_runs, bat_balls, bowl_econ, bowl_wktr, bowl_balls, phase, innings):
-    pe = {"powerplay":(1,0,0),"middle":(0,1,0),"death":(0,0,1)}.get(phase,(0,1,0))
+
+def _model_dist(bat_sr, bat_runs, bat_balls, bowl_econ, bowl_wktr, bowl_balls, phase, innings) -> dict[int, float]:
+    pe = {"powerplay": (1, 0, 0), "middle": (0, 1, 0), "death": (0, 0, 1)}.get(phase, (0, 1, 0))
     row = pd.DataFrame([{
-        "batter_roll_sr":bat_sr,"batter_cum_runs":bat_runs,"batter_cum_balls":bat_balls,
-        "bowler_roll_econ":bowl_econ,"bowler_roll_wktr":bowl_wktr,"bowler_cum_balls":bowl_balls,
-        "phase_pp":pe[0],"phase_mid":pe[1],"phase_death":pe[2],"innings":innings,
+        "batter_roll_sr": bat_sr, "batter_cum_runs": bat_runs, "batter_cum_balls": bat_balls,
+        "bowler_roll_econ": bowl_econ, "bowler_roll_wktr": bowl_wktr, "bowler_cum_balls": bowl_balls,
+        "phase_pp": pe[0], "phase_mid": pe[1], "phase_death": pe[2], "innings": innings,
     }])
     probs = ball_model.predict_proba(row)[0]
-    return {int(cls): float(p) for cls,p in zip(ball_model_classes, probs)}
+    return {int(cls): float(p) for cls, p in zip(ball_model_classes, probs)}
+
 
 def _dismiss_prob(batter: str, bowler: str, phase: str) -> float:
     m = matchup_lookup.get((batter, bowler))
-    if m and _sf(m.get("m_balls"),0) >= 10:
+    if m and _sf(m.get("m_balls"), 0) >= 10:
         return float(np.clip(_sf(m.get("m_dismiss_prob"), DEFAULT_DISMISS_PROB), 0.01, 0.22))
-    wr = _sf(player_lookup.get(bowler,{}).get("wicket_rate"), DEFAULT_DISMISS_PROB)
-    # Phase adjustments
-    if phase == "death":       wr *= 1.10
-    elif phase == "powerplay": wr *= 1.08
+    wr = _sf(player_lookup.get(bowler, {}).get("wicket_rate"), DEFAULT_DISMISS_PROB)
+    if phase == "death":        wr *= 1.10
+    elif phase == "powerplay":  wr *= 1.08
     return float(np.clip(wr, 0.01, 0.22))
 
-# ── Innings Simulator ─────────────────────────────────────────────────────────
-def _simulate_innings(
-    batting_order: list[str],
-    bowling_order: list[str],
-    innings: int = 1,
-    target: int | None = None,
-) -> dict[str, Any]:
+# ---------------------------------------------------------------------------
+# Innings simulation — returns ball_log + per-over state for momentum
+# ---------------------------------------------------------------------------
+def _simulate_innings(batting_order: list[str], bowling_order: list[str],
+                      innings: int = 1, target: int | None = None) -> dict[str, Any]:
     total_runs = total_wkts = 0
     ball_log: list[dict] = []
-    bat_idx = 0
+    over_snapshots: list[dict] = []          # one entry per completed over
 
+    bat_idx    = 0
     on_strike  = batting_order[bat_idx % len(batting_order)]; bat_idx += 1
     non_strike = batting_order[bat_idx % len(batting_order)]; bat_idx += 1
 
-    b_runs  = defaultdict(int); b_balls  = defaultdict(int)
-    bw_runs = defaultdict(int); bw_balls = defaultdict(int); bw_wkts = defaultdict(int)
+    b_runs  = defaultdict(int);  b_balls  = defaultdict(int)
+    bw_runs = defaultdict(int);  bw_balls = defaultdict(int);  bw_wkts = defaultdict(int)
     last_ball = 0
 
     for ball_num in range(120):
-        if total_wkts >= 10: break
-        if target is not None and total_runs >= target: break
+        if total_wkts >= 10:
+            break
+        if target is not None and total_runs >= target:
+            break
 
         over   = ball_num // 6
         b_in_o = ball_num % 6
@@ -247,238 +255,628 @@ def _simulate_innings(
 
         full_dist = {k: dist.get(k, 0.0) for k in BALL_OUTCOMES}
         s = sum(full_dist.values())
-        if s > 0: full_dist = {k: v/s for k,v in full_dist.items()}
+        if s > 0:
+            full_dist = {k: v / s for k, v in full_dist.items()}
 
-        dp = _dismiss_prob(on_strike, bowler, phase)
+        is_wicket = random.random() < _dismiss_prob(on_strike, bowler, phase)
 
-        if random.random() < dp:
-            ball_log.append({"over":over+1,"ball":b_in_o+1,"batter":on_strike,
-                              "bowler":bowler,"runs":0,"wicket":True,"phase":phase})
-            total_wkts += 1; bw_wkts[bowler] += 1
-            b_balls[on_strike] += 1; bw_balls[bowler] += 1
+        if is_wicket:
+            ball_log.append({
+                "over": over + 1, "ball": b_in_o + 1,
+                "batter": on_strike, "bowler": bowler,
+                "runs": 0, "wicket": True, "phase": phase,
+                "score": total_runs, "wkts": total_wkts + 1,
+            })
+            total_wkts += 1
+            bw_wkts[bowler]  += 1
+            b_balls[on_strike] += 1
+            bw_balls[bowler]   += 1
             on_strike = batting_order[bat_idx % len(batting_order)]; bat_idx += 1
         else:
             keys  = list(full_dist.keys())
             probs = [full_dist[k] for k in keys]
             runs  = int(np.random.choice(keys, p=probs))
-            total_runs += runs
-            b_runs[on_strike]  += runs; b_balls[on_strike] += 1
-            bw_runs[bowler]    += runs; bw_balls[bowler]   += 1
-            ball_log.append({"over":over+1,"ball":b_in_o+1,"batter":on_strike,
-                              "bowler":bowler,"runs":runs,"wicket":False,"phase":phase})
-            if runs % 2 == 1: on_strike, non_strike = non_strike, on_strike
+            total_runs       += runs
+            b_runs[on_strike]  += runs;  b_balls[on_strike] += 1
+            bw_runs[bowler]    += runs;  bw_balls[bowler]   += 1
+            ball_log.append({
+                "over": over + 1, "ball": b_in_o + 1,
+                "batter": on_strike, "bowler": bowler,
+                "runs": runs, "wicket": False, "phase": phase,
+                "score": total_runs, "wkts": total_wkts,
+            })
+            if runs % 2 == 1:
+                on_strike, non_strike = non_strike, on_strike
 
-        if (ball_num+1) % 6 == 0: on_strike, non_strike = non_strike, on_strike
+        if (ball_num + 1) % 6 == 0:
+            on_strike, non_strike = non_strike, on_strike
+            # Snapshot at end of each over for momentum graph
+            over_snapshots.append({
+                "over": over + 1,
+                "runs": total_runs,
+                "wickets": total_wkts,
+                "bowler": bowler,
+                "last_ball_event": "wicket" if is_wicket else f"{runs}",
+            })
+
         last_ball = ball_num
 
     scorecard = {
         "batting": sorted([
-            {"batter":b,"runs":b_runs[b],"balls":b_balls[b],
-             "sr":round(b_runs[b]/max(b_balls[b],1)*100,1)}
-            for b in set(list(b_runs)+list(b_balls))], key=lambda x:-x["runs"]),
+            {"batter": b, "runs": b_runs[b], "balls": b_balls[b],
+             "sr": round(b_runs[b] / max(b_balls[b], 1) * 100, 1)}
+            for b in set(list(b_runs) + list(b_balls))
+        ], key=lambda x: -x["runs"]),
         "bowling": sorted([
-            {"bowler":bw,"runs":bw_runs[bw],"balls":bw_balls[bw],"wickets":bw_wkts[bw],
-             "econ":round(bw_runs[bw]/max(bw_balls[bw]/6,0.1),1)}
-            for bw in set(list(bw_runs)+list(bw_balls))], key=lambda x:-x["wickets"]),
+            {"bowler": bw, "runs": bw_runs[bw], "balls": bw_balls[bw], "wickets": bw_wkts[bw],
+             "econ": round(bw_runs[bw] / max(bw_balls[bw] / 6, 0.1), 1)}
+            for bw in set(list(bw_runs) + list(bw_balls))
+        ], key=lambda x: -x["wickets"]),
     }
+
     return {
-        "total":total_runs,"wickets":total_wkts,
-        "balls_bowled":last_ball+1,"ball_log":ball_log,"scorecard":scorecard
+        "total": total_runs, "wickets": total_wkts,
+        "balls_bowled": last_ball + 1,
+        "ball_log": ball_log,
+        "over_snapshots": over_snapshots,
+        "scorecard": scorecard,
     }
 
-# ── Best XI Selector ──────────────────────────────────────────────────────────
-def _best_xi(team: str) -> dict[str, list[str]]:
-    pool = team_roster.get(team, [])
-    if not pool:
-        g = [f"Player {i}" for i in range(1,12)]
-        return {"batting":g,"bowling":g[:5]}
+# ---------------------------------------------------------------------------
+# Win probability estimator (for momentum graph)
+# ---------------------------------------------------------------------------
+def _win_prob_at_state(batting_team: str, bowling_team: str,
+                       runs_scored: int, wickets_lost: int,
+                       over: int, target: int | None = None,
+                       is_second_innings: bool = False) -> float:
+    """
+    Simple Duckworth-Lewis-inspired win probability estimate.
+    Returns probability that batting_team wins from this state.
+    """
+    if is_second_innings and target is not None:
+        balls_remaining = max(0, 120 - over * 6)
+        runs_needed     = target - runs_scored
+        wickets_rem     = 10 - wickets_lost
+        if runs_needed <= 0:
+            return 1.0
+        if balls_remaining <= 0 or wickets_rem <= 0:
+            return 0.0
+        # Expected run rate from here vs required
+        rrr = runs_needed / (balls_remaining / 6)
+        proj_sr_factor = wickets_rem / 10.0      # wickets in hand
+        implied_rr = (DEFAULT_BAT_SR / 100 * 6) * proj_sr_factor
+        edge = (implied_rr - rrr) / max(rrr, 0.1)
+        return float(np.clip(0.5 + edge * 0.25, 0.05, 0.95))
+    else:
+        # First innings: project final score vs typical par
+        balls_bowled = over * 6
+        if balls_bowled == 0:
+            return 0.5
+        current_rr   = runs_scored / (balls_bowled / 6)
+        wicket_factor = max(0.4, (10 - wickets_lost) / 10)
+        proj_score   = runs_scored + current_rr * wicket_factor * ((120 - balls_bowled) / 6)
+        par_score    = 185.0  # IPL 2024/25 calibrated par
+        edge = (proj_score - par_score) / par_score
+        return float(np.clip(0.5 + edge * 0.6, 0.10, 0.90))
 
-    def bscore(n): return _sf(player_lookup.get(n,{}).get("bat_sr"),0) * _sf(player_lookup.get(n,{}).get("bat_avg"),0)
-    def wktscore(n): return _sf(player_lookup.get(n,{}).get("bowl_wkts"),0)
-    def ewscore(n): return (-_sf(player_lookup.get(n,{}).get("bowl_econ"),99) + wktscore(n)*2.5)
 
-    sorted_bat  = sorted(pool, key=bscore,   reverse=True)
-    sorted_bowl = sorted(pool, key=ewscore,  reverse=True)
+def _build_momentum_graph(inn1: dict, inn2: dict, t1: str, t2: str) -> list[dict]:
+    """
+    Build over-by-over win probability for the momentum graph.
+    Returns list of {over, win_prob_t1, event, score_t1, score_t2, wkts_t1, wkts_t2}
+    """
+    target = inn1["total"] + 1
+    points: list[dict] = []
 
-    xi=[]; seen=set()
-    for n in sorted_bat[:7]:
-        if n not in seen: xi.append(n); seen.add(n)
-    for n in sorted_bowl:
-        if len(xi)>=11: break
-        if n not in seen: xi.append(n); seen.add(n)
-    while len(xi)<11: xi.append(f"{team} P{len(xi)+1}")
+    # Innings 1 — probability that t1 (batting) will win
+    for snap in inn1["over_snapshots"]:
+        ov  = snap["over"]
+        wp  = _win_prob_at_state(t1, t2, snap["runs"], snap["wickets"],
+                                 ov, is_second_innings=False)
+        evt = snap["last_ball_event"]
+        points.append({
+            "over"       : ov,
+            "innings"    : 1,
+            "team"       : t1,
+            "runs"       : snap["runs"],
+            "wickets"    : snap["wickets"],
+            "win_prob_t1": round(wp, 3),
+            "event"      : f"W – {snap['bowler']}" if evt == "wicket" else evt,
+            "is_wicket"  : evt == "wicket",
+            "bowler"     : snap["bowler"],
+        })
 
-    bowlers=[n for n in sorted_bowl if n in seen][:5] or xi[7:]
-    return {"batting":xi,"bowling":bowlers}
+    # Innings 2 — probability that t1 wins (decreasing as t2 chases)
+    for snap in inn2["over_snapshots"]:
+        ov  = snap["over"]
+        # t2 is batting, so t2 win prob = 1 - t1 win prob
+        t2_wp = _win_prob_at_state(t2, t1, snap["runs"], snap["wickets"],
+                                   ov, target=target, is_second_innings=True)
+        t1_wp = 1.0 - t2_wp
+        evt   = snap["last_ball_event"]
+        points.append({
+            "over"       : ov + 20,   # offset innings 2 by 20 overs for X-axis
+            "innings"    : 2,
+            "team"       : t2,
+            "runs"       : snap["runs"],
+            "wickets"    : snap["wickets"],
+            "win_prob_t1": round(t1_wp, 3),
+            "event"      : f"W – {snap['bowler']}" if evt == "wicket" else evt,
+            "is_wicket"  : evt == "wicket",
+            "bowler"     : snap["bowler"],
+            "target"     : target,
+        })
 
-# ── Core Simulation Loop (6767 MATCHES) ──────────────────────────────────────
-def _run_sim(bat1,bowl1,bat2,bowl2,n,t1,t2) -> dict[str,Any]:
-    t1s=[]; t2s=[]; t1w=0
-    tallies={str(k):0 for k in BALL_OUTCOMES}; tallies["W"]=0
-    total_balls=0; rep=None
+    return points
+
+# ---------------------------------------------------------------------------
+# Impact Player logic (IPL 2023+ rule)
+# ---------------------------------------------------------------------------
+IMPACT_CRITERIA = {
+    # player name → reason why they're the impact player
+    # Auto-detected from stats otherwise
+}
+
+def _get_impact_player(team: str, role_context: str = "balanced") -> dict[str, str]:
+    """
+    Identify the Impact Player for a team.
+    In IPL rules, the Impact Player is an extra substitute who comes in after the toss.
+    We pick the highest-upside player not guaranteed to start.
+    Returns: {name, reason, stat}
+    """
+    roster = team_roster.get(team, [])
+    if not roster:
+        return {"name": "Unknown", "reason": "No squad data", "stat": "N/A"}
+
+    # Score players by their "impact potential" — weighted combination
+    def impact_score(name: str) -> float:
+        p = player_lookup.get(name, {})
+        bat = _sf(p.get("bat_sr"), 0) * _sf(p.get("bat_avg"), 0) / 1000
+        bowl = _sf(p.get("bowl_wkts"), 0) * 2.0 / max(_sf(p.get("bowl_econ"), 10), 6)
+        return bat + bowl
+
+    # Sort and pick the 8th-best player (likely substitute candidate)
+    ranked = sorted(roster, key=impact_score, reverse=True)
+    # Impact player = best player not in top 7 batting OR top 4 bowling
+    # Typically an explosive batter or death-over specialist
+    candidates = ranked[6:12] if len(ranked) > 8 else ranked[-3:]
+
+    best = max(candidates, key=impact_score)
+    p    = player_lookup.get(best, {})
+    role = str(p.get("role", "All-rounder"))
+    sr   = _sf(p.get("bat_sr"), 0)
+    wkts = int(_sf(p.get("bowl_wkts"), 0))
+    econ = _sf(p.get("bowl_econ"), 0)
+
+    if role in ("Batter",) and sr > 155:
+        reason = f"Explosive finisher · SR {sr}"
+    elif wkts > 40 and econ < 8.5:
+        reason = f"Death-over specialist · {wkts} wkts @ {econ} econ"
+    elif role == "All-rounder":
+        reason = f"All-round impact · SR {sr} + {wkts} wkts"
+    else:
+        reason = f"Match-winning potential · {role}"
+
+    return {"name": best, "reason": reason, "stat": f"SR {sr}" if sr > 0 else f"{wkts} wkts"}
+
+# ---------------------------------------------------------------------------
+# Ideal Playing XI (position-aware, role-balanced)
+# ---------------------------------------------------------------------------
+def _ideal_xi(team: str, style: str = "balanced") -> dict[str, Any]:
+    """
+    Select the optimal 11 from the squad.
+    styles: 'balanced' | 'aggressive' | 'bowling'
+    Returns batting order with roles, bowlers list, and impact player.
+    """
+    roster = team_roster.get(team, [])
+    if not roster:
+        generic = [{"name": f"Player {i}", "role": "Batter", "position": i} for i in range(1, 12)]
+        return {"batting": generic, "bowling": [p["name"] for p in generic[-4:]],
+                "impact_player": None, "style": style}
+
+    def bat_score(n):
+        p = player_lookup.get(n, {})
+        return _sf(p.get("bat_sr"), 0) * _sf(p.get("bat_avg"), 0)
+
+    def bowl_score(n):
+        p = player_lookup.get(n, {})
+        wkts = _sf(p.get("bowl_wkts"), 0)
+        econ = _sf(p.get("bowl_econ"), 99)
+        if wkts == 0: return -99
+        return wkts * 2.5 - econ
+
+    def allround_score(n):
+        return bat_score(n) * 0.4 + max(bowl_score(n), 0) * 20
+
+    all_players = sorted(roster, key=bat_score, reverse=True)
+    bowl_sorted = sorted(roster, key=bowl_score, reverse=True)
+
+    # Step 1: pick openers (highest bat score)
+    openers   = all_players[:2]
+    seen      = set(openers)
+
+    # Step 2: pick middle order (positions 3-5) by batting avg
+    middle = [n for n in sorted(roster, key=lambda n: _sf(player_lookup.get(n,{}).get("bat_avg"),0), reverse=True)
+              if n not in seen][:3]
+    seen.update(middle)
+
+    # Step 3: pick a wicketkeeper if not already selected
+    keepers = [n for n in roster if "Wicketkeeper" in str(player_lookup.get(n,{}).get("role",""))
+               and n not in seen]
+    wk = keepers[:1] if keepers else []
+    seen.update(wk)
+
+    # Step 4: pick 2 all-rounders for depth
+    ars = [n for n in sorted(roster, key=allround_score, reverse=True) if n not in seen][:2]
+    seen.update(ars)
+
+    # Step 5: fill bowling slots (4 bowlers minimum)
+    bowlers_needed = 11 - len(openers) - len(middle) - len(wk) - len(ars)
+    bowlers = [n for n in bowl_sorted if n not in seen][:bowlers_needed]
+    seen.update(bowlers)
+
+    # Combine and ensure 11
+    xi_names = openers + middle + wk + ars + bowlers
+    xi_names = xi_names[:11]
+    while len(xi_names) < 11:
+        for n in roster:
+            if n not in seen:
+                xi_names.append(n); seen.add(n); break
+        else:
+            break
+
+    # Style modifiers
+    if style == "aggressive":
+        # Swap 1 middle-order batter for a big-hitting finisher
+        finishers = sorted([n for n in roster if n not in xi_names],
+                           key=lambda n: _sf(player_lookup.get(n,{}).get("bat_sr"),0), reverse=True)
+        if finishers and len(xi_names) > 8:
+            xi_names[7] = finishers[0]
+
+    elif style == "bowling":
+        # Add an extra specialist bowler
+        extra_bowlers = [n for n in bowl_sorted if n not in xi_names]
+        if extra_bowlers and len(xi_names) > 8:
+            xi_names[10] = extra_bowlers[0]
+
+    # Assign positions and roles for display
+    positions = ["Opener", "Opener", "No.3", "No.4", "No.5", "Wicketkeeper",
+                 "All-Rounder", "All-Rounder", "Bowler", "Bowler", "Bowler"]
+    batting_xi = []
+    for i, name in enumerate(xi_names[:11]):
+        p    = player_lookup.get(name, {})
+        role = str(p.get("role", "All-rounder"))
+        pos  = positions[i] if i < len(positions) else "Bowler"
+        batting_xi.append({
+            "name"     : name,
+            "position" : pos,
+            "role"     : role,
+            "bat_sr"   : round(_sf(p.get("bat_sr"), 0), 1),
+            "bat_avg"  : round(_sf(p.get("bat_avg"), 0), 1),
+            "bowl_econ": round(_sf(p.get("bowl_econ"), 0), 1),
+            "bowl_wkts": int(_sf(p.get("bowl_wkts"), 0)),
+            "is_bowler": bool(bowl_score(name) > -10 and _sf(p.get("bowl_wkts"), 0) > 3),
+        })
+
+    # Best bowlers for bowling order
+    bowl_xi = sorted([n["name"] for n in batting_xi if n["is_bowler"]],
+                     key=bowl_score, reverse=True)[:5]
+    if not bowl_xi:
+        bowl_xi = [xi_names[-1]]
+
+    impact = _get_impact_player(team)
+
+    return {
+        "batting"       : batting_xi,
+        "bowling"       : bowl_xi,
+        "impact_player" : impact,
+        "style"         : style,
+    }
+
+
+def _best_xi_names(team: str, style: str = "balanced") -> tuple[list[str], list[str]]:
+    xi   = _ideal_xi(team, style)
+    bat  = [p["name"] for p in xi["batting"]]
+    bowl = xi["bowling"]
+    return bat, bowl
+
+# ---------------------------------------------------------------------------
+# Core simulation loop (6767 matches)
+# ---------------------------------------------------------------------------
+def _run_sim(bat1: list[str], bowl1: list[str], bat2: list[str], bowl2: list[str],
+             n: int, t1: str, t2: str,
+             toss_known: bool = True, toss_winner_is_t1: int = 1, toss_bat: int = 1,
+             style1: str = "balanced", style2: str = "balanced") -> dict[str, Any]:
+    t1s: list[int] = []
+    t2s: list[int] = []
+    t1w = 0
+    tallies      = {str(k): 0 for k in BALL_OUTCOMES}
+    tallies["W"] = 0
+    total_balls  = 0
+    representative: dict | None = None
 
     for i in range(n):
-        inn1=_simulate_innings(bat1,bowl2,innings=1)
-        for e in inn1["ball_log"]:
-            k="W" if e["wicket"] else str(e["runs"])
-            tallies[k]=tallies.get(k,0)+1; total_balls+=1
-        inn2=_simulate_innings(bat2,bowl1,innings=2,target=inn1["total"]+1)
-        t1s.append(inn1["total"]); t2s.append(inn2["total"])
-        if inn1["total"]>inn2["total"]: t1w+=1
-        if i==0:
-            rep={"innings1":{"team":t1,"score":inn1["total"],"wickets":inn1["wickets"],
-                              "ball_log":inn1["ball_log"],"scorecard":inn1["scorecard"]},
-                 "innings2":{"team":t2,"score":inn2["total"],"wickets":inn2["wickets"],
-                              "ball_log":inn2["ball_log"],"scorecard":inn2["scorecard"]}}
+        if not toss_known:
+            sim_toss_t1 = random.randint(0, 1)
+            sim_bat     = random.randint(0, 1)
+        else:
+            sim_toss_t1 = toss_winner_is_t1
+            sim_bat     = toss_bat
 
-    total_ev=sum(tallies.values())
-    dist={k:round(v/max(total_ev,1),5) for k,v in tallies.items()}
-    a1,a2=np.array(t1s),np.array(t2s)
+        t1_bats_first = (sim_toss_t1 == 1 and sim_bat == 1) or (sim_toss_t1 == 0 and sim_bat == 0)
+
+        if t1_bats_first:
+            inn1 = _simulate_innings(bat1, bowl2, innings=1)
+            inn2 = _simulate_innings(bat2, bowl1, innings=2, target=inn1["total"] + 1)
+            t1_score, t2_score = inn1["total"], inn2["total"]
+        else:
+            tmp1 = _simulate_innings(bat2, bowl1, innings=1)
+            tmp2 = _simulate_innings(bat1, bowl2, innings=2, target=tmp1["total"] + 1)
+            inn1, inn2   = tmp2, tmp1
+            t1_score, t2_score = tmp2["total"], tmp1["total"]
+
+        for e in inn1["ball_log"]:
+            k = "W" if e["wicket"] else str(e["runs"])
+            tallies[k] = tallies.get(k, 0) + 1
+            total_balls += 1
+
+        t1s.append(t1_score)
+        t2s.append(t2_score)
+        if t1_score > t2_score:
+            t1w += 1
+
+        if i == 0:
+            # Build momentum graph for representative match
+            momentum = _build_momentum_graph(inn1, inn2, t1, t2)
+            representative = {
+                "innings1"  : {"team": t1, "score": inn1["total"], "wickets": inn1["wickets"],
+                               "ball_log": inn1["ball_log"], "scorecard": inn1["scorecard"],
+                               "over_snapshots": inn1["over_snapshots"]},
+                "innings2"  : {"team": t2, "score": inn2["total"], "wickets": inn2["wickets"],
+                               "ball_log": inn2["ball_log"], "scorecard": inn2["scorecard"],
+                               "over_snapshots": inn2["over_snapshots"]},
+                "momentum"  : momentum,
+            }
+
+    total_ev = sum(tallies.values())
+    dist     = {k: round(v / max(total_ev, 1), 5) for k, v in tallies.items()}
+    a1, a2   = np.array(t1s), np.array(t2s)
+
     return {
-        "n_matches":n,"team1":t1,"team2":t2,
-        "win_probability":{t1:round(t1w/n*100,2),t2:round((n-t1w)/n*100,2)},
-        "predicted_scores":{
-            t1:{"mean":round(float(a1.mean()),1),"std":round(float(a1.std()),1),
-                "min":int(a1.min()),"max":int(a1.max()),
-                "p10":int(np.percentile(a1,10)),"p90":int(np.percentile(a1,90))},
-            t2:{"mean":round(float(a2.mean()),1),"std":round(float(a2.std()),1),
-                "min":int(a2.min()),"max":int(a2.max()),
-                "p10":int(np.percentile(a2,10)),"p90":int(np.percentile(a2,90))},
+        "n_matches"                : n,
+        "team1"                    : t1,
+        "team2"                    : t2,
+        "toss_known"               : toss_known,
+        "win_probability"          : {t1: round(t1w / n * 100, 2), t2: round((n - t1w) / n * 100, 2)},
+        "predicted_scores"         : {
+            t1: {"mean": round(float(a1.mean()), 1), "std": round(float(a1.std()), 1),
+                 "min": int(a1.min()), "max": int(a1.max()),
+                 "p10": int(np.percentile(a1, 10)), "p90": int(np.percentile(a1, 90))},
+            t2: {"mean": round(float(a2.mean()), 1), "std": round(float(a2.std()), 1),
+                 "min": int(a2.min()), "max": int(a2.max()),
+                 "p10": int(np.percentile(a2, 10)), "p90": int(np.percentile(a2, 90))},
         },
-        "ball_outcome_distribution":dist,
-        "outcome_raw_counts":tallies,
-        "total_balls_simulated":total_balls,
-        "representative_match":rep,
+        "ball_outcome_distribution": dist,
+        "outcome_raw_counts"       : tallies,
+        "total_balls_simulated"    : total_balls,
+        "representative_match"     : representative,
     }
 
-# ── Schemas ───────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Prediction helper (toss-known and toss-unknown modes)
+# ---------------------------------------------------------------------------
+def _predict_row(t1: str, t2: str, t1h: int, t2h: int, t1_h2h: float,
+                 toss_t1: int, toss_bat: int, ts) -> tuple[int, list[float]]:
+    row = pd.DataFrame([{
+        "team1_sr"              : ts(t1, "sr"),
+        "team2_sr"              : ts(t2, "sr"),
+        "team1_econ"            : ts(t1, "econ"),
+        "team2_econ"            : ts(t2, "econ"),
+        "team1_bat_avg"         : ts(t1, "bat_avg"),
+        "team2_bat_avg"         : ts(t2, "bat_avg"),
+        "team1_bowl_avg"        : ts(t1, "bowl_avg"),
+        "team2_bowl_avg"        : ts(t2, "bowl_avg"),
+        "team1_is_home"         : t1h,
+        "team2_is_home"         : t2h,
+        "toss_winner_is_team1"  : toss_t1,
+        "toss_decision_bat"     : toss_bat,
+        "team1_h2h_win_pct"     : t1_h2h,
+    }])
+    pred  = int(match_model.predict(row)[0])
+    probs = list(match_model.predict_proba(row)[0])
+    return pred, probs
+
+# ---------------------------------------------------------------------------
+# Schemas
+# ---------------------------------------------------------------------------
 class MatchRequest(BaseModel):
-    team1: str; team2: str
-    team1_venue_status: str = "neutral"
-    toss_winner: str = ""
-    toss_decision: str = "bat"
+    team1               : str
+    team2               : str
+    team1_venue_status  : str  = "neutral"
+    toss_known          : bool = True
+    toss_winner         : str  = ""
+    toss_decision       : str  = "bat"
 
 class SimulateRequest(BaseModel):
-    team1: str; team2: str
-    n_matches: int = N_MATCHES
+    team1               : str
+    team2               : str
+    toss_known          : bool = True
+    toss_winner         : str  = ""
+    toss_decision       : str  = "bat"
+    style1              : str  = "balanced"   # balanced | aggressive | bowling
+    style2              : str  = "balanced"
+    n_matches           : int  = N_MATCHES
 
 class CustomSimRequest(BaseModel):
-    team1: str; team2: str
-    team1_batting: list[str]; team1_bowling: list[str]
-    team2_batting: list[str]; team2_bowling: list[str]
-    n_matches: int = N_MATCHES
+    team1               : str
+    team2               : str
+    team1_batting       : list[str]
+    team1_bowling       : list[str]
+    team2_batting       : list[str]
+    team2_bowling       : list[str]
+    toss_known          : bool = True
+    toss_winner         : str  = ""
+    toss_decision       : str  = "bat"
+    n_matches           : int  = N_MATCHES
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
 @app.get("/")
 async def home(request: Request):
     teams = sorted(team_stats.index.tolist())
-    return templates.TemplateResponse("index.html", {"request":request,"teams":teams})
+    return templates.TemplateResponse("index.html", {"request": request, "teams": teams})
+
 
 @app.post("/predict")
 async def predict(data: MatchRequest):
-    t1,t2=data.team1,data.team2
-    if t1==t2: return JSONResponse({"error":"Teams must be different"},status_code=400)
-    t1_h2h=get_h2h(t1,t2)
-    t1h=1 if data.team1_venue_status=="home" else 0
-    t2h=1 if data.team1_venue_status=="away" else 0
-    tw=1 if data.toss_winner==t1 else 0
-    td=1 if data.toss_decision=="bat" else 0
-    def ts(team,col):
-        try: return _sf(team_stats.loc[team,col])
+    t1, t2 = data.team1, data.team2
+    if t1 == t2:
+        return JSONResponse({"error": "Teams must be different"}, status_code=400)
+
+    t1_h2h = get_h2h(t1, t2)
+    t1h    = 1 if data.team1_venue_status == "home" else 0
+    t2h    = 1 if data.team1_venue_status == "away" else 0
+
+    def ts(team, col):
+        try:   return _sf(team_stats.loc[team, col])
         except KeyError: return 0.0
-    row=pd.DataFrame([{
-        "team1_sr":ts(t1,"sr"),"team2_sr":ts(t2,"sr"),
-        "team1_econ":ts(t1,"econ"),"team2_econ":ts(t2,"econ"),
-        "team1_bat_avg":ts(t1,"bat_avg"),"team2_bat_avg":ts(t2,"bat_avg"),
-        "team1_bowl_avg":ts(t1,"bowl_avg"),"team2_bowl_avg":ts(t2,"bowl_avg"),
-        "team1_is_home":t1h,"team2_is_home":t2h,
-        "toss_winner_is_team1":tw,"toss_decision_bat":td,
-        "team1_h2h_win_pct":t1_h2h,
-    }])
-    pred=int(match_model.predict(row)[0])
-    probs=match_model.predict_proba(row)[0]
-    winner=t1 if pred==1 else t2
-    win_p=float(probs[1] if pred==1 else probs[0])*100
+
+    if data.toss_known:
+        tw   = 1 if data.toss_winner == t1 else 0
+        td   = 1 if data.toss_decision == "bat" else 0
+        pred, probs = _predict_row(t1, t2, t1h, t2h, t1_h2h, tw, td, ts)
+        winner   = t1 if pred == 1 else t2
+        win_p    = float(probs[1] if pred == 1 else probs[0]) * 100
+        toss_scenarios = None
+    else:
+        scenarios = [
+            {"label": f"{t1} wins toss & bats",   "tw": 1, "td": 1},
+            {"label": f"{t1} wins toss & bowls",  "tw": 1, "td": 0},
+            {"label": f"{t2} wins toss & bats",   "tw": 0, "td": 1},
+            {"label": f"{t2} wins toss & bowls",  "tw": 0, "td": 0},
+        ]
+        avg_t1_prob    = 0.0
+        toss_scenarios = []
+        for sc in scenarios:
+            _, probs_sc = _predict_row(t1, t2, t1h, t2h, t1_h2h, sc["tw"], sc["td"], ts)
+            sc_t1 = float(probs_sc[1]) * 100
+            avg_t1_prob += sc_t1 / 4.0
+            toss_scenarios.append({"scenario": sc["label"], "team1_win_pct": round(sc_t1, 1)})
+
+        winner = t1 if avg_t1_prob >= 50 else t2
+        win_p  = avg_t1_prob if winner == t1 else (100 - avg_t1_prob)
+        probs  = [1 - avg_t1_prob / 100, avg_t1_prob / 100]
+
+    # Impact players
+    impact_t1 = _get_impact_player(t1)
+    impact_t2 = _get_impact_player(t2)
+
     return {
-        "winner":winner,
-        "probability":round(win_p,1),
-        "confidence":round(float(max(probs))*100,1),
-        "team1_stats":{"sr":round(ts(t1,"sr"),1),"bat_avg":round(ts(t1,"bat_avg"),1),
-                       "econ":round(ts(t1,"econ"),1),"h2h":round(t1_h2h*100,1)},
-        "team2_stats":{"sr":round(ts(t2,"sr"),1),"bat_avg":round(ts(t2,"bat_avg"),1),
-                       "econ":round(ts(t2,"econ"),1),"h2h":round((1-t1_h2h)*100,1)},
+        "winner"          : winner,
+        "probability"     : round(win_p, 1),
+        "confidence"      : round(float(max(probs)) * 100, 1),
+        "toss_known"      : data.toss_known,
+        "toss_scenarios"  : toss_scenarios,
+        "impact_players"  : {t1: impact_t1, t2: impact_t2},
+        "team1_stats"     : {"sr": round(ts(t1, "sr"), 1), "bat_avg": round(ts(t1, "bat_avg"), 1),
+                             "econ": round(ts(t1, "econ"), 1), "h2h": round(t1_h2h * 100, 1)},
+        "team2_stats"     : {"sr": round(ts(t2, "sr"), 1), "bat_avg": round(ts(t2, "bat_avg"), 1),
+                             "econ": round(ts(t2, "econ"), 1), "h2h": round((1 - t1_h2h) * 100, 1)},
     }
+
 
 @app.post("/simulate")
 async def simulate(data: SimulateRequest):
-    t1,t2=data.team1,data.team2
-    if t1==t2: return JSONResponse({"error":"Teams must be different"},status_code=400)
-    n=max(1,min(data.n_matches,N_MATCHES))
-    xi1=_best_xi(t1); xi2=_best_xi(t2)
-    result=_run_sim(xi1["batting"],xi1["bowling"],xi2["batting"],xi2["bowling"],n,t1,t2)
-    result["playing11"]={t1:xi1["batting"],t2:xi2["batting"]}
+    t1, t2 = data.team1, data.team2
+    if t1 == t2:
+        return JSONResponse({"error": "Teams must be different"}, status_code=400)
+    n    = max(1, min(data.n_matches, N_MATCHES))
+    bat1, bowl1 = _best_xi_names(t1, data.style1)
+    bat2, bowl2 = _best_xi_names(t2, data.style2)
+    tw   = 1 if data.toss_winner == t1 else 0
+    td   = 1 if data.toss_decision == "bat" else 0
+    result = _run_sim(bat1, bowl1, bat2, bowl2, n, t1, t2,
+                      toss_known=data.toss_known, toss_winner_is_t1=tw, toss_bat=td,
+                      style1=data.style1, style2=data.style2)
+    result["playing11"]    = {t1: bat1, t2: bat2}
+    result["impact_players"] = {t1: _get_impact_player(t1), t2: _get_impact_player(t2)}
+    result["ideal_xi"]     = {
+        t1: _ideal_xi(t1, data.style1),
+        t2: _ideal_xi(t2, data.style2),
+    }
     return result
+
 
 @app.post("/simulate-custom")
 async def simulate_custom(data: CustomSimRequest):
-    t1,t2=data.team1,data.team2
-    if t1==t2: return JSONResponse({"error":"Teams must be different"},status_code=400)
-    n=max(1,min(data.n_matches,N_MATCHES))
-    xi1=_best_xi(t1); xi2=_best_xi(t2)
-    bat1=data.team1_batting or xi1["batting"]; bowl1=data.team1_bowling or xi1["bowling"]
-    bat2=data.team2_batting or xi2["batting"]; bowl2=data.team2_bowling or xi2["bowling"]
-    result=_run_sim(bat1,bowl1,bat2,bowl2,n,t1,t2)
-    result["playing11"]={t1:bat1,t2:bat2}
+    t1, t2 = data.team1, data.team2
+    if t1 == t2:
+        return JSONResponse({"error": "Teams must be different"}, status_code=400)
+    n     = max(1, min(data.n_matches, N_MATCHES))
+    xi1   = _ideal_xi(t1); xi2 = _ideal_xi(t2)
+    bat1  = data.team1_batting or [p["name"] for p in xi1["batting"]]
+    bowl1 = data.team1_bowling or xi1["bowling"]
+    bat2  = data.team2_batting or [p["name"] for p in xi2["batting"]]
+    bowl2 = data.team2_bowling or xi2["bowling"]
+    tw    = 1 if data.toss_winner == t1 else 0
+    td    = 1 if data.toss_decision == "bat" else 0
+    result = _run_sim(bat1, bowl1, bat2, bowl2, n, t1, t2,
+                      toss_known=data.toss_known, toss_winner_is_t1=tw, toss_bat=td)
+    result["playing11"]     = {t1: bat1, t2: bat2}
+    result["impact_players"] = {t1: _get_impact_player(t1), t2: _get_impact_player(t2)}
     return result
+
+
+@app.get("/ideal-xi/{team}")
+async def ideal_xi(team: str, style: str = "balanced"):
+    xi = _ideal_xi(team, style)
+    return {"team": team, "style": style, **xi}
+
+
+@app.get("/playing11/{team}")
+async def playing11(team: str):
+    xi = _ideal_xi(team, "balanced")
+    return {"team": team, "playing11": xi["batting"], "bowlers": xi["bowling"],
+            "impact_player": xi["impact_player"]}
+
 
 @app.get("/squad/{team}")
 async def get_squad(team: str):
-    roster=team_roster.get(team,[])
-    if not roster: return JSONResponse({"error":f"No squad found for '{team}'"},status_code=404)
-    players=[]
+    roster = team_roster.get(team, [])
+    if not roster:
+        return JSONResponse({"error": f"No squad found for '{team}'"}, status_code=404)
+    players = []
     for name in roster:
-        p=player_lookup.get(name,{})
+        p = player_lookup.get(name, {})
         players.append({
-            "name":name,
-            "role":str(p.get("role","Unknown")),
-            "bat_runs":int(_sf(p.get("bat_runs"),0)),
-            "bat_balls":int(_sf(p.get("bat_balls"),0)),
-            "bat_sr":round(_sf(p.get("bat_sr"),0),1),
-            "bat_avg":round(_sf(p.get("bat_avg"),0),1),
-            "boundary_pct":round(_sf(p.get("boundary_pct"),0),1),
-            "dot_pct":round(_sf(p.get("dot_pct"),0),1),
-            "bowl_wkts":int(_sf(p.get("bowl_wkts"),0)),
-            "bowl_balls":int(_sf(p.get("bowl_balls"),0)),
-            "bowl_econ":round(_sf(p.get("bowl_econ"),0),1),
-            "bowl_avg":round(_sf(p.get("bowl_avg"),0),1),
+            "name"        : name,
+            "role"        : str(p.get("role", "Unknown")),
+            "bat_runs"    : int(_sf(p.get("bat_runs"), 0)),
+            "bat_balls"   : int(_sf(p.get("bat_balls"), 0)),
+            "bat_sr"      : round(_sf(p.get("bat_sr"), 0), 1),
+            "bat_avg"     : round(_sf(p.get("bat_avg"), 0), 1),
+            "boundary_pct": round(_sf(p.get("boundary_pct"), 0), 1),
+            "dot_pct"     : round(_sf(p.get("dot_pct"), 0), 1),
+            "bowl_wkts"   : int(_sf(p.get("bowl_wkts"), 0)),
+            "bowl_balls"  : int(_sf(p.get("bowl_balls"), 0)),
+            "bowl_econ"   : round(_sf(p.get("bowl_econ"), 0), 1),
+            "bowl_avg"    : round(_sf(p.get("bowl_avg"), 0), 1),
         })
-    players.sort(key=lambda x:-x["bat_runs"])
-    return {"team":team,"squad":players}
+    players.sort(key=lambda x: -x["bat_runs"])
+    return {"team": team, "squad": players}
 
-@app.get("/playing11/{team}")
-async def get_playing11(team: str):
-    xi=_best_xi(team)
-    detail=[]
-    for name in xi["batting"]:
-        p=player_lookup.get(name,{})
-        detail.append({
-            "name":name,
-            "role":str(p.get("role","Unknown")),
-            "bat_sr":round(_sf(p.get("bat_sr"),0),1),
-            "bat_avg":round(_sf(p.get("bat_avg"),0),1),
-            "bowl_econ":round(_sf(p.get("bowl_econ"),0),1),
-            "bowl_wkts":int(_sf(p.get("bowl_wkts"),0)),
-            "is_bowler":name in xi["bowling"],
-        })
-    return {"team":team,"playing11":detail,"bowlers":xi["bowling"]}
 
 @app.get("/player-stats")
 async def player_stats(team: str | None = None):
-    df=player_df.copy()
-    if team and "team" in df.columns: df=df[df["team"]==team]
-    cols=[c for c in ["player","team","role","bat_runs","bat_balls","bat_sr","bat_avg",
-          "boundary_pct","dot_pct","bowl_wkts","bowl_balls","bowl_econ","bowl_avg"] if c in df.columns]
+    df = player_df.copy()
+    if team and "team" in df.columns:
+        df = df[df["team"] == team]
+    cols = [c for c in ["player", "team", "role", "bat_runs", "bat_balls", "bat_sr",
+                         "bat_avg", "boundary_pct", "dot_pct", "bowl_wkts", "bowl_balls",
+                         "bowl_econ", "bowl_avg"] if c in df.columns]
     return JSONResponse(df[cols].fillna(0).round(2).to_dict(orient="records"))
 
-if __name__=="__main__":
-    uvicorn.run("main:app",host="127.0.0.1",port=8000,reload=True)
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
