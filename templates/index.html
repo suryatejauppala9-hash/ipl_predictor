@@ -1,818 +1,623 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>IPL Intelligence — Match Predictor</title>
+<title>IPL Intelligence — Match Predictor 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>
-/* ── Reset & Root ─────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-  --bg0: #050810;
-  --bg1: #0a0e1a;
-  --bg2: #0f1525;
-  --glass: rgba(255,255,255,0.035);
-  --glass2: rgba(255,255,255,0.06);
-  --border: rgba(255,255,255,0.08);
-  --border2: rgba(255,255,255,0.14);
-  --txt1: #eef2ff;
-  --txt2: #8896b3;
-  --txt3: #4e5d78;
-  --gold: #f5c842;
-  --neon: #00d4ff;
-  --purple: #7c3aed;
-  --green: #10b981;
-  --red: #ef4444;
-  --accent: var(--neon);
-  --font-display: 'Rajdhani', sans-serif;
-  --font-mono: 'Space Mono', monospace;
-  --font-body: 'Inter', sans-serif;
-}
-
-html { scroll-behavior: smooth; }
-
-body {
-  font-family: var(--font-body);
-  background: var(--bg0);
-  color: var(--txt1);
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* ── Noise grain overlay ─────────────────────────────────────────── */
-body::before {
-  content: '';
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-  opacity: 0.4;
-}
-
-/* Stadium scanline */
-body::after {
-  content: '';
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.012) 2px, rgba(0,212,255,0.012) 4px);
-}
-
-/* ── Layout ──────────────────────────────────────────────────────── */
-.app { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
-
-/* ── Hero Header ─────────────────────────────────────────────────── */
-.hero {
-  text-align: center;
-  padding: 48px 0 40px;
-  position: relative;
-}
-.hero-badge {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2);
-  border-radius: 100px; padding: 6px 16px; margin-bottom: 20px;
-  font-family: var(--font-mono); font-size: 11px; color: var(--neon);
-  letter-spacing: 2px; text-transform: uppercase;
-}
-.hero-badge::before {
-  content: ''; width: 6px; height: 6px; border-radius: 50%;
-  background: var(--neon); box-shadow: 0 0 8px var(--neon);
-  animation: pulse 2s infinite;
-}
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-.hero h1 {
-  font-family: var(--font-display);
-  font-size: clamp(48px, 8vw, 80px);
-  font-weight: 700;
-  line-height: 0.95;
-  letter-spacing: -1px;
-  background: linear-gradient(135deg, #fff 30%, var(--neon) 60%, var(--gold) 90%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-}
-.hero-sub {
-  margin-top: 14px; font-size: 15px; color: var(--txt2); font-weight: 300; letter-spacing: 0.5px;
-}
-.hero-glow {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -55%);
-  width: 600px; height: 300px; pointer-events: none;
-  background: radial-gradient(ellipse, rgba(0,212,255,0.08) 0%, transparent 70%);
-  z-index: -1;
-}
-
-/* ── Glass Card ──────────────────────────────────────────────────── */
-.card {
-  background: var(--glass);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 28px;
-  position: relative;
-  overflow: hidden;
-}
-.card::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent);
-}
-
-/* ── Section Label ───────────────────────────────────────────────── */
-.section-label {
-  font-family: var(--font-mono); font-size: 10px; color: var(--neon);
-  letter-spacing: 3px; text-transform: uppercase; margin-bottom: 20px;
-  display: flex; align-items: center; gap: 10px;
-}
-.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-
-/* ── Team Selection ──────────────────────────────────────────────── */
-.team-grid { display: grid; grid-template-columns: 1fr 52px 1fr; gap: 12px; align-items: start; margin-bottom: 24px; }
-
-.team-block label {
-  font-family: var(--font-mono); font-size: 10px; color: var(--txt2);
-  letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 8px;
-}
-
-.team-select-wrap { position: relative; }
-.team-select-wrap select {
-  width: 100%; padding: 14px 42px 14px 16px;
-  background: rgba(0,0,0,0.4); color: var(--txt1);
-  border: 1px solid var(--border2); border-radius: 12px;
-  font-family: var(--font-display); font-size: 16px; font-weight: 600;
-  appearance: none; cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s;
-}
-.team-select-wrap select:focus {
-  outline: none; border-color: var(--neon);
-  box-shadow: 0 0 0 3px rgba(0,212,255,0.12);
-}
-.team-select-wrap select option { background: #0f1525; }
-.team-select-wrap::after {
-  content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-  color: var(--txt2); pointer-events: none; font-size: 12px;
-}
-
-/* Team colour chip */
-.team-chip { display: flex; align-items: center; gap: 8px; margin-top: 8px; height: 20px; }
-.team-chip-dot { width: 10px; height: 10px; border-radius: 50%; transition: background 0.3s; }
-.team-chip-name { font-size: 11px; color: var(--txt2); }
-
-.swap-btn {
-  margin-top: 28px; width: 52px; height: 52px; border-radius: 50%;
-  background: var(--glass2); border: 1px solid var(--border2); color: var(--txt1);
-  font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: transform 0.4s, background 0.2s, border-color 0.2s;
-}
-.swap-btn:hover { background: rgba(0,212,255,0.12); border-color: var(--neon); transform: rotate(180deg); }
-
-/* ── Conditions Row ──────────────────────────────────────────────── */
-.conditions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
-
-.cond-block label {
-  font-family: var(--font-mono); font-size: 10px; color: var(--txt2);
-  letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 8px;
-}
-.cond-block select {
-  width: 100%; padding: 11px 14px;
-  background: rgba(0,0,0,0.35); color: var(--txt1);
-  border: 1px solid var(--border); border-radius: 10px;
-  font-size: 13px; appearance: none; cursor: pointer; transition: border-color 0.2s;
-}
-.cond-block select:focus { outline: none; border-color: var(--neon); }
-.cond-block select option { background: #0f1525; }
-
-/* ── Action Buttons ──────────────────────────────────────────────── */
-.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-.btn {
-  padding: 16px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600;
-  cursor: pointer; transition: all 0.25s; font-family: var(--font-display); letter-spacing: 0.5px;
-  position: relative; overflow: hidden;
-}
-.btn::after {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(rgba(255,255,255,0.05), transparent);
-  pointer-events: none;
-}
-.btn-primary {
-  background: linear-gradient(135deg, var(--neon), #0099cc);
-  color: #000; box-shadow: 0 4px 20px rgba(0,212,255,0.3);
-}
-.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,212,255,0.45); }
-.btn-secondary {
-  background: linear-gradient(135deg, var(--purple), #5b21b6);
-  color: #fff; box-shadow: 0 4px 20px rgba(124,58,237,0.3);
-}
-.btn-secondary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,58,237,0.45); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
-/* ── Divider ─────────────────────────────────────────────────────── */
-.divider { height: 1px; background: var(--border); margin: 28px 0; }
-
-/* ── Prediction Result ───────────────────────────────────────────── */
-#predict-result { display: none; animation: rise 0.5s ease; }
-@keyframes rise { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
-
-.winner-banner {
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--glass2); border: 1px solid var(--border2); border-radius: 14px;
-  padding: 18px 22px; margin-bottom: 20px;
-}
-.winner-left { display: flex; align-items: center; gap: 14px; }
-.winner-logo {
-  width: 52px; height: 52px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-display); font-weight: 700; font-size: 17px; color: #000;
-  box-shadow: 0 0 20px currentColor;
-}
-.winner-name { font-family: var(--font-display); font-size: 24px; font-weight: 700; }
-.winner-sub { font-size: 12px; color: var(--txt2); margin-top: 2px; }
-.confidence-pill {
-  background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3);
-  border-radius: 8px; padding: 8px 14px; text-align: center;
-}
-.confidence-pill .conf-val { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--green); }
-.confidence-pill .conf-lbl { font-size: 10px; color: var(--txt2); letter-spacing: 1px; text-transform: uppercase; }
-
-/* Probability bar */
-.prob-row { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
-.prob-track {
-  height: 10px; border-radius: 5px; overflow: hidden; display: flex;
-  background: rgba(255,255,255,0.06); margin-bottom: 20px;
-}
-.prob-fill { height: 100%; transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
-
-/* Stats grid */
-.stats-table {
-  display: grid; grid-template-columns: 1fr 1.6fr 1fr;
-  gap: 10px 8px; align-items: center; text-align: center;
-  background: rgba(0,0,0,0.25); border-radius: 12px; padding: 16px;
-}
-.stats-table .sh { font-family: var(--font-mono); font-size: 10px; color: var(--txt2); letter-spacing: 1px; text-transform: uppercase; }
-.stats-table .sv { font-family: var(--font-display); font-size: 20px; font-weight: 700; transition: color 0.4s; }
-.stats-table .sl { font-size: 11px; color: var(--txt2); }
-
-/* ── Simulation Result ───────────────────────────────────────────── */
-#sim-result { display: none; animation: rise 0.5s ease; }
-
-/* Scoreboard */
-.scoreboard {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 12px; margin-bottom: 22px;
-}
-.score-card {
-  background: var(--glass2); border: 1px solid var(--border); border-radius: 14px;
-  padding: 18px; text-align: center; position: relative; overflow: hidden;
-}
-.score-card::before {
-  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
-}
-.score-team { font-family: var(--font-mono); font-size: 10px; color: var(--txt2); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
-.score-runs { font-family: var(--font-display); font-size: 44px; font-weight: 700; line-height: 1; }
-.score-meta { font-size: 12px; color: var(--txt2); margin-top: 4px; }
-.win-prob-badge {
-  display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
-  padding: 4px 12px; border-radius: 100px; font-family: var(--font-mono); font-size: 12px; font-weight: 700;
-}
-
-/* Distribution chart */
-.dist-title { font-family: var(--font-mono); font-size: 10px; color: var(--txt2); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
-.dist-chart { display: flex; align-items: flex-end; gap: 8px; height: 80px; }
-.dist-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
-.dist-bar {
-  width: 100%; border-radius: 4px 4px 0 0;
-  transition: height 1s cubic-bezier(0.4,0,0.2,1);
-  min-height: 2px;
-}
-.dist-bar-label { font-family: var(--font-mono); font-size: 10px; color: var(--txt2); }
-.dist-bar-pct { font-family: var(--font-mono); font-size: 9px; color: var(--txt3); }
-
-/* Ball-by-ball viewer */
-.bbb-title { font-family: var(--font-mono); font-size: 10px; color: var(--txt2); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
-.bbb-track {
-  display: flex; flex-wrap: wrap; gap: 6px;
-  max-height: 220px; overflow-y: auto;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
-}
-.ball {
-  width: 38px; height: 38px; border-radius: 50%; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  font-family: var(--font-mono); font-size: 13px; font-weight: 700;
-  border: 1.5px solid;
-  animation: popIn 0.2s ease; transform-origin: center;
-}
-@keyframes popIn { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
-.ball-0  { background:rgba(255,255,255,0.04); border-color:var(--border); color:var(--txt2); }
-.ball-1  { background:rgba(0,212,255,0.08);   border-color:rgba(0,212,255,0.3); color:var(--neon); }
-.ball-2  { background:rgba(0,212,255,0.12);   border-color:rgba(0,212,255,0.4); color:var(--neon); }
-.ball-3  { background:rgba(245,200,66,0.1);   border-color:rgba(245,200,66,0.3); color:var(--gold); }
-.ball-4  { background:rgba(16,185,129,0.12);  border-color:rgba(16,185,129,0.4); color:var(--green); }
-.ball-6  { background:rgba(124,58,237,0.15);  border-color:rgba(124,58,237,0.5); color:#a78bfa; }
-.ball-W  { background:rgba(239,68,68,0.15);   border-color:rgba(239,68,68,0.5); color:var(--red); }
-.ball-over-sep {
-  width: 100%; font-family: var(--font-mono); font-size: 9px; color: var(--txt3);
-  letter-spacing: 1px; padding: 4px 0 2px; border-top: 1px solid var(--border);
-}
-
-/* ── MC stats ─────────────────────────────────────────────────────── */
-.mc-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 22px; }
-.mc-stat {
-  background: var(--glass2); border: 1px solid var(--border); border-radius: 10px;
-  padding: 14px 12px; text-align: center;
-}
-.mc-stat .msv { font-family: var(--font-display); font-size: 24px; font-weight: 700; }
-.mc-stat .msl { font-size: 10px; color: var(--txt2); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; font-family: var(--font-mono); }
-
-/* ── Spinner ──────────────────────────────────────────────────────── */
-.spinner {
-  display: none; align-items: center; justify-content: center; gap: 14px;
-  padding: 24px; color: var(--txt2); font-family: var(--font-mono); font-size: 13px;
-}
-.spinner-ring {
-  width: 28px; height: 28px; border: 2px solid var(--border2);
-  border-top-color: var(--neon); border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Tabs ─────────────────────────────────────────────────────────── */
-.tabs { display: flex; gap: 4px; margin-bottom: 20px; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 4px; }
-.tab {
-  flex: 1; padding: 9px; border-radius: 7px; border: none; cursor: pointer;
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
-  color: var(--txt2); background: transparent; transition: all 0.2s;
-}
-.tab.active { background: var(--glass2); color: var(--txt1); border: 1px solid var(--border2); }
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
-
-/* ── Tooltip ──────────────────────────────────────────────────────── */
-.tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.tag {
-  padding: 4px 12px; border-radius: 100px; font-size: 11px; font-family: var(--font-mono);
-  background: var(--glass2); border: 1px solid var(--border); color: var(--txt2);
-}
-
-/* ── Footer ──────────────────────────────────────────────────────── */
-.footer { text-align: center; padding-top: 40px; font-size: 11px; color: var(--txt3); font-family: var(--font-mono); letter-spacing: 1px; }
-
-/* ── Responsive ──────────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .team-grid  { grid-template-columns: 1fr; }
-  .swap-btn   { margin: 0 auto; }
-  .conditions { grid-template-columns: 1fr 1fr; }
-  .conditions .cond-block:first-child { grid-column: span 2; }
-  .btn-row    { grid-template-columns: 1fr; }
-  .mc-stats   { grid-template-columns: repeat(2,1fr); }
-  .scoreboard { grid-template-columns: 1fr; }
-}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <div class="app">
 
-  <!-- ── Hero ── -->
-  <div class="hero">
-    <div class="hero-glow"></div>
-    <div class="hero-badge">IPL · 2026</div>
-    <h1>Match<br>Predictor</h1>
-    <p class="hero-sub">XGBoost · 6767 simulations</p>
-  </div>
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-badge"><div class="hero-badge-dot"></div>IPL Intelligence · 2026 Squads</div>
+  <h1>Match<br>Predictor</h1>
+  <p class="hero-sub">XGBoost model · 6767 match simulations · Full ball-by-ball · with Custom XI</p>
+</div>
 
-  <!-- ── Main Card ── -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="section-label">Team Selection</div>
-
-    <!-- Team picker -->
-    <div class="team-grid">
-      <div class="team-block">
-        <label>Team 1</label>
-        <div class="team-select-wrap">
-          <select id="team1">
-            {% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}
-          </select>
-        </div>
-        <div class="team-chip"><div class="team-chip-dot" id="t1-dot"></div><span class="team-chip-name" id="t1-chip">—</span></div>
+<!-- MAIN CARD -->
+<div class="card">
+  <div class="sec-label">Team Selection</div>
+  <div class="team-grid">
+    <div class="team-block">
+      <label>Team 1</label>
+      <div class="select-wrap">
+        <select id="team1">{% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select>
       </div>
-
-      <button class="swap-btn" onclick="swapTeams()" title="Swap">⇅</button>
-
-      <div class="team-block">
-        <label>Team 2</label>
-        <div class="team-select-wrap">
-          <select id="team2">
-            {% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}
-          </select>
-        </div>
-        <div class="team-chip"><div class="team-chip-dot" id="t2-dot"></div><span class="team-chip-name" id="t2-chip">—</span></div>
-      </div>
+      <div class="team-chip"><div class="chip-dot" id="t1-dot"></div><span class="chip-name" id="t1-chip"></span></div>
     </div>
-
-    <!-- Conditions -->
-    <div class="section-label">Match Conditions</div>
-    <div class="conditions">
-      <div class="cond-block">
-        <label>Location (Team 1)</label>
-        <select id="venue_status">
-          <option value="home">Home</option>
-          <option value="away">Away</option>
-          <option value="neutral">Neutral</option>
-        </select>
+    <button class="swap-btn" onclick="swapTeams()" title="Swap">⇅</button>
+    <div class="team-block">
+      <label>Team 2</label>
+      <div class="select-wrap">
+        <select id="team2">{% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select>
       </div>
-      <div class="cond-block">
-        <label>Toss Winner</label>
-        <select id="toss_winner"></select>
-      </div>
-      <div class="cond-block">
-        <label>Toss Decision</label>
-        <select id="toss_decision">
-          <option value="bat">Bat First</option>
-          <option value="field">Bowl First</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Buttons -->
-    <div class="btn-row">
-      <button class="btn btn-primary" id="predict-btn" onclick="runPredict()">⚡ Predict Winner</button>
-      <button class="btn btn-secondary" id="simulate-btn" onclick="runSimulate()">🎲 Simulate Match</button>
-    </div>
-
-    <!-- Loading -->
-    <div class="spinner" id="spinner">
-      <div class="spinner-ring"></div>
-      <span id="spinner-text">Running 6767 simulations…</span>
-    </div>
-
-    <!-- ── Prediction Result ── -->
-    <div id="predict-result">
-      <div class="divider"></div>
-      <div class="section-label">Prediction</div>
-
-      <div class="winner-banner" id="winner-banner">
-        <div class="winner-left">
-          <div class="winner-logo" id="winner-logo">MI</div>
-          <div>
-            <div class="winner-name" id="winner-name">Mumbai Indians</div>
-            <div class="winner-sub">Predicted to Win</div>
-          </div>
-        </div>
-        <div class="confidence-pill">
-          <div class="conf-val" id="conf-val">78.4%</div>
-          <div class="conf-lbl">Confidence</div>
-        </div>
-      </div>
-
-      <div class="prob-row">
-        <span id="p-t1-label"></span>
-        <span id="p-t2-label"></span>
-      </div>
-      <div class="prob-track">
-        <div class="prob-fill" id="prob-fill-t1"></div>
-        <div class="prob-fill" id="prob-fill-t2" style="flex:1"></div>
-      </div>
-
-      <div class="stats-table">
-        <div class="sh" id="sh-t1">T1</div><div class="sh">Metric</div><div class="sh" id="sh-t2">T2</div>
-        <div class="sv" id="sv-t1-sr"></div><div class="sl">Strike Rate</div><div class="sv" id="sv-t2-sr"></div>
-        <div class="sv" id="sv-t1-bat"></div><div class="sl">Batting Avg</div><div class="sv" id="sv-t2-bat"></div>
-        <div class="sv" id="sv-t1-econ"></div><div class="sl">Economy</div><div class="sv" id="sv-t2-econ"></div>
-        <div class="sv" id="sv-t1-h2h"></div><div class="sl">H2H Win %</div><div class="sv" id="sv-t2-h2h"></div>
-      </div>
-    </div>
-
-    <!-- ── Simulation Result ── -->
-    <div id="sim-result">
-      <div class="divider"></div>
-      <div class="section-label"> <span id="mc-n">6767</span> Simulations</div>
-
-      <!-- Scoreboard -->
-      <div class="scoreboard">
-        <div class="score-card" id="sc1">
-          <div class="score-team" id="sc1-team">CSK</div>
-          <div class="score-runs" id="sc1-runs">—</div>
-          <div class="score-meta" id="sc1-meta">avg ± std</div>
-          <div class="win-prob-badge" id="sc1-badge">—%</div>
-        </div>
-        <div class="score-card" id="sc2">
-          <div class="score-team" id="sc2-team">MI</div>
-          <div class="score-runs" id="sc2-runs">—</div>
-          <div class="score-meta" id="sc2-meta">avg ± std</div>
-          <div class="win-prob-badge" id="sc2-badge">—%</div>
-        </div>
-      </div>
-
-      <!-- MC summary stats -->
-      <div class="mc-stats">
-        <div class="mc-stat"><div class="msv" id="mc-p10-t1">—</div><div class="msl">T1 P10</div></div>
-        <div class="mc-stat"><div class="msv" id="mc-p90-t1">—</div><div class="msl">T1 P90</div></div>
-        <div class="mc-stat"><div class="msv" id="mc-p10-t2">—</div><div class="msl">T2 P10</div></div>
-        <div class="mc-stat"><div class="msv" id="mc-p90-t2">—</div><div class="msl">T2 P90</div></div>
-      </div>
-
-      <!-- Tabs -->
-      <div class="tabs">
-        <button class="tab active" onclick="switchTab('dist',this)">Ball Distribution</button>
-        <button class="tab" onclick="switchTab('bbb',this)">Ball by Ball</button>
-      </div>
-
-      <!-- Distribution -->
-      <div class="tab-panel active" id="tab-dist">
-        <div class="dist-title">Probability Distribution — Every Ball Outcome</div>
-        <div class="dist-chart" id="dist-chart">
-          <!-- filled by JS -->
-        </div>
-        <div class="tag-row" id="dist-tags"></div>
-      </div>
-
-      <!-- Ball-by-ball -->
-      <div class="tab-panel" id="tab-bbb">
-        <div class="bbb-title">Representative Match — Ball by Ball <span style="color:var(--txt3)">(Innings 1)</span></div>
-        <div class="bbb-track" id="bbb-track"></div>
-      </div>
+      <div class="team-chip"><div class="chip-dot" id="t2-dot"></div><span class="chip-name" id="t2-chip"></span></div>
     </div>
   </div>
 
-  <div class="footer">IPL Predictor · Data: IPL Ball-by-Ball</div>
+  <div class="sec-label">Match Conditions</div>
+  <div class="conditions">
+    <div class="cond-block">
+      <label>Location (Team 1)</label>
+      <select id="venue_status">
+        <option value="neutral" selected>Neutral</option>
+        <option value="home">Home Ground</option>
+        <option value="away">Away</option>
+      </select>
+    </div>
+    <div class="cond-block">
+      <label>Toss Winner</label>
+      <select id="toss_winner"></select>
+    </div>
+    <div class="cond-block">
+      <label>Toss Decision</label>
+      <select id="toss_decision">
+        <option value="bat">Bat First</option>
+        <option value="field">Bowl First</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="btn-row-3">
+    <button class="btn btn-primary"   id="predict-btn"  onclick="runPredict()">⚡ Predict Winner</button>
+    <button class="btn btn-secondary" id="simulate-btn" onclick="runSimulate()">🎲 Run Simulation</button>
+    <button class="btn btn-ghost"     id="squad-btn"    onclick="openSquadModal()">👥 View Squads</button>
+  </div>
+  <div style="margin-top:8px">
+    <button class="btn btn-orange" id="builder-btn" onclick="openBuilderCard()" style="width:100%">🔧 Build My Own Playing XI</button>
+  </div>
+
+  <!-- LOADING ANIMATION -->
+  <div class="anim-container" id="anim-container">
+    <div class="cricket-anim">
+      <div class="anim-ring anim-ring-1"></div>
+      <div class="anim-ring anim-ring-2"></div>
+      <div class="anim-ring anim-ring-3"></div>
+      <div class="anim-core" id="anim-emoji">🏏</div>
+    </div>
+    <div class="anim-counter" id="anim-counter">0</div>
+    <div class="anim-sublabel" id="anim-sublabel">matches simulated</div>
+    <div class="anim-label" id="anim-label">Simulating 6767 matches…</div>
+    <div class="anim-progress"><div class="anim-progress-bar" id="anim-bar" style="width:0%"></div></div>
+    <div class="anim-facts" id="anim-facts"></div>
+  </div>
+
+  <!-- ── PREDICTION RESULT ── -->
+  <div id="predict-result" style="display:none">
+    <div class="divider"></div>
+    <div class="sec-label">Prediction</div>
+    <div class="winner-banner">
+      <div class="winner-left">
+        <div class="winner-logo" id="winner-logo">MI</div>
+        <div>
+          <div class="winner-name" id="winner-name">Team</div>
+          <div class="winner-sub">Predicted Winner · XGBoost</div>
+        </div>
+      </div>
+      <div class="conf-pill">
+        <div class="conf-val" id="conf-val">—</div>
+        <div class="conf-lbl">Confidence</div>
+      </div>
+    </div>
+    <div class="prob-row"><span id="p-t1-lbl"></span><span id="p-t2-lbl"></span></div>
+    <div class="prob-track">
+      <div class="prob-fill" id="pf-t1" style="width:50%"></div>
+      <div class="prob-fill" id="pf-t2" style="flex:1"></div>
+    </div>
+    <div class="stats-table">
+      <div class="sh" id="sh-t1">T1</div><div class="sh">Metric</div><div class="sh" id="sh-t2">T2</div>
+      <div class="sv" id="sv-t1-sr"></div><div class="sl">Strike Rate</div><div class="sv" id="sv-t2-sr"></div>
+      <div class="sv" id="sv-t1-bat"></div><div class="sl">Batting Avg</div><div class="sv" id="sv-t2-bat"></div>
+      <div class="sv" id="sv-t1-econ"></div><div class="sl">Economy</div><div class="sv" id="sv-t2-econ"></div>
+      <div class="sv" id="sv-t1-h2h"></div><div class="sl">H2H Win %</div><div class="sv" id="sv-t2-h2h"></div>
+    </div>
+  </div>
+
+  <!-- ── SIMULATION RESULT ── -->
+  <div id="sim-result" style="display:none">
+    <div class="divider"></div>
+    <div class="sec-label">Simulation — <span id="mc-n">6767</span> matches</div>
+
+    <div class="scoreboard">
+      <div class="score-card" id="sc1">
+        <div class="sc-team" id="sc1-team">—</div>
+        <div class="sc-runs" id="sc1-runs">—</div>
+        <div class="sc-meta" id="sc1-meta">—</div>
+        <div class="sc-badge" id="sc1-badge">—</div>
+      </div>
+      <div class="score-card" id="sc2">
+        <div class="sc-team" id="sc2-team">—</div>
+        <div class="sc-runs" id="sc2-runs">—</div>
+        <div class="sc-meta" id="sc2-meta">—</div>
+        <div class="sc-badge" id="sc2-badge">—</div>
+      </div>
+    </div>
+
+    <div class="mc-grid">
+      <div class="mc-card"><div class="mc-val" id="mc-p10-t1">—</div><div class="mc-lbl">T1 P10 Score</div></div>
+      <div class="mc-card"><div class="mc-val" id="mc-p90-t1">—</div><div class="mc-lbl">T1 P90 Score</div></div>
+      <div class="mc-card"><div class="mc-val" id="mc-p10-t2">—</div><div class="mc-lbl">T2 P10 Score</div></div>
+      <div class="mc-card"><div class="mc-val" id="mc-p90-t2">—</div><div class="mc-lbl">T2 P90 Score</div></div>
+    </div>
+
+    <!-- Playing XI -->
+    <div id="xi-section" style="display:none">
+      <div class="sec-label">Playing XI Used</div>
+      <div class="xi-grid" id="xi-grid"></div>
+    </div>
+
+    <!-- Tabs: dist / innings 1 / innings 2 / scorecard -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('dist',this)">Ball Distribution</button>
+      <button class="tab-btn" onclick="switchTab('inn1',this)">Innings 1</button>
+      <button class="tab-btn" onclick="switchTab('inn2',this)">Innings 2</button>
+      <button class="tab-btn" onclick="switchTab('scorecard',this)">Scorecard</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-dist">
+      <div class="dist-title">Probability Distribution — Every Ball Outcome</div>
+      <div class="dist-wrap" id="dist-chart"></div>
+      <div class="dist-tags" id="dist-tags"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-inn1">
+      <div class="inn-header" id="inn1-header">Innings 1</div>
+      <div class="bbb-scroll" id="bbb-inn1"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-inn2">
+      <div class="inn-header" id="inn2-header">Innings 2</div>
+      <div class="bbb-scroll" id="bbb-inn2"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-scorecard">
+      <div id="scorecard-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOM XI BUILDER CARD -->
+<div class="card" id="builder-card" style="display:none">
+  <div class="sec-label">Build Your Playing XI</div>
+  <p style="font-size:13px;color:var(--txt2);margin-bottom:16px">
+    Select exactly 11 players per team. Players marked 🎳 have bowling stats. The last 4 selected will bowl.
+  </p>
+  <div class="btn-row" style="margin-bottom:14px">
+    <button class="btn btn-ghost btn-sm" onclick="loadDefaultXI(1)">↺ Reset <span id="reset-t1-lbl">T1</span> XI</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadDefaultXI(2)">↺ Reset <span id="reset-t2-lbl">T2</span> XI</button>
+  </div>
+  <div class="builder-grid">
+    <div class="builder-col">
+      <h4 id="builder-t1-head">Team 1</h4>
+      <div class="builder-count" id="builder-t1-count">0 / 11 selected</div>
+      <div class="builder-pool" id="pool-t1"></div>
+    </div>
+    <div class="builder-col">
+      <h4 id="builder-t2-head">Team 2</h4>
+      <div class="builder-count" id="builder-t2-count">0 / 11 selected</div>
+      <div class="builder-pool" id="pool-t2"></div>
+    </div>
+  </div>
+  <div class="btn-row" style="margin-top:16px">
+    <button class="btn btn-orange" onclick="runCustomSimulate()">🚀 Simulate with My XI</button>
+    <button class="btn btn-ghost"  onclick="closeBuilderCard()">✕ Close</button>
+  </div>
+</div>
+
+<!-- SQUAD MODAL -->
+<div id="squad-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);padding:20px;overflow-y:auto">
+  <div style="max-width:880px;margin:0 auto">
+    <div class="card" style="margin:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div class="sec-label" style="margin-bottom:0">Squad Viewer — IPL 2026</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeSquadModal()">✕ Close</button>
+      </div>
+      <div class="btn-row" style="margin-bottom:14px;align-items:center">
+        <div class="select-wrap"><select id="squad-team-select">{% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select></div>
+        <button class="btn btn-primary btn-sm" onclick="loadSquad()">Load</button>
+      </div>
+      <div class="squad-filters">
+        <button class="squad-filter-btn active" onclick="filterSquad('all',this)">All Players</button>
+        <button class="squad-filter-btn" onclick="filterSquad('bat',this)">Batters</button>
+        <button class="squad-filter-btn" onclick="filterSquad('bowl',this)">Bowlers</button>
+        <button class="squad-filter-btn" onclick="filterSquad('ar',this)">All-Rounders</button>
+      </div>
+      <div id="squad-table-wrap"><p style="text-align:center;padding:30px;color:var(--txt2);font-size:13px">Select a team above</p></div>
+      <div style="margin-top:14px">
+        <button class="btn btn-secondary btn-sm" onclick="openBuilderFromSquad()">🔧 Build XI from this squad</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">IPL Intelligence 2026 · XGBoost + 6767-match simulations · Hard-coded IPL 2026 squads</div>
 </div>
 
 <script>
-/* ── Team metadata ──────────────────────────────────────────────── */
-const TEAM_COLORS = {
-  'Chennai Super Kings':      '#F9CD05',
-  'Mumbai Indians':           '#004BA0',
-  'Royal Challengers Bengaluru': '#EC1C24',
-  'Kolkata Knight Riders':    '#3A225D',
-  'Delhi Capitals':           '#174A92',
-  'Rajasthan Royals':         '#EA1A85',
-  'Sunrisers Hyderabad':      '#F26522',
-  'Punjab Kings':             '#DD1F2D',
-  'Lucknow Super Giants':     '#00B5DF',
-  'Gujarat Titans':           '#1B2133',
+const TC={
+  'Chennai Super Kings':'#F9CD05','Mumbai Indians':'#004BA0',
+  'Royal Challengers Bengaluru':'#EC1C24','Kolkata Knight Riders':'#3A225D',
+  'Delhi Capitals':'#174A92','Rajasthan Royals':'#EA1A85',
+  'Sunrisers Hyderabad':'#F26522','Punjab Kings':'#DD1F2D',
+  'Lucknow Super Giants':'#00B5DF','Gujarat Titans':'#1B2133',
 };
+const OC={'0':'#445066','1':'#0ea5e9','2':'#38bdf8','3':'#fbbf24','4':'#34d399','6':'#a78bfa','W':'#f87171'};
+const OL={'0':'Dot','1':'1','2':'2','3':'3','4':'FOUR','6':'SIX','W':'Wicket'};
+const FACTS=[
+  'Analysing 120 balls per match…','Computing batting strike rates…',
+  'Evaluating bowling economies…','Simulating toss decisions…',
+  'Checking head-to-head history…','Running powerplay analysis…',
+  'Factoring death-over aggression…','Weighing home-ground advantage…',
+  'Collating ball outcomes…','Calculating win probabilities…',
+  'Almost done, processing final results…'
+];
 
-function initials(name) { return name.split(' ').map(w=>w[0]).join('').slice(0,3); }
-function getColor(team) { return TEAM_COLORS[team] || '#00d4ff'; }
+function $id(id){return document.getElementById(id);}
+function fill(id,v){const el=$id(id);if(el)el.textContent=v;}
+function color(t){return TC[t]||'#38bdf8';}
+function initials(n){return n.split(' ').map(w=>w[0]).join('').slice(0,3);}
 
-/* ── Toss & chips ───────────────────────────────────────────────── */
-function updateUI() {
-  const t1 = document.getElementById('team1').value;
-  const t2 = document.getElementById('team2').value;
-  const c1 = getColor(t1), c2 = getColor(t2);
-
-  document.getElementById('t1-dot').style.background = c1;
-  document.getElementById('t2-dot').style.background = c2;
-  document.getElementById('t1-chip').textContent = t1;
-  document.getElementById('t2-chip').textContent = t2;
-
-  const tw = document.getElementById('toss_winner');
-  const prev = tw.value;
-  tw.innerHTML = `<option value="team1">${t1}</option><option value="team2">${t2}</option>`;
-  if (prev === 'team2') tw.value = 'team2';
+/* ── UI init ── */
+function updateChips(){
+  const t1=$id('team1').value,t2=$id('team2').value;
+  $id('t1-dot').style.background=color(t1);$id('t1-chip').textContent=t1;
+  $id('t2-dot').style.background=color(t2);$id('t2-chip').textContent=t2;
+  const tw=$id('toss_winner'),prev=tw.value;
+  tw.innerHTML=`<option value="${t1}">${t1}</option><option value="${t2}">${t2}</option>`;
+  if(prev===t2)tw.value=t2;
+  fill('reset-t1-lbl',initials(t1)); fill('reset-t2-lbl',initials(t2));
+  $id('builder-t1-head').textContent=t1; $id('builder-t2-head').textContent=t2;
 }
+$id('team1').addEventListener('change',updateChips);
+$id('team2').addEventListener('change',updateChips);
+window.addEventListener('DOMContentLoaded',()=>{
+  const opts=$id('team2').options;
+  if(opts.length>1)$id('team2').selectedIndex=1;
+  updateChips();
+});
+function swapTeams(){const t1=$id('team1'),t2=$id('team2');[t1.value,t2.value]=[t2.value,t1.value];updateChips();}
 
-document.getElementById('team1').addEventListener('change', updateUI);
-document.getElementById('team2').addEventListener('change', updateUI);
-window.addEventListener('DOMContentLoaded', updateUI);
-
-function swapTeams() {
-  const t1 = document.getElementById('team1'), t2 = document.getElementById('team2');
-  [t1.value, t2.value] = [t2.value, t1.value];
-  updateUI();
-}
-
-/* ── Tabs ───────────────────────────────────────────────────────── */
-function switchTab(id, btn) {
+/* ── Tabs ── */
+function switchTab(id,btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tab-'+id).classList.add('active');
-  btn.classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  $id('tab-'+id).classList.add('active');btn.classList.add('active');
 }
 
-/* ── Spinner ────────────────────────────────────────────────────── */
-function setLoading(on, msg='Running simulations…') {
-  const s = document.getElementById('spinner');
-  s.style.display = on ? 'flex' : 'none';
-  document.getElementById('spinner-text').textContent = msg;
-  document.getElementById('predict-btn').disabled = on;
-  document.getElementById('simulate-btn').disabled = on;
+/* ── Animation ── */
+let animIv=null,animFact=0;
+function startAnim(label,isMatch){
+  $id('predict-result').style.display='none';
+  $id('sim-result').style.display='none';
+  const c=$id('anim-container');c.classList.add('visible');
+  fill('anim-label',label||'Processing…');
+  fill('anim-counter','0');
+  fill('anim-sublabel',isMatch?'matches simulated':'');
+  $id('anim-bar').style.width='0%';
+  fill('anim-facts','');
+  animFact=0;
+  const total=isMatch?6767:100;
+  let count=0;
+  const step=Math.max(1,Math.floor(total/100));
+  animIv=setInterval(()=>{
+    count=Math.min(count+step+Math.floor(Math.random()*step*0.5),total);
+    fill('anim-counter',count.toLocaleString());
+    $id('anim-bar').style.width=(count/total*100)+'%';
+    if(Math.random()<0.05){fill('anim-facts',FACTS[animFact%FACTS.length]);animFact++;}
+    if(count>=total)clearInterval(animIv);
+  },55);
+  setAllBtns(true);
+}
+function stopAnim(){clearInterval(animIv);$id('anim-container').classList.remove('visible');setAllBtns(false);}
+function setAllBtns(d){['predict-btn','simulate-btn','squad-btn','builder-btn'].forEach(id=>{const el=$id(id);if(el)el.disabled=d;});}
+
+/* ── Predict ── */
+async function runPredict(){
+  const t1=$id('team1').value,t2=$id('team2').value;
+  if(t1===t2){alert('Select different teams');return;}
+  startAnim('Running XGBoost prediction…',false);
+  try{
+    const res=await fetch('/predict',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({team1:t1,team2:t2,team1_venue_status:$id('venue_status').value,
+        toss_winner:$id('toss_winner').value,toss_decision:$id('toss_decision').value})});
+    const d=await res.json();
+    if(d.error){alert(d.error);return;}
+    renderPredict(d,t1,t2);
+  }catch(e){alert('Connection error — is the backend running on port 8000?');}
+  finally{stopAnim();}
+}
+function renderPredict(d,t1,t2){
+  const wc=color(d.winner);
+  $id('winner-logo').textContent=initials(d.winner);
+  $id('winner-logo').style.background=wc;
+  $id('winner-logo').style.boxShadow=`0 0 24px ${wc}66`;
+  fill('winner-name',d.winner);fill('conf-val',d.confidence+'%');
+  const t1w=d.winner===t1;
+  const t1p=t1w?d.probability:+(100-d.probability).toFixed(1);
+  const t2p=t1w?+(100-d.probability).toFixed(1):d.probability;
+  fill('p-t1-lbl',`${initials(t1)} ${t1p}%`);fill('p-t2-lbl',`${t2p}% ${initials(t2)}`);
+  $id('pf-t1').style.width=t1p+'%';$id('pf-t1').style.background=color(t1);
+  $id('pf-t2').style.background=color(t2);
+  fill('sh-t1',initials(t1));fill('sh-t2',initials(t2));
+  const s1=d.team1_stats,s2=d.team2_stats;
+  fill('sv-t1-sr',s1.sr);fill('sv-t2-sr',s2.sr);
+  fill('sv-t1-bat',s1.bat_avg);fill('sv-t2-bat',s2.bat_avg);
+  fill('sv-t1-econ',s1.econ);fill('sv-t2-econ',s2.econ);
+  fill('sv-t1-h2h',s1.h2h+'%');fill('sv-t2-h2h',s2.h2h+'%');
+  hl('sv-t1-sr','sv-t2-sr',true);hl('sv-t1-bat','sv-t2-bat',true);
+  hl('sv-t1-econ','sv-t2-econ',false);hl('sv-t1-h2h','sv-t2-h2h',true);
+  $id('predict-result').style.display='block';
+}
+function hl(id1,id2,hi){
+  const v1=parseFloat($id(id1).textContent),v2=parseFloat($id(id2).textContent);
+  const b=hi?v1>v2:v1<v2;
+  $id(id1).style.color=b?'var(--green)':'var(--txt2)';
+  $id(id2).style.color=b?'var(--txt2)':'var(--green)';
 }
 
-/* ── Predict ────────────────────────────────────────────────────── */
-async function runPredict() {
-  const t1 = document.getElementById('team1').value;
-  const t2 = document.getElementById('team2').value;
-  if (t1 === t2) { alert('Select different teams'); return; }
-
-  setLoading(true, 'Running XGBoost prediction…');
-  document.getElementById('predict-result').style.display = 'none';
-  document.getElementById('sim-result').style.display = 'none';
-
-  const payload = {
-    team1: t1, team2: t2,
-    team1_venue_status: document.getElementById('venue_status').value,
-    toss_winner: document.getElementById('toss_winner').value === 'team1' ? t1 : t2,
-    toss_decision: document.getElementById('toss_decision').value,
-  };
-
-  try {
-    const res = await fetch('/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    const d = await res.json();
-    if (d.error) { alert(d.error); return; }
-    renderPredict(d, t1, t2);
-  } catch(e) { alert('Backend error — is the server running?'); }
-  finally { setLoading(false); }
+/* ── Simulate ── */
+async function runSimulate(){
+  const t1=$id('team1').value,t2=$id('team2').value;
+  if(t1===t2){alert('Select different teams');return;}
+  startAnim('Simulating 6767 matches…',true);
+  try{
+    const res=await fetch('/simulate',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({team1:t1,team2:t2,n_matches:6767})});
+    const d=await res.json();
+    if(d.error){alert(d.error);return;}
+    renderSim(d,t1,t2);
+  }catch(e){alert('Connection error — is the backend running?');}
+  finally{stopAnim();}
 }
 
-function renderPredict(d, t1, t2) {
-  const wc = getColor(d.winner);
-  document.documentElement.style.setProperty('--accent', wc);
-
-  document.getElementById('winner-logo').textContent = initials(d.winner);
-  document.getElementById('winner-logo').style.background = wc;
-  document.getElementById('winner-logo').style.boxShadow = `0 0 24px ${wc}88`;
-  document.getElementById('winner-name').textContent = d.winner;
-  document.getElementById('conf-val').textContent = d.confidence + '%';
-
-  const t1Win = d.winner === t1;
-  const t1Prob = t1Win ? d.probability : +(100 - d.probability).toFixed(1);
-  const t2Prob = t1Win ? +(100 - d.probability).toFixed(1) : d.probability;
-
-  document.getElementById('p-t1-label').textContent = `${initials(t1)} ${t1Prob}%`;
-  document.getElementById('p-t2-label').textContent = `${t2Prob}% ${initials(t2)}`;
-
-  const f1 = document.getElementById('prob-fill-t1');
-  const f2 = document.getElementById('prob-fill-t2');
-  f1.style.width = t1Prob + '%';
-  f1.style.background = getColor(t1);
-  f2.style.background = getColor(t2);
-
-  // Stats
-  document.getElementById('sh-t1').textContent = initials(t1);
-  document.getElementById('sh-t2').textContent = initials(t2);
-  fill('sv-t1-sr', d.team1_stats.sr);
-  fill('sv-t2-sr', d.team2_stats.sr);
-  fill('sv-t1-bat', d.team1_stats.bat_avg);
-  fill('sv-t2-bat', d.team2_stats.bat_avg);
-  fill('sv-t1-econ', d.team1_stats.econ);
-  fill('sv-t2-econ', d.team2_stats.econ);
-  fill('sv-t1-h2h', d.team1_stats.h2h + '%');
-  fill('sv-t2-h2h', d.team2_stats.h2h + '%');
-
-  highlight('sv-t1-sr',  'sv-t2-sr',  true);
-  highlight('sv-t1-bat', 'sv-t2-bat', true);
-  highlight('sv-t1-econ','sv-t2-econ',false);
-  highlight('sv-t1-h2h', 'sv-t2-h2h', true);
-
-  document.getElementById('predict-result').style.display = 'block';
+async function runCustomSimulate(){
+  const t1=$id('team1').value,t2=$id('team2').value;
+  if(custXI.t1.length<11||custXI.t2.length<11){
+    alert(`Select 11 players each.\n${t1}: ${custXI.t1.length}/11\n${t2}: ${custXI.t2.length}/11`);return;
+  }
+  closeBuilderCard();
+  startAnim('Simulating 6767 matches with your XI…',true);
+  try{
+    const bowl1=custXI.t1.slice(-4);const bowl2=custXI.t2.slice(-4);
+    const res=await fetch('/simulate-custom',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({team1:t1,team2:t2,
+        team1_batting:custXI.t1,team1_bowling:bowl1,
+        team2_batting:custXI.t2,team2_bowling:bowl2,n_matches:6767})});
+    const d=await res.json();
+    if(d.error){alert(d.error);return;}
+    renderSim(d,t1,t2);
+  }catch(e){alert('Connection error.');}
+  finally{stopAnim();}
 }
 
-function fill(id, val) { document.getElementById(id).textContent = val; }
-function highlight(id1, id2, higherBetter) {
-  const v1 = parseFloat(document.getElementById(id1).textContent);
-  const v2 = parseFloat(document.getElementById(id2).textContent);
-  const better = higherBetter ? v1 > v2 : v1 < v2;
-  document.getElementById(id1).style.color = better ? 'var(--green)' : 'var(--txt2)';
-  document.getElementById(id2).style.color = better ? 'var(--txt2)' : 'var(--green)';
-}
-
-/* ── Simulate ───────────────────────────────────────────────────── */
-async function runSimulate() {
-  const t1 = document.getElementById('team1').value;
-  const t2 = document.getElementById('team2').value;
-  if (t1 === t2) { alert('Select different teams'); return; }
-
-  setLoading(true, 'Running 6767 simulations…');
-  document.getElementById('sim-result').style.display = 'none';
-  document.getElementById('predict-result').style.display = 'none';
-
-  try {
-    const res = await fetch('/simulate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ team1: t1, team2: t2, n_simulations: 6767 }),
-    });
-    const d = await res.json();
-    if (d.error) { alert(d.error); return; }
-    renderSimulate(d, t1, t2);
-  } catch(e) { alert('Simulation error — is the backend running?'); }
-  finally { setLoading(false); }
-}
-
-function renderSimulate(d, t1, t2) {
-  const c1 = getColor(t1), c2 = getColor(t2);
-
+/* ── Render Sim ── */
+function renderSim(d,t1,t2){
+  const c1=color(t1),c2=color(t2);
+  const s1=d.predicted_scores[t1],s2=d.predicted_scores[t2];
+  const wp=d.win_probability;
+  fill('mc-n',(d.n_matches||d.n_simulations||6767).toLocaleString());
   // Scoreboard
-  const s1 = d.predicted_scores[t1], s2 = d.predicted_scores[t2];
-  const wp = d.win_probability;
-
-  document.getElementById('sc1-team').textContent = initials(t1);
-  document.getElementById('sc1-runs').textContent = Math.round(s1.mean);
-  document.getElementById('sc1-runs').style.color = c1;
-  document.getElementById('sc1-meta').textContent = `avg ${s1.mean} ± ${s1.std}`;
-  const b1 = document.getElementById('sc1-badge');
-  b1.textContent = wp[t1] + '% win';
-  b1.style.background = c1+'22';
-  b1.style.border = `1px solid ${c1}55`;
-  b1.style.color = c1;
-  document.getElementById('sc1').querySelector('::before');
-  document.getElementById('sc1').style.borderColor = c1+'44';
-
-  document.getElementById('sc2-team').textContent = initials(t2);
-  document.getElementById('sc2-runs').textContent = Math.round(s2.mean);
-  document.getElementById('sc2-runs').style.color = c2;
-  document.getElementById('sc2-meta').textContent = `avg ${s2.mean} ± ${s2.std}`;
-  const b2 = document.getElementById('sc2-badge');
-  b2.textContent = wp[t2] + '% win';
-  b2.style.background = c2+'22';
-  b2.style.border = `1px solid ${c2}55`;
-  b2.style.color = c2;
-  document.getElementById('sc2').style.borderColor = c2+'44';
-
-  // MC stats
-  document.getElementById('mc-n').textContent = d.n_simulations.toLocaleString();
-  fill('mc-p10-t1', s1.p10);
-  fill('mc-p90-t1', s1.p90);
-  fill('mc-p10-t2', s2.p10);
-  fill('mc-p90-t2', s2.p90);
-
-  // Distribution chart
+  ['1','2'].forEach((i,idx)=>{
+    const team=idx===0?t1:t2,s=idx===0?s1:s2,c=idx===0?c1:c2;
+    fill(`sc${i}-team`,team);
+    $id(`sc${i}-runs`).textContent=Math.round(s.mean);
+    $id(`sc${i}-runs`).style.color=c;
+    fill(`sc${i}-meta`,`avg ${s.mean} ± ${s.std} · range ${s.p10}–${s.p90}`);
+    const badge=$id(`sc${i}-badge`);
+    badge.textContent=`${wp[team]}% win rate`;
+    badge.style.cssText=`background:${c}18;border:1px solid ${c}44;color:${c}`;
+    $id(`sc${i}`).style.borderColor=c+'44';
+  });
+  fill('mc-p10-t1',s1.p10);fill('mc-p90-t1',s1.p90);
+  fill('mc-p10-t2',s2.p10);fill('mc-p90-t2',s2.p90);
+  // XI
+  if(d.playing11)renderXI(d.playing11,t1,t2);
+  // Dist
   renderDistChart(d.ball_outcome_distribution);
-
-  // Tags
-  renderDistTags(d.ball_outcome_distribution, d.total_balls_simulated);
-
-  // Ball-by-ball
-  renderBBB(d.representative_match?.innings1);
-
-  document.getElementById('sim-result').style.display = 'block';
+  renderDistTags(d.ball_outcome_distribution,d.total_balls_simulated);
+  // Both innings BBB
+  if(d.representative_match){
+    const rm=d.representative_match;
+    renderBBB('bbb-inn1',rm.innings1);
+    renderBBB('bbb-inn2',rm.innings2);
+    fill('inn1-header',`${rm.innings1.team} — ${rm.innings1.score}/${rm.innings1.wickets} (Rep. Match)`);
+    fill('inn2-header',`${rm.innings2.team} — ${rm.innings2.score}/${rm.innings2.wickets} (Rep. Match)`);
+    renderScorecard(d.representative_match,t1,t2);
+  }
+  $id('sim-result').style.display='block';
 }
 
-const OUTCOME_COLORS = {
-  '0':'#4e5d78', '1':'#0090bb', '2':'#00a8dd', '3':'#e5b73b', '4':'#10b981', '6':'#7c3aed', 'W':'#ef4444'
-};
-const OUTCOME_LABELS = {'0':'Dot','1':'1','2':'2','3':'3','4':'4','6':'SIX','W':'WKT'};
+function renderXI(xi,t1,t2){
+  const grid=$id('xi-grid');grid.innerHTML='';
+  [t1,t2].forEach(team=>{
+    const players=xi[team]||[];
+    const col=document.createElement('div');col.className='xi-card';
+    col.innerHTML=`<div class="xi-card-head">${team}</div>`+
+      players.map((p,i)=>`<div class="xi-player">
+        <span class="xi-num">${i+1}</span>
+        <span class="xi-pname">${p}</span>
+      </div>`).join('');
+    grid.appendChild(col);
+  });
+  $id('xi-section').style.display='block';
+}
 
-function renderDistChart(dist) {
-  const container = document.getElementById('dist-chart');
-  container.innerHTML = '';
-  const keys = ['0','1','2','3','4','6','W'];
-  const maxP = Math.max(...keys.map(k=>dist[k]||0));
-
-  keys.forEach(k => {
-    const p = dist[k] || 0;
-    const pct = maxP > 0 ? (p / maxP * 100) : 0;
-    const wrap = document.createElement('div');
-    wrap.className = 'dist-bar-wrap';
-    wrap.innerHTML = `
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--txt3)">${(p*100).toFixed(1)}%</div>
-      <div class="dist-bar" style="height:${Math.max(pct,2)}%;background:${OUTCOME_COLORS[k]}88;border:1px solid ${OUTCOME_COLORS[k]}"></div>
-      <div class="dist-bar-label" style="color:${OUTCOME_COLORS[k]}">${OUTCOME_LABELS[k]}</div>
+function renderDistChart(dist){
+  const c=$id('dist-chart');c.innerHTML='';
+  const keys=['0','1','2','3','4','6','W'];
+  const maxP=Math.max(...keys.map(k=>dist[k]||0));
+  keys.forEach(k=>{
+    const p=dist[k]||0;
+    const h=maxP>0?(p/maxP*100):0;
+    const col=document.createElement('div');col.className='dist-col';
+    col.innerHTML=`
+      <div class="dist-pct">${(p*100).toFixed(1)}%</div>
+      <div class="dist-bar" style="height:${Math.max(h,2)}%;background:${OC[k]}66;border:1px solid ${OC[k]};box-shadow:0 0 8px ${OC[k]}33"></div>
+      <div class="dist-bar-lbl" style="color:${OC[k]}">${k==='W'?'W':k}</div>
     `;
-    container.appendChild(wrap);
+    c.appendChild(col);
   });
 }
 
-function renderDistTags(dist, total) {
-  const container = document.getElementById('dist-tags');
-  container.innerHTML = '';
-  const keys = ['0','1','2','3','4','6','W'];
-  keys.forEach(k => {
-    const p = dist[k] || 0;
-    const tag = document.createElement('div');
-    tag.className = 'tag';
-    tag.style.borderColor = OUTCOME_COLORS[k]+'55';
-    tag.style.color = OUTCOME_COLORS[k];
-    tag.textContent = `${OUTCOME_LABELS[k]}: ${(p*100).toFixed(2)}% · ~${Math.round(p*total)} balls`;
-    container.appendChild(tag);
+function renderDistTags(dist,total){
+  const c=$id('dist-tags');c.innerHTML='';
+  Object.entries(OL).forEach(([k,label])=>{
+    const p=dist[k]||0;
+    const tag=document.createElement('div');tag.className='dist-tag';
+    tag.style.cssText=`border-color:${OC[k]}55;color:${OC[k]};background:${OC[k]}0f`;
+    tag.textContent=`${label}: ${(p*100).toFixed(2)}%`;
+    c.appendChild(tag);
   });
-  // total balls tag
-  const tot = document.createElement('div');
-  tot.className = 'tag';
-  tot.textContent = `Total balls simulated: ${total.toLocaleString()}`;
-  container.appendChild(tot);
+  const tot=document.createElement('div');tot.className='dist-tag';
+  tot.style.cssText='border-color:var(--border2);color:var(--txt2)';
+  tot.textContent=`Total balls: ${(total||0).toLocaleString()}`;
+  c.appendChild(tot);
 }
 
-function renderBBB(innings) {
-  const container = document.getElementById('bbb-track');
-  container.innerHTML = '';
-  if (!innings || !innings.ball_log) { container.textContent = 'No simulation data'; return; }
-
-  let prevOver = 0;
-  innings.ball_log.forEach((b, i) => {
-    if (b.over !== prevOver) {
-      const sep = document.createElement('div');
-      sep.className = 'ball-over-sep';
-      sep.textContent = `OVER ${b.over}`;
-      container.appendChild(sep);
-      prevOver = b.over;
+function renderBBB(containerId,innings){
+  const c=$id(containerId);c.innerHTML='';
+  if(!innings?.ball_log?.length){c.innerHTML='<p style="color:var(--txt2);font-size:13px;padding:10px">No data</p>';return;}
+  let prev=0;
+  innings.ball_log.forEach((b,i)=>{
+    if(b.over!==prev){
+      const sep=document.createElement('div');sep.className='bbb-sep';
+      sep.textContent=`OVER ${b.over}`;c.appendChild(sep);prev=b.over;
     }
-    const cls = b.wicket ? 'ball-W' : `ball-${b.runs}`;
-    const el = document.createElement('div');
-    el.className = `ball ${cls}`;
-    el.title = `${b.batter} vs ${b.bowler} | ${b.wicket ? 'W' : b.runs + ' runs'}`;
-    el.textContent = b.wicket ? 'W' : b.runs;
-    el.style.animationDelay = (i * 18) + 'ms';
-    container.appendChild(el);
+    const cls=b.wicket?'bW':`b${b.runs}`;
+    const ball=document.createElement('div');ball.className=`ball ${cls}`;
+    ball.title=`${b.batter} vs ${b.bowler} | ${b.wicket?'OUT':b.runs+' runs'} | ${b.phase}`;
+    ball.textContent=b.wicket?'W':b.runs;
+    ball.style.animationDelay=Math.min(i*12,700)+'ms';
+    c.appendChild(ball);
   });
+}
+
+function renderScorecard(match,t1,t2){
+  const wrap=$id('scorecard-content');
+  if(!match){wrap.textContent='No data';return;}
+  let html='';
+  [match.innings1,match.innings2].forEach((inn,idx)=>{
+    if(!inn)return;
+    const c=idx===0?color(t1):color(t2);
+    html+=`<div style="margin-bottom:22px">
+      <div style="font-size:13px;font-weight:600;color:${c};margin-bottom:10px;padding:8px 12px;background:${c}18;border-radius:8px;border-left:3px solid ${c}">
+        ${inn.team} — ${inn.score}/${inn.wickets}
+      </div>
+      <table class="squad-table"><thead><tr><th>Batter</th><th>R</th><th>B</th><th>SR</th></tr></thead><tbody>`;
+    (inn.scorecard?.batting||[]).forEach(r=>{
+      html+=`<tr><td class="player-name">${r.batter}</td><td>${r.runs}</td><td>${r.balls}</td><td class="${r.sr>150?'stat-good':r.sr>120?'stat-avg':'stat-bad'}">${r.sr}</td></tr>`;
+    });
+    html+=`</tbody></table>
+      <table class="squad-table" style="margin-top:8px"><thead><tr><th>Bowler</th><th>W</th><th>R</th><th>Balls</th><th>Econ</th></tr></thead><tbody>`;
+    (inn.scorecard?.bowling||[]).forEach(r=>{
+      html+=`<tr><td class="player-name">${r.bowler}</td><td>${r.wickets}</td><td>${r.runs}</td><td>${r.balls}</td><td class="${r.econ<8?'stat-good':r.econ<10?'stat-avg':'stat-bad'}">${r.econ}</td></tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  });
+  wrap.innerHTML=html;
+}
+
+/* ── Squad modal ── */
+let squadCache={};let squadFilter='all';let squadSortCol='bat_runs';let squadSortDir=-1;
+function openSquadModal(){$id('squad-modal').style.display='block';document.body.style.overflow='hidden';}
+function closeSquadModal(){$id('squad-modal').style.display='none';document.body.style.overflow='';}
+async function loadSquad(){
+  const team=$id('squad-team-select').value;
+  $id('squad-table-wrap').innerHTML='<p style="text-align:center;padding:24px;color:var(--txt2);font-size:13px">Loading…</p>';
+  try{
+    const res=await fetch(`/squad/${encodeURIComponent(team)}`);
+    const d=await res.json();
+    if(d.error){$id('squad-table-wrap').innerHTML=`<p style="color:var(--red);text-align:center;padding:20px">${d.error}</p>`;return;}
+    squadCache[team]=d.squad;renderSquadTable(d.squad);
+  }catch(e){$id('squad-table-wrap').innerHTML='<p style="color:var(--red);text-align:center;padding:20px">Failed to load squad</p>';}
+}
+function filterSquad(f,btn){
+  squadFilter=f;
+  document.querySelectorAll('.squad-filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  const team=$id('squad-team-select').value;
+  if(squadCache[team])renderSquadTable(squadCache[team]);
+}
+function renderSquadTable(players){
+  let f=players;
+  if(squadFilter==='bat')f=players.filter(p=>p.bowl_wkts<10&&p.bat_runs>100);
+  else if(squadFilter==='bowl')f=players.filter(p=>p.bowl_wkts>5);
+  else if(squadFilter==='ar')f=players.filter(p=>p.bat_runs>100&&p.bowl_wkts>5);
+  f=[...f].sort((a,b)=>(a[squadSortCol]-b[squadSortCol])*squadSortDir);
+  if(!f.length){$id('squad-table-wrap').innerHTML='<p style="text-align:center;padding:16px;color:var(--txt2);font-size:13px">No players match</p>';return;}
+  const th=(col,label)=>`<th style="cursor:pointer" onclick="sortSquad('${col}')">${label}${squadSortCol===col?(squadSortDir>0?' ↑':' ↓'):''}</th>`;
+  $id('squad-table-wrap').innerHTML=`<div style="overflow-x:auto"><table class="squad-table">
+    <thead><tr>
+      ${th('bat_runs','Player')}${th('bat_runs','Runs')}${th('bat_sr','SR')}${th('bat_avg','Avg')}${th('boundary_pct','Bdry%')}${th('bowl_wkts','Wkts')}${th('bowl_econ','Econ')}
+    </tr></thead><tbody>
+    ${f.map(p=>`<tr>
+      <td><div class="player-name">${p.name}</div><div style="font-size:10px;color:var(--txt3)">${p.role||''}</div></td>
+      <td>${p.bat_runs}</td>
+      <td class="${p.bat_sr>155?'stat-good':p.bat_sr>130?'stat-avg':'stat-bad'}">${p.bat_sr}</td>
+      <td>${p.bat_avg}</td>
+      <td>${p.boundary_pct}%</td>
+      <td class="${p.bowl_wkts>50?'stat-good':p.bowl_wkts>15?'stat-avg':'stat-bad'}">${p.bowl_wkts}</td>
+      <td class="${p.bowl_econ>0&&p.bowl_econ<8?'stat-good':p.bowl_econ<10?'stat-avg':p.bowl_econ>0?'stat-bad':''}">${p.bowl_econ>0?p.bowl_econ:'—'}</td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+function sortSquad(col){if(squadSortCol===col)squadSortDir*=-1;else{squadSortCol=col;squadSortDir=-1;}const t=$id('squad-team-select').value;if(squadCache[t])renderSquadTable(squadCache[t]);}
+
+/* ── Custom XI Builder ── */
+let custXI={t1:[],t2:[]};let custSquad={t1:[],t2:[]};
+function openBuilderCard(){$id('builder-card').style.display='block';$id('builder-card').scrollIntoView({behavior:'smooth'});loadBothPools();}
+function closeBuilderCard(){$id('builder-card').style.display='none';}
+function openBuilderFromSquad(){closeSquadModal();openBuilderCard();}
+async function loadBothPools(){
+  await Promise.all([loadPool('t1',$id('team1').value),loadPool('t2',$id('team2').value)]);
+}
+async function loadPool(side,team){
+  const el=$id(`pool-${side}`);el.innerHTML='<p style="color:var(--txt2);font-size:12px;padding:8px">Loading…</p>';
+  try{
+    const res=await fetch(`/squad/${encodeURIComponent(team)}`);
+    const d=await res.json();
+    if(d.error){el.innerHTML=`<p style="color:var(--red);font-size:12px;padding:8px">${d.error}</p>`;return;}
+    custSquad[side]=d.squad;custXI[side]=[];renderPool(side);
+  }catch(e){el.innerHTML='<p style="color:var(--red);font-size:12px;padding:8px">Failed</p>';}
+}
+function renderPool(side){
+  const el=$id(`pool-${side}`),squad=custSquad[side];
+  if(!squad?.length){el.innerHTML='<p style="color:var(--txt2);font-size:12px;padding:8px">No players found</p>';return;}
+  el.innerHTML=squad.map(p=>{
+    const sel=custXI[side].includes(p.name);
+    const idx=sel?custXI[side].indexOf(p.name)+1:'';
+    const bowl=p.bowl_wkts>5;
+    return `<div class="builder-player${sel?' selected':''}" onclick="togglePlayer('${side}','${p.name.replace(/'/g,"\\'")}')">
+      <span>${sel?`<span class="bp-num">${idx}</span>`:''}${p.name}</span>
+      <span style="display:flex;align-items:center;gap:5px">
+        ${bowl?'<span style="font-size:11px">🎳</span>':''}
+        <span class="bp-sr">${p.bat_sr}SR</span>
+        ${sel?'<span style="color:var(--green);font-weight:700">✓</span>':''}
+      </span>
+    </div>`;
+  }).join('');
+  fill(`builder-${side}-count`,`${custXI[side].length} / 11 selected`);
+}
+function togglePlayer(side,name){
+  const xi=custXI[side],idx=xi.indexOf(name);
+  if(idx===-1){if(xi.length>=11){alert('Already 11 selected');return;}xi.push(name);}
+  else xi.splice(idx,1);
+  renderPool(side);
+}
+async function loadDefaultXI(num){
+  const side=num===1?'t1':'t2',team=$id(`team${num}`).value;
+  try{
+    const res=await fetch(`/playing11/${encodeURIComponent(team)}`);
+    const d=await res.json();
+    if(d.error){alert(d.error);return;}
+    custXI[side]=d.playing11.map(p=>p.name);
+    if(!custSquad[side]||!custSquad[side].length)await loadPool(side,team);
+    else renderPool(side);
+  }catch(e){alert('Failed to load default XI');}
 }
 </script>
 </body>
