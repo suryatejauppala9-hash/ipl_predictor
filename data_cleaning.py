@@ -135,9 +135,9 @@ def clean_and_prepare_data(csv_path: str = 'ipl_data.csv') -> None:
             )
 
     match_bat['dyn_sr']      = (safe_divide(match_bat['roll_runs'], match_bat['roll_balls'], 1.3) * 100).fillna(130.0)
-    match_bat['dyn_bat_avg'] = safe_divide(match_bat['roll_runs'], match_bat['roll_wickets'].replace(0, 1), 25.0).fillna(25.0)
+    match_bat['dyn_bat_avg'] = safe_divide(match_bat['roll_runs'], match_bat['roll_wickets'].replace({0: 1}), 25.0).fillna(25.0)
     match_bowl['dyn_econ']   = (safe_divide(match_bowl['roll_runs_c'], match_bowl['roll_balls_b'] / 6, 8.0)).fillna(8.0)
-    match_bowl['dyn_bowl_avg'] = safe_divide(match_bowl['roll_runs_c'], match_bowl['roll_wkts_t'].replace(0, 1), 28.0).fillna(28.0)
+    match_bowl['dyn_bowl_avg'] = safe_divide(match_bowl['roll_runs_c'], match_bowl['roll_wkts_t'].replace({0: 1}), 28.0).fillna(28.0)
 
     latest_bat  = match_bat.groupby('batting_team').tail(1).set_index('batting_team')[['dyn_sr', 'dyn_bat_avg']]
     latest_bowl = match_bowl.groupby('bowling_team').tail(1).set_index('bowling_team')[['dyn_econ', 'dyn_bowl_avg']]
@@ -162,7 +162,7 @@ def clean_and_prepare_data(csv_path: str = 'ipl_data.csv') -> None:
         .reset_index()
     )
     bat_stats['bat_sr']      = safe_divide(bat_stats['bat_runs'], bat_stats['bat_balls']) * 100
-    bat_stats['bat_avg']     = safe_divide(bat_stats['bat_runs'], bat_stats['bat_dismissals'].replace(0, 1))
+    bat_stats['bat_avg']     = safe_divide(bat_stats['bat_runs'], bat_stats['bat_dismissals'].replace({0: 1}))
     bat_stats['boundary_pct']= safe_divide(bat_stats['bat_4s'] + bat_stats['bat_6s'], bat_stats['bat_balls']) * 100
     bat_stats['dot_pct']     = safe_divide(bat_stats['bat_dots'], bat_stats['bat_balls']) * 100
 
@@ -176,8 +176,8 @@ def clean_and_prepare_data(csv_path: str = 'ipl_data.csv') -> None:
         .reset_index()
     )
     bowl_stats['bowl_econ']   = safe_divide(bowl_stats['bowl_runs'], bowl_stats['bowl_balls'] / 6)
-    bowl_stats['bowl_sr']     = safe_divide(bowl_stats['bowl_balls'], bowl_stats['bowl_wkts'].replace(0, 1))
-    bowl_stats['bowl_avg']    = safe_divide(bowl_stats['bowl_runs'], bowl_stats['bowl_wkts'].replace(0, 1))
+    bowl_stats['bowl_sr']     = safe_divide(bowl_stats['bowl_balls'], bowl_stats['bowl_wkts'].replace({0: 1}))
+    bowl_stats['bowl_avg']    = safe_divide(bowl_stats['bowl_runs'], bowl_stats['bowl_wkts'].replace({0: 1}))
     bowl_stats['wicket_rate'] = safe_divide(bowl_stats['bowl_wkts'], bowl_stats['bowl_balls'])
 
     player_stats = pd.merge(

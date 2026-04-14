@@ -11,11 +11,14 @@ from __future__ import annotations
 import math, random, os
 from collections import defaultdict
 from typing import Any
+from functools import lru_cache
 
 import numpy as np
 import pandas as pd
 import uvicorn
+import joblib
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -53,6 +56,15 @@ PHASE_RPB = {"powerplay": 0.150, "middle": 0.148, "death": 0.195}
 # App
 # ---------------------------------------------------------------------------
 app = FastAPI(title="IPL Intelligence", version="6.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -65,14 +77,14 @@ team_stats = pd.read_csv("team_stats.csv", index_col=0)
 h2h_df     = pd.read_csv("h2h_stats.csv")
 player_df  = pd.read_csv("player_stats.csv")
 matchup_df = pd.read_csv("matchup_stats.csv")
-print(f"  → {len(player_df)} players | {len(matchup_df)} matchup records")
+print(f"  -> {len(player_df)} players | {len(matchup_df)} matchup records")
 
 try:
     ball_data = pd.read_csv("ball_model_data.csv")
-    print(f"  → ball_model_data.csv: {len(ball_data)} rows")
+    print(f"  -> ball_model_data.csv: {len(ball_data)} rows")
 except FileNotFoundError:
     ball_data = pd.DataFrame()
-    print("  ! ball_model_data.csv missing — using calibrated heuristics")
+    print("  ! ball_model_data.csv missing -- using calibrated heuristics")
 
 # ---------------------------------------------------------------------------
 # Lookup tables
@@ -120,12 +132,17 @@ MATCH_FEATURES = [
     "team1_h2h_win_pct",
 ]
 
-print("Training match-winner model...")
-match_model = XGBClassifier(
-    n_estimators=200, learning_rate=0.05, max_depth=4,
-    subsample=0.8, colsample_bytree=0.8, random_state=42, eval_metric="logloss")
-match_model.fit(matches[MATCH_FEATURES], matches["target"])
-print("  → match model ready")
+print("Loading/Training match-winner model...")
+if os.path.exists("match_model.pkl"):
+    match_model = joblib.load("match_model.pkl")
+    print("  -> match model loaded from disk")
+else:
+    match_model = XGBClassifier(
+        n_estimators=200, learning_rate=0.05, max_depth=4,
+        subsample=0.8, colsample_bytree=0.8, random_state=42, eval_metric="logloss")
+    match_model.fit(matches[MATCH_FEATURES], matches["target"])
+    joblib.dump(match_model, "match_model.pkl")
+    print("  -> match model trained and saved")
 
 BALL_FEATURES = [
     "batter_roll_sr", "batter_cum_runs", "batter_cum_balls",
@@ -137,19 +154,26 @@ ball_model         = None
 ball_model_classes = BALL_OUTCOMES
 
 if not ball_data.empty:
-    print("Training ball-outcome model...")
-    Xb     = ball_data[BALL_FEATURES].fillna(0)
-    yb_raw = ball_data["ball_outcome"].astype(int).replace(5, -1)
-    mask   = yb_raw != -1
-    Xb, yb_raw = Xb[mask], yb_raw[mask]
-    le = LabelEncoder()
-    yb = le.fit_transform(yb_raw)
-    ball_model = XGBClassifier(
-        n_estimators=150, learning_rate=0.08, max_depth=5,
-        subsample=0.8, colsample_bytree=0.8, random_state=42, eval_metric="mlogloss")
-    ball_model.fit(Xb, yb)
-    ball_model_classes = list(le.classes_)
-    print(f"  → ball model ready | classes: {ball_model_classes}")
+    print("Loading/Training ball-outcome model...")
+    if os.path.exists("ball_model.pkl") and os.path.exists("ball_classes.pkl"):
+        ball_model = joblib.load("ball_model.pkl")
+        ball_model_classes = joblib.load("ball_classes.pkl")
+        print(f"  -> ball model loaded from disk | classes: {ball_model_classes}")
+    else:
+        Xb     = ball_data[BALL_FEATURES].fillna(0)
+        yb_raw = ball_data["ball_outcome"].astype(int).replace({5: -1})
+        mask   = yb_raw != -1
+        Xb, yb_raw = Xb[mask], yb_raw[mask]
+        le = LabelEncoder()
+        yb = le.fit_transform(yb_raw)
+        ball_model = XGBClassifier(
+            n_estimators=150, learning_rate=0.08, max_depth=5,
+            subsample=0.8, colsample_bytree=0.8, random_state=42, eval_metric="mlogloss")
+        ball_model.fit(Xb, yb)
+        ball_model_classes = list(le.classes_)
+        joblib.dump(ball_model, "ball_model.pkl")
+        joblib.dump(ball_model_classes, "ball_classes.pkl")
+        print(f"  -> ball model trained and saved | classes: {ball_model_classes}")
 
 # ---------------------------------------------------------------------------
 # Utilities
@@ -233,6 +257,7 @@ def _simulate_innings(batting_order: list[str], bowling_order: list[str],
     b_runs  = defaultdict(int);  b_balls  = defaultdict(int)
     bw_runs = defaultdict(int);  bw_balls = defaultdict(int);  bw_wkts = defaultdict(int)
     last_ball = 0
+    runs = 0  # initialised here so over_snapshots never references an unbound name
 
     for ball_num in range(120):
         if total_wkts >= 10:
@@ -417,47 +442,60 @@ IMPACT_CRITERIA = {
     # Auto-detected from stats otherwise
 }
 
-def _get_impact_player(team: str, role_context: str = "balanced") -> dict[str, str]:
+def _get_impact_player(team: str, role_context: str = "balanced") -> dict[str, Any]:
     """
-    Identify the Impact Player for a team.
-    In IPL rules, the Impact Player is an extra substitute who comes in after the toss.
-    We pick the highest-upside player not guaranteed to start.
-    Returns: {name, reason, stat}
+    Identify the Impact Player strategies for a team.
+    Returns targeted substitutions depending on situation.
     """
     roster = team_roster.get(team, [])
     if not roster:
-        return {"name": "Unknown", "reason": "No squad data", "stat": "N/A"}
+        return {
+            "batting_first": {"name": "Unknown", "reason": "No squad data", "stat": "N/A"},
+            "bowling_first": {"name": "Unknown", "reason": "No squad data", "stat": "N/A"}
+        }
 
-    # Score players by their "impact potential" — weighted combination
-    def impact_score(name: str) -> float:
+    def bat_score(name: str) -> float:
         p = player_lookup.get(name, {})
-        bat = _sf(p.get("bat_sr"), 0) * _sf(p.get("bat_avg"), 0) / 1000
-        bowl = _sf(p.get("bowl_wkts"), 0) * 2.0 / max(_sf(p.get("bowl_econ"), 10), 6)
-        return bat + bowl
+        return _sf(p.get("bat_sr"), 0) * max(_sf(p.get("bat_avg"), 0), 10) / 1000.0
 
-    # Sort and pick the 8th-best player (likely substitute candidate)
-    ranked = sorted(roster, key=impact_score, reverse=True)
-    # Impact player = best player not in top 7 batting OR top 4 bowling
-    # Typically an explosive batter or death-over specialist
-    candidates = ranked[6:12] if len(ranked) > 8 else ranked[-3:]
+    def bowl_score(name: str) -> float:
+        p = player_lookup.get(name, {})
+        w = _sf(p.get("bowl_wkts"), 0)
+        e = max(_sf(p.get("bowl_econ"), 10), 5.5)
+        return w * 2.0 / e if w > 0 else 0
 
-    best = max(candidates, key=impact_score)
-    p    = player_lookup.get(best, {})
-    role = str(p.get("role", "All-rounder"))
-    sr   = _sf(p.get("bat_sr"), 0)
-    wkts = int(_sf(p.get("bowl_wkts"), 0))
-    econ = _sf(p.get("bowl_econ"), 0)
+    # Inline top-11 selection to avoid recursive call into _ideal_xi
+    def _bat_sc(n): p=player_lookup.get(n,{}); return _sf(p.get("bat_sr"),0)*_sf(p.get("bat_avg"),0)
+    def _bowl_sc(n): p=player_lookup.get(n,{}); w=_sf(p.get("bowl_wkts"),0); e=_sf(p.get("bowl_econ"),99); return w*2.5-e if w>0 else -99
+    xi_names = sorted(roster, key=_bat_sc, reverse=True)[:11]
+    bench = [p for p in roster if p not in xi_names]
+    if not bench: bench = roster
 
-    if role in ("Batter",) and sr > 155:
-        reason = f"Explosive finisher · SR {sr}"
-    elif wkts > 40 and econ < 8.5:
-        reason = f"Death-over specialist · {wkts} wkts @ {econ} econ"
-    elif role == "All-rounder":
-        reason = f"All-round impact · SR {sr} + {wkts} wkts"
-    else:
-        reason = f"Match-winning potential · {role}"
 
-    return {"name": best, "reason": reason, "stat": f"SR {sr}" if sr > 0 else f"{wkts} wkts"}
+    best_bowlers = sorted(bench, key=bowl_score, reverse=True)
+    bat_first_ip = best_bowlers[0] if best_bowlers else roster[0]
+    p_bf = player_lookup.get(bat_first_ip, {})
+    bf_wkts = int(_sf(p_bf.get("bowl_wkts"), 0))
+    bf_econ = round(_sf(p_bf.get("bowl_econ"), 0), 1)
+
+    best_batters = sorted(bench, key=bat_score, reverse=True)
+    bowl_first_ip = best_batters[0] if best_batters else roster[0]
+    p_boa = player_lookup.get(bowl_first_ip, {})
+    boa_sr = round(_sf(p_boa.get("bat_sr"), 0), 1)
+    boa_avg = round(_sf(p_boa.get("bat_avg"), 0), 1)
+
+    return {
+        "batting_first": {
+            "name": bat_first_ip,
+            "reason": "Replaces out batter for 2nd Innings",
+            "stat": f"{bf_wkts} wkts @ {bf_econ} econ"
+        },
+        "bowling_first": {
+            "name": bowl_first_ip,
+            "reason": "Replaces bowled-out bowler for Chase",
+            "stat": f"SR {boa_sr} | Avg {boa_avg}"
+        }
+    }
 
 # ---------------------------------------------------------------------------
 # Ideal Playing XI (position-aware, role-balanced)
@@ -665,25 +703,21 @@ def _run_sim(bat1: list[str], bowl1: list[str], bat2: list[str], bowl2: list[str
 # ---------------------------------------------------------------------------
 # Prediction helper (toss-known and toss-unknown modes)
 # ---------------------------------------------------------------------------
+@lru_cache(maxsize=50)
 def _predict_row(t1: str, t2: str, t1h: int, t2h: int, t1_h2h: float,
-                 toss_t1: int, toss_bat: int, ts) -> tuple[int, list[float]]:
+                 toss_t1: int, toss_bat: int, sr1: float, sr2: float, 
+                 econ1: float, econ2: float, bat_avg1: float, bat_avg2: float,
+                 bowl_avg1: float, bowl_avg2: float) -> tuple[int, tuple[float, float]]:
     row = pd.DataFrame([{
-        "team1_sr"              : ts(t1, "sr"),
-        "team2_sr"              : ts(t2, "sr"),
-        "team1_econ"            : ts(t1, "econ"),
-        "team2_econ"            : ts(t2, "econ"),
-        "team1_bat_avg"         : ts(t1, "bat_avg"),
-        "team2_bat_avg"         : ts(t2, "bat_avg"),
-        "team1_bowl_avg"        : ts(t1, "bowl_avg"),
-        "team2_bowl_avg"        : ts(t2, "bowl_avg"),
-        "team1_is_home"         : t1h,
-        "team2_is_home"         : t2h,
-        "toss_winner_is_team1"  : toss_t1,
-        "toss_decision_bat"     : toss_bat,
-        "team1_h2h_win_pct"     : t1_h2h,
+        "team1_sr": sr1, "team2_sr": sr2, "team1_econ": econ1, "team2_econ": econ2,
+        "team1_bat_avg": bat_avg1, "team2_bat_avg": bat_avg2,
+        "team1_bowl_avg": bowl_avg1, "team2_bowl_avg": bowl_avg2,
+        "team1_is_home": t1h, "team2_is_home": t2h,
+        "toss_winner_is_team1": toss_t1, "toss_decision_bat": toss_bat,
+        "team1_h2h_win_pct": t1_h2h,
     }])
     pred  = int(match_model.predict(row)[0])
-    probs = list(match_model.predict_proba(row)[0])
+    probs = tuple(float(x) for x in match_model.predict_proba(row)[0])
     return pred, probs
 
 # ---------------------------------------------------------------------------
@@ -710,10 +744,10 @@ class SimulateRequest(BaseModel):
 class CustomSimRequest(BaseModel):
     team1               : str
     team2               : str
-    team1_batting       : list[str]
-    team1_bowling       : list[str]
-    team2_batting       : list[str]
-    team2_bowling       : list[str]
+    team1_batting       : list[str] | None = None
+    team1_bowling       : list[str] | None = None
+    team2_batting       : list[str] | None = None
+    team2_bowling       : list[str] | None = None
     toss_known          : bool = True
     toss_winner         : str  = ""
     toss_decision       : str  = "bat"
@@ -729,153 +763,197 @@ async def home(request: Request):
 
 
 @app.post("/predict")
-async def predict(data: MatchRequest):
-    t1, t2 = data.team1, data.team2
-    if t1 == t2:
-        return JSONResponse({"error": "Teams must be different"}, status_code=400)
+def predict(data: MatchRequest):
+    try:
+        t1, t2 = data.team1, data.team2
+        if t1 == t2:
+            return JSONResponse({"error": "Teams must be different"}, status_code=400)
 
-    t1_h2h = get_h2h(t1, t2)
-    t1h    = 1 if data.team1_venue_status == "home" else 0
-    t2h    = 1 if data.team1_venue_status == "away" else 0
+        t1_h2h = get_h2h(t1, t2)
+        t1h    = 1 if data.team1_venue_status == "home" else 0
+        t2h    = 1 if data.team1_venue_status == "away" else 0
 
-    def ts(team, col):
-        try:   return _sf(team_stats.loc[team, col])
-        except KeyError: return 0.0
+        def ts(team, col):
+            try:   return _sf(team_stats.loc[team, col])
+            except KeyError: return 0.0
 
-    if data.toss_known:
-        tw   = 1 if data.toss_winner == t1 else 0
-        td   = 1 if data.toss_decision == "bat" else 0
-        pred, probs = _predict_row(t1, t2, t1h, t2h, t1_h2h, tw, td, ts)
-        winner   = t1 if pred == 1 else t2
-        win_p    = float(probs[1] if pred == 1 else probs[0]) * 100
-        toss_scenarios = None
-    else:
-        scenarios = [
-            {"label": f"{t1} wins toss & bats",   "tw": 1, "td": 1},
-            {"label": f"{t1} wins toss & bowls",  "tw": 1, "td": 0},
-            {"label": f"{t2} wins toss & bats",   "tw": 0, "td": 1},
-            {"label": f"{t2} wins toss & bowls",  "tw": 0, "td": 0},
-        ]
-        avg_t1_prob    = 0.0
-        toss_scenarios = []
-        for sc in scenarios:
-            _, probs_sc = _predict_row(t1, t2, t1h, t2h, t1_h2h, sc["tw"], sc["td"], ts)
-            sc_t1 = float(probs_sc[1]) * 100
-            avg_t1_prob += sc_t1 / 4.0
-            toss_scenarios.append({"scenario": sc["label"], "team1_win_pct": round(sc_t1, 1)})
+        sr1, sr2 = ts(t1, "sr"), ts(t2, "sr")
+        econ1, econ2 = ts(t1, "econ"), ts(t2, "econ")
+        bat_avg1, bat_avg2 = ts(t1, "bat_avg"), ts(t2, "bat_avg")
+        bowl_avg1, bowl_avg2 = ts(t1, "bowl_avg"), ts(t2, "bowl_avg")
 
-        winner = t1 if avg_t1_prob >= 50 else t2
-        win_p  = avg_t1_prob if winner == t1 else (100 - avg_t1_prob)
-        probs  = [1 - avg_t1_prob / 100, avg_t1_prob / 100]
+        insights = []
+        if sr1 > sr2 + 5: insights.append(f"{t1} has superior batting aggression (SR {round(sr1,1)} vs {round(sr2,1)})")
+        elif sr2 > sr1 + 5: insights.append(f"{t2} has superior batting aggression (SR {round(sr2,1)} vs {round(sr1,1)})")
+        
+        if econ1 < econ2 - 0.5: insights.append(f"{t1} bowling is much tighter (Econ {round(econ1,1)} vs {round(econ2,1)})")
+        elif econ2 < econ1 - 0.5: insights.append(f"{t2} bowling is much tighter (Econ {round(econ2,1)} vs {round(econ1,1)})")
+        
+        if t1_h2h > 0.6: insights.append(f"{t1} dominates historically ({round(t1_h2h*100,0)}% win rate)")
+        elif t1_h2h < 0.4: insights.append(f"{t2} dominates historically ({round((1-t1_h2h)*100,0)}% win rate)")
+        
+        if not insights: insights.append("Both teams are quite evenly matched based on recent forms.")
 
-    # Impact players
-    impact_t1 = _get_impact_player(t1)
-    impact_t2 = _get_impact_player(t2)
+        call_p = lambda tw, td: _predict_row(t1, t2, t1h, t2h, t1_h2h, tw, td, sr1, sr2, econ1, econ2, bat_avg1, bat_avg2, bowl_avg1, bowl_avg2)
 
-    return {
-        "winner"          : winner,
-        "probability"     : round(win_p, 1),
-        "confidence"      : round(float(max(probs)) * 100, 1),
-        "toss_known"      : data.toss_known,
-        "toss_scenarios"  : toss_scenarios,
-        "impact_players"  : {t1: impact_t1, t2: impact_t2},
-        "team1_stats"     : {"sr": round(ts(t1, "sr"), 1), "bat_avg": round(ts(t1, "bat_avg"), 1),
-                             "econ": round(ts(t1, "econ"), 1), "h2h": round(t1_h2h * 100, 1)},
-        "team2_stats"     : {"sr": round(ts(t2, "sr"), 1), "bat_avg": round(ts(t2, "bat_avg"), 1),
-                             "econ": round(ts(t2, "econ"), 1), "h2h": round((1 - t1_h2h) * 100, 1)},
-    }
+        if data.toss_known:
+            tw   = 1 if data.toss_winner == t1 else 0
+            td   = 1 if data.toss_decision == "bat" else 0
+            pred, probs = call_p(tw, td)
+            winner   = t1 if pred == 1 else t2
+            win_p    = float(probs[1] if pred == 1 else probs[0]) * 100
+            toss_scenarios = None
+        else:
+            scenarios = [
+                {"label": f"{t1} wins toss & bats",   "tw": 1, "td": 1},
+                {"label": f"{t1} wins toss & bowls",  "tw": 1, "td": 0},
+                {"label": f"{t2} wins toss & bats",   "tw": 0, "td": 1},
+                {"label": f"{t2} wins toss & bowls",  "tw": 0, "td": 0},
+            ]
+            avg_t1_prob    = 0.0
+            toss_scenarios = []
+            for sc in scenarios:
+                _, probs_sc = call_p(sc["tw"], sc["td"])
+                sc_t1 = float(probs_sc[1]) * 100
+                avg_t1_prob += sc_t1 / 4.0
+                toss_scenarios.append({"scenario": sc["label"], "team1_win_pct": round(sc_t1, 1)})
+
+            winner = t1 if avg_t1_prob >= 50 else t2
+            win_p  = avg_t1_prob if winner == t1 else (100 - avg_t1_prob)
+            probs  = [1 - avg_t1_prob / 100, avg_t1_prob / 100]
+
+        impact_t1 = _get_impact_player(t1)
+        impact_t2 = _get_impact_player(t2)
+
+        return {
+            "winner"          : winner,
+            "probability"     : round(win_p, 1),
+            "confidence"      : round(float(max(probs)) * 100, 1),
+            "toss_known"      : data.toss_known,
+            "toss_scenarios"  : toss_scenarios,
+            "insights"        : insights,
+            "impact_players"  : {t1: impact_t1, t2: impact_t2},
+            "team1_stats"     : {"sr": round(sr1, 1), "bat_avg": round(bat_avg1, 1),
+                                 "econ": round(econ1, 1), "h2h": round(t1_h2h * 100, 1)},
+            "team2_stats"     : {"sr": round(sr2, 1), "bat_avg": round(bat_avg2, 1),
+                                 "econ": round(econ2, 1), "h2h": round((1 - t1_h2h) * 100, 1)},
+        }
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.post("/simulate")
-async def simulate(data: SimulateRequest):
-    t1, t2 = data.team1, data.team2
-    if t1 == t2:
-        return JSONResponse({"error": "Teams must be different"}, status_code=400)
-    n    = max(1, min(data.n_matches, N_MATCHES))
-    bat1, bowl1 = _best_xi_names(t1, data.style1)
-    bat2, bowl2 = _best_xi_names(t2, data.style2)
-    tw   = 1 if data.toss_winner == t1 else 0
-    td   = 1 if data.toss_decision == "bat" else 0
-    result = _run_sim(bat1, bowl1, bat2, bowl2, n, t1, t2,
-                      toss_known=data.toss_known, toss_winner_is_t1=tw, toss_bat=td,
-                      style1=data.style1, style2=data.style2)
-    result["playing11"]    = {t1: bat1, t2: bat2}
-    result["impact_players"] = {t1: _get_impact_player(t1), t2: _get_impact_player(t2)}
-    result["ideal_xi"]     = {
-        t1: _ideal_xi(t1, data.style1),
-        t2: _ideal_xi(t2, data.style2),
-    }
-    return result
+def simulate(data: SimulateRequest):
+    try:
+        t1, t2 = data.team1, data.team2
+        if t1 == t2:
+            return JSONResponse({"error": "Teams must be different"}, status_code=400)
+        n    = max(1, min(data.n_matches, N_MATCHES))
+        bat1, bowl1 = _best_xi_names(t1, data.style1)
+        bat2, bowl2 = _best_xi_names(t2, data.style2)
+        tw   = 1 if data.toss_winner == t1 else 0
+        td   = 1 if data.toss_decision == "bat" else 0
+        result = _run_sim(bat1, bowl1, bat2, bowl2, n, t1, t2,
+                          toss_known=data.toss_known, toss_winner_is_t1=tw, toss_bat=td,
+                          style1=data.style1, style2=data.style2)
+        if ball_model is None:
+            result["warning"] = "ball_data_missing"
+        result["playing11"]    = {t1: bat1, t2: bat2}
+        result["impact_players"] = {t1: _get_impact_player(t1), t2: _get_impact_player(t2)}
+        result["ideal_xi"]     = {
+            t1: _ideal_xi(t1, data.style1),
+            t2: _ideal_xi(t2, data.style2),
+        }
+        return result
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.post("/simulate-custom")
-async def simulate_custom(data: CustomSimRequest):
-    t1, t2 = data.team1, data.team2
-    if t1 == t2:
-        return JSONResponse({"error": "Teams must be different"}, status_code=400)
-    n     = max(1, min(data.n_matches, N_MATCHES))
-    xi1   = _ideal_xi(t1); xi2 = _ideal_xi(t2)
-    bat1  = data.team1_batting or [p["name"] for p in xi1["batting"]]
-    bowl1 = data.team1_bowling or xi1["bowling"]
-    bat2  = data.team2_batting or [p["name"] for p in xi2["batting"]]
-    bowl2 = data.team2_bowling or xi2["bowling"]
-    tw    = 1 if data.toss_winner == t1 else 0
-    td    = 1 if data.toss_decision == "bat" else 0
-    result = _run_sim(bat1, bowl1, bat2, bowl2, n, t1, t2,
-                      toss_known=data.toss_known, toss_winner_is_t1=tw, toss_bat=td)
-    result["playing11"]     = {t1: bat1, t2: bat2}
-    result["impact_players"] = {t1: _get_impact_player(t1), t2: _get_impact_player(t2)}
-    return result
+def simulate_custom(data: CustomSimRequest):
+    try:
+        t1, t2 = data.team1, data.team2
+        if t1 == t2:
+            return JSONResponse({"error": "Teams must be different"}, status_code=400)
+        n     = max(1, min(data.n_matches, N_MATCHES))
+        xi1   = _ideal_xi(t1); xi2 = _ideal_xi(t2)
+        bat1  = data.team1_batting or [p["name"] for p in xi1["batting"]]
+        bowl1 = data.team1_bowling or xi1["bowling"]
+        bat2  = data.team2_batting or [p["name"] for p in xi2["batting"]]
+        bowl2 = data.team2_bowling or xi2["bowling"]
+        tw    = 1 if data.toss_winner == t1 else 0
+        td    = 1 if data.toss_decision == "bat" else 0
+        result = _run_sim(bat1, bowl1, bat2, bowl2, n, t1, t2,
+                          toss_known=data.toss_known, toss_winner_is_t1=tw, toss_bat=td)
+        if ball_model is None:
+            result["warning"] = "ball_data_missing"
+        result["playing11"]     = {t1: bat1, t2: bat2}
+        result["impact_players"] = {t1: _get_impact_player(t1), t2: _get_impact_player(t2)}
+        return result
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.get("/ideal-xi/{team}")
-async def ideal_xi(team: str, style: str = "balanced"):
-    xi = _ideal_xi(team, style)
-    return {"team": team, "style": style, **xi}
+def ideal_xi(team: str, style: str = "balanced"):
+    try:
+        xi = _ideal_xi(team, style)
+        return {"team": team, "style": style, **xi}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.get("/playing11/{team}")
-async def playing11(team: str):
-    xi = _ideal_xi(team, "balanced")
-    return {"team": team, "playing11": xi["batting"], "bowlers": xi["bowling"],
-            "impact_player": xi["impact_player"]}
+def playing11(team: str):
+    try:
+        xi = _ideal_xi(team, "balanced")
+        return {"team": team, "playing11": xi["batting"], "bowlers": xi["bowling"],
+                "impact_player": xi["impact_player"]}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.get("/squad/{team}")
-async def get_squad(team: str):
-    roster = team_roster.get(team, [])
-    if not roster:
-        return JSONResponse({"error": f"No squad found for '{team}'"}, status_code=404)
-    players = []
-    for name in roster:
-        p = player_lookup.get(name, {})
-        players.append({
-            "name"        : name,
-            "role"        : str(p.get("role", "Unknown")),
-            "bat_runs"    : int(_sf(p.get("bat_runs"), 0)),
-            "bat_balls"   : int(_sf(p.get("bat_balls"), 0)),
-            "bat_sr"      : round(_sf(p.get("bat_sr"), 0), 1),
-            "bat_avg"     : round(_sf(p.get("bat_avg"), 0), 1),
-            "boundary_pct": round(_sf(p.get("boundary_pct"), 0), 1),
-            "dot_pct"     : round(_sf(p.get("dot_pct"), 0), 1),
-            "bowl_wkts"   : int(_sf(p.get("bowl_wkts"), 0)),
-            "bowl_balls"  : int(_sf(p.get("bowl_balls"), 0)),
-            "bowl_econ"   : round(_sf(p.get("bowl_econ"), 0), 1),
-            "bowl_avg"    : round(_sf(p.get("bowl_avg"), 0), 1),
-        })
-    players.sort(key=lambda x: -x["bat_runs"])
-    return {"team": team, "squad": players}
+def get_squad(team: str):
+    try:
+        roster = team_roster.get(team, [])
+        if not roster:
+            return JSONResponse({"error": f"No squad found for '{team}'"}, status_code=404)
+        players = []
+        for name in roster:
+            p = player_lookup.get(name, {})
+            players.append({
+                "name"        : name,
+                "role"        : str(p.get("role", "Unknown")),
+                "bat_runs"    : int(_sf(p.get("bat_runs"), 0)),
+                "bat_balls"   : int(_sf(p.get("bat_balls"), 0)),
+                "bat_sr"      : round(_sf(p.get("bat_sr"), 0), 1),
+                "bat_avg"     : round(_sf(p.get("bat_avg"), 0), 1),
+                "boundary_pct": round(_sf(p.get("boundary_pct"), 0), 1),
+                "dot_pct"     : round(_sf(p.get("dot_pct"), 0), 1),
+                "bowl_wkts"   : int(_sf(p.get("bowl_wkts"), 0)),
+                "bowl_balls"  : int(_sf(p.get("bowl_balls"), 0)),
+                "bowl_econ"   : round(_sf(p.get("bowl_econ"), 0), 1),
+                "bowl_avg"    : round(_sf(p.get("bowl_avg"), 0), 1),
+            })
+        players.sort(key=lambda x: -x["bat_runs"])
+        return {"team": team, "squad": players}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.get("/player-stats")
-async def player_stats(team: str | None = None):
-    df = player_df.copy()
-    if team and "team" in df.columns:
-        df = df[df["team"] == team]
-    cols = [c for c in ["player", "team", "role", "bat_runs", "bat_balls", "bat_sr",
-                         "bat_avg", "boundary_pct", "dot_pct", "bowl_wkts", "bowl_balls",
-                         "bowl_econ", "bowl_avg"] if c in df.columns]
-    return JSONResponse(df[cols].fillna(0).round(2).to_dict(orient="records"))
+def player_stats(team: str | None = None):
+    try:
+        df = player_df.copy()
+        if team and "team" in df.columns:
+            df = df[df["team"] == team]
+        cols = [c for c in ["player", "team", "role", "bat_runs", "bat_balls", "bat_sr",
+                             "bat_avg", "boundary_pct", "dot_pct", "bowl_wkts", "bowl_balls",
+                             "bowl_econ", "bowl_avg"] if c in df.columns]
+        return JSONResponse(df[cols].fillna(0).round(2).to_dict(orient="records"))
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 if __name__ == "__main__":
