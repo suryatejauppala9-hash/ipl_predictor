@@ -3,232 +3,406 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>IPL Predictor 2026</title>
+<title>CricIQ — IPL Match Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<div class="app">
 
-<!-- ── TOP BAR ─────────────────────────────────────────────── -->
+<!-- ── TOP BAR ────────────────────────────────────────────── -->
 <header class="topbar">
   <a class="brand" href="#">
-    <div class="brand-mark">IPL</div>
-    <span class="brand-name">Predictor<span class="brand-year">2026</span></span>
+    <div class="brand-mark">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M4 8 Q8 4 12 8 Q8 12 4 8Z" fill="currentColor" opacity="0.7"/>
+      </svg>
+    </div>
+    <span class="brand-name">CricIQ</span>
+    <span class="brand-tag">ANALYTICS</span>
   </a>
 
   <nav class="main-nav">
     <button class="nav-item active" onclick="showView('predict-view',this)">Predict</button>
     <button class="nav-item" onclick="showView('simulate-view',this)">Simulate</button>
-    <button class="nav-item" onclick="showView('ideal-xi-view',this)">Ideal XI</button>
-    <button class="nav-item" onclick="showView('builder-view',this);loadBothPools()">Build XI</button>
+    <button class="nav-item" onclick="showView('ideal-xi-view',this); setTimeout(()=>$id('ideal-xi-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60)">Ideal XI</button>
+    <button class="nav-item" onclick="showView('builder-view',this); setTimeout(()=>$id('builder-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60)">Build XI</button>
   </nav>
 
   <div class="nav-right">
+    <div class="model-badge" title="Powered by XGBoost trained on IPL 2008–2024">
+      <span class="model-dot"></span>
+      <span>XGBoost · ~73% acc.</span>
+    </div>
     <button class="nav-squads-btn" onclick="openSquadModal()">Squads</button>
   </div>
 </header>
 
-<!-- ── MATCH SETUP (shared) ──────────────────────────────── -->
-<div class="setup-card" id="selector-card">
+<!-- ── MAIN DASHBOARD ─────────────────────────────────────── -->
+<main class="dashboard">
 
-  <!-- Teams -->
-  <div class="match-setup">
-    <div class="team-selector">
-      <label>Team 1</label>
+  <!-- ═══ LEFT PANEL — Match Setup ═══ -->
+  <aside class="panel panel-left" id="selector-card">
+    <div class="panel-header">
+      <span class="panel-label">Match Setup</span>
+    </div>
+
+    <!-- Team 1 -->
+    <div class="team-block" id="block-t1">
+      <label class="field-label">Team 1</label>
       <div class="team-select-wrap" id="wrap-t1">
-        <select class="team-select" id="team1">{% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select>
+        <div class="team-color-stripe" id="stripe-t1"></div>
+        <select class="team-select" id="team1" autofocus>
+          <option value="Chennai Super Kings">Chennai Super Kings</option>
+          <option value="Delhi Capitals">Delhi Capitals</option>
+          <option value="Gujarat Titans">Gujarat Titans</option>
+          <option value="Kolkata Knight Riders">Kolkata Knight Riders</option>
+          <option value="Lucknow Super Giants">Lucknow Super Giants</option>
+          <option value="Mumbai Indians">Mumbai Indians</option>
+          <option value="Punjab Kings">Punjab Kings</option>
+          <option value="Rajasthan Royals">Rajasthan Royals</option>
+          <option value="Royal Challengers Bengaluru">Royal Challengers Bengaluru</option>
+          <option value="Sunrisers Hyderabad">Sunrisers Hyderabad</option>
+        </select>
+        <div class="select-caret">
+          <svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+        </div>
       </div>
-      <div class="team-color-bar" id="t1-bar"></div>
+      <div class="team-indicator" id="t1-bar"></div>
     </div>
 
-    <div class="vs-col">
-      <span class="vs-label">VS</span>
-      <button class="swap-btn" onclick="swapTeams()" title="Swap">⇄</button>
+    <!-- Swap -->
+    <div class="swap-row">
+      <div class="swap-divider"></div>
+      <button class="swap-btn" onclick="swapTeams()" title="Swap teams">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M3 5l-2 2 2 2M11 5l2 2-2 2M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="swap-divider"></div>
     </div>
 
-    <div class="team-selector">
-      <label>Team 2</label>
+    <!-- Team 2 -->
+    <div class="team-block" id="block-t2">
+      <label class="field-label">Team 2</label>
       <div class="team-select-wrap" id="wrap-t2">
-        <select class="team-select" id="team2">{% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}</select>
+        <div class="team-color-stripe" id="stripe-t2"></div>
+        <select class="team-select" id="team2">
+          <option value="Chennai Super Kings">Chennai Super Kings</option>
+          <option value="Delhi Capitals">Delhi Capitals</option>
+          <option value="Gujarat Titans">Gujarat Titans</option>
+          <option value="Kolkata Knight Riders">Kolkata Knight Riders</option>
+          <option value="Lucknow Super Giants">Lucknow Super Giants</option>
+          <option value="Mumbai Indians">Mumbai Indians</option>
+          <option value="Punjab Kings">Punjab Kings</option>
+          <option value="Rajasthan Royals">Rajasthan Royals</option>
+          <option value="Royal Challengers Bengaluru">Royal Challengers Bengaluru</option>
+          <option value="Sunrisers Hyderabad">Sunrisers Hyderabad</option>
+        </select>
+        <div class="select-caret">
+          <svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+        </div>
       </div>
-      <div class="team-color-bar" id="t2-bar"></div>
+      <div class="team-indicator" id="t2-bar"></div>
     </div>
-  </div>
 
-  <!-- Venue -->
-  <div class="setup-row">
-    <div class="setup-field">
-      <label>Venue (Team 1)</label>
-      <select class="setup-select" id="venue_status">
-        <option value="neutral">Neutral Ground</option>
-        <option value="home">Home</option>
-        <option value="away">Away</option>
-      </select>
-    </div>
-    <div class="setup-field" style="display:flex;align-items:flex-end">
-      <!-- placeholder for layout balance -->
-    </div>
-  </div>
+    <div class="panel-divider"></div>
 
-  <!-- Toss -->
-  <div class="toss-section">
-    <div class="toss-header">
-      <div>
-        <div class="toss-title">Toss outcome known?</div>
-        <div class="toss-subtitle">Disable for pre-match predictions, model averages 4 scenarios</div>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="toss-toggle" checked onchange="onTossToggle()">
-        <div class="toggle-track"></div>
+    <!-- Venue -->
+    <div class="field-group">
+      <label class="field-label">
+        Venue Status
+        <span class="tooltip-icon" title="Relative to Team 1. Home advantage ~3–5% win probability shift.">?</span>
       </label>
-    </div>
-
-    <div class="toss-unknown-notice" id="toss-notice">
-      <span>🎲</span> Averaging all 4 toss scenarios equally
-    </div>
-
-    <div class="toss-fields" id="toss-fields">
-      <div class="toss-grid">
-        <div class="toss-field">
-          <label>Toss Winner</label>
-          <select class="toss-select" id="toss_winner"></select>
-        </div>
-        <div class="toss-field">
-          <label>Decision</label>
-          <select class="toss-select" id="toss_decision">
-            <option value="bat">Bat First</option>
-            <option value="field">Bowl First</option>
-          </select>
+      <div class="select-wrap">
+        <select class="setup-select" id="venue_status">
+          <option value="neutral">Neutral Ground</option>
+          <option value="home">Team 1 Home</option>
+          <option value="away">Team 1 Away</option>
+        </select>
+        <div class="select-caret">
+          <svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
         </div>
       </div>
     </div>
-  </div>
 
-</div><!-- /setup-card -->
+    <div class="panel-divider"></div>
 
-<!-- ════════════════════════════════════════════════════════
-     VIEW: PREDICT
-     ════════════════════════════════════════════════════════ -->
-<section id="predict-view" class="view-section">
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Win Prediction</span>
-      <span class="card-tag">XGBoost</span>
-    </div>
-
-    <button class="btn btn-primary btn-full" id="predict-btn" onclick="runPredict()">
-      ⚡ Predict Winner
-    </button>
-
-    <!-- Loading -->
-    <div class="loading-wrap" id="predict-anim">
-      <div class="radar">
-        <div class="radar-ring radar-ring-1"></div>
-        <div class="radar-ring radar-ring-2"></div>
-        <div class="radar-ring radar-ring-3"></div>
-        <div class="radar-sweep"></div>
-        <div class="radar-blip"></div>
-        <div class="radar-blip"></div>
-        <div class="radar-blip"></div>
-        <div class="radar-core">🏏</div>
+    <!-- Toss -->
+    <div class="toss-section">
+      <div class="toss-header">
+        <div>
+          <div class="field-label">Toss Outcome
+            <span class="tooltip-icon" title="If toss is unknown, the model averages across all 4 possible toss scenarios.">?</span>
+          </div>
+          <div class="toss-sub">Disable to average all scenarios</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toss-toggle" checked onchange="onTossToggle()">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        </label>
       </div>
-      <div class="loading-counter" id="predict-counter"></div>
-      <div class="loading-desc" id="predict-desc">Running prediction…</div>
-      <div class="prog-wrap">
-        <div class="prog-track"><div class="prog-fill" id="predict-bar" style="width:0%"></div></div>
+
+      <div class="toss-unknown-notice" id="toss-notice">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5a5 5 0 100 10 5 5 0 000-10zm0 2.5v2.5m0 1.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Averaging all 4 toss scenarios
       </div>
-      <div class="loading-fact" id="predict-fact"></div>
-    </div>
 
-    <!-- Result -->
-    <div id="predict-result" style="display:none">
-      <div class="divider"></div>
-
-      <div class="winner-banner">
-        <div class="winner-left">
-          <div class="winner-logo" id="winner-logo"></div>
-          <div>
-            <div class="winner-name" id="winner-name"></div>
-            <div class="winner-mode" id="winner-sub">Predicted Winner</div>
+      <div class="toss-fields" id="toss-fields">
+        <div class="toss-grid">
+          <div class="field-group">
+            <label class="field-label">Toss Winner</label>
+            <div class="select-wrap">
+              <select class="setup-select" id="toss_winner"></select>
+              <div class="select-caret">
+                <svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Decision</label>
+            <div class="select-wrap">
+              <select class="setup-select" id="toss_decision">
+                <option value="bat">Bat First</option>
+                <option value="field">Bowl First</option>
+              </select>
+              <div class="select-caret">
+                <svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="conf-badge">
-          <div class="conf-value" id="conf-val">—</div>
-          <div class="conf-label">Confidence</div>
+      </div>
+    </div>
+
+    <!-- Error message -->
+    <div class="error-msg" id="error-msg" style="display:none">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5a5 5 0 100 10 5 5 0 000-10zm0 2.5v2.5m0 1.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      <span id="error-text">Select different teams</span>
+    </div>
+
+    <button class="btn-predict" id="predict-btn" onclick="runPredict()">
+      <span id="btn-label">Run Prediction</span>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+
+    <!-- Model info footer -->
+    <div class="model-info">
+      <div class="mi-row"><span class="mi-key">Model</span><span class="mi-val">XGBoost v3</span></div>
+      <div class="mi-row"><span class="mi-key">Training data</span><span class="mi-val">IPL 2008–2024</span></div>
+      <div class="mi-row"><span class="mi-key">Accuracy</span><span class="mi-val text-good">~73%</span></div>
+    </div>
+  </aside>
+
+  <!-- ═══ CENTER PANEL — Prediction Result ═══ -->
+  <section class="panel panel-center" id="predict-view">
+
+    <!-- Empty state -->
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+          <circle cx="18" cy="18" r="16" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+          <path d="M10 18 Q18 10 26 18 Q18 26 10 18Z" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.5"/>
+          <circle cx="18" cy="18" r="2" fill="currentColor" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="empty-title">Select teams to begin</div>
+      <div class="empty-sub">Configure match setup on the left, then run a prediction to see win probabilities and insights.</div>
+    </div>
+
+    <!-- Loading state -->
+    <div class="loading-state" id="predict-anim" style="display:none">
+      <div class="loading-spinner">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="20" r="17" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+          <path d="M20 3 A17 17 0 0 1 37 20" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="loading-label">Running XGBoost model</div>
+      <div class="loading-steps">
+        <div class="lstep active" id="lstep-1">Feature extraction</div>
+        <div class="lstep" id="lstep-2">Model inference</div>
+        <div class="lstep" id="lstep-3">Aggregating scenarios</div>
+      </div>
+    </div>
+
+    <!-- Result panel -->
+    <div id="predict-result" style="display:none">
+      <!-- Match header -->
+      <div class="result-match-header">
+        <div class="rmh-team" id="rmh-t1">—</div>
+        <div class="rmh-vs">VS</div>
+        <div class="rmh-team" id="rmh-t2">—</div>
+      </div>
+
+      <!-- Winner block -->
+      <div class="winner-block">
+        <div class="winner-super-label">PREDICTED WINNER</div>
+        <div class="winner-name-display" id="winner-name">—</div>
+        <div class="win-prob-display" id="win-prob-display">—<span class="win-prob-unit">%</span></div>
+        <div class="win-prob-label">Win Probability</div>
+      </div>
+
+      <!-- Probability bar -->
+      <div class="prob-section">
+        <div class="prob-teams">
+          <span class="prob-team-label" id="p-t1-lbl">T1</span>
+          <span class="prob-team-label" id="p-t2-lbl">T2</span>
+        </div>
+        <div class="prob-track">
+          <div class="prob-fill-t1" id="pf-t1" style="width:50%"></div>
+          <div class="prob-fill-t2" id="pf-t2" style="flex:1"></div>
+        </div>
+        <div class="prob-pcts">
+          <span class="prob-pct" id="prob-t1-pct">—%</span>
+          <span class="prob-pct" id="prob-t2-pct">—%</span>
         </div>
       </div>
 
-      <div class="prob-labels">
-        <span id="p-t1-lbl"></span>
-        <span id="p-t2-lbl"></span>
-      </div>
-      <div class="prob-bar">
-        <div class="prob-fill" id="pf-t1" style="width:50%"></div>
-        <div class="prob-fill" id="pf-t2" style="flex:1"></div>
+      <!-- Confidence + Context -->
+      <div class="meta-row">
+        <div class="meta-chip">
+          <span class="mc-label">Confidence</span>
+          <span class="mc-val" id="conf-val">—</span>
+        </div>
+        <div class="meta-chip" id="toss-impact-chip" style="display:none">
+          <span class="mc-label">Toss Impact</span>
+          <span class="mc-val" id="toss-impact-val">—</span>
+        </div>
+        <div class="meta-chip">
+          <span class="mc-label">Venue</span>
+          <span class="mc-val" id="venue-chip-val">—</span>
+        </div>
       </div>
 
+      <!-- Toss scenarios (when toss unknown) -->
       <div id="toss-scenarios-wrap" style="display:none">
-        <div class="toss-scenarios">
-          <div class="ts-label">Toss Scenarios</div>
-          <div id="ts-list"></div>
+        <div class="section-label">Toss Scenarios</div>
+        <div class="toss-scenarios-grid" id="ts-list"></div>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="section-label" style="margin-top:20px">Head-to-Head Stats</div>
+      <div class="stats-table">
+        <div class="st-row st-head">
+          <span class="st-team" id="sg-t1">T1</span>
+          <span class="st-metric">Metric</span>
+          <span class="st-team" id="sg-t2">T2</span>
+        </div>
+        <div class="st-row">
+          <span class="st-val" id="sv-t1-sr">—</span>
+          <span class="st-metric">Strike Rate</span>
+          <span class="st-val" id="sv-t2-sr">—</span>
+        </div>
+        <div class="st-row">
+          <span class="st-val" id="sv-t1-bat">—</span>
+          <span class="st-metric">Bat Avg</span>
+          <span class="st-val" id="sv-t2-bat">—</span>
+        </div>
+        <div class="st-row">
+          <span class="st-val" id="sv-t1-econ">—</span>
+          <span class="st-metric">Economy</span>
+          <span class="st-val" id="sv-t2-econ">—</span>
+        </div>
+        <div class="st-row">
+          <span class="st-val" id="sv-t1-h2h">—</span>
+          <span class="st-metric">H2H Win%</span>
+          <span class="st-val" id="sv-t2-h2h">—</span>
         </div>
       </div>
 
-      <div class="stats-grid">
-        <div class="sg-head" id="sg-t1">T1</div>
-        <div class="sg-head">Metric</div>
-        <div class="sg-head" id="sg-t2">T2</div>
-
-        <div class="sg-value" id="sv-t1-sr"></div><div class="sg-label">Strike Rate</div><div class="sg-value" id="sv-t2-sr"></div>
-        <div class="sg-value" id="sv-t1-bat"></div><div class="sg-label">Bat Avg</div><div class="sg-value" id="sv-t2-bat"></div>
-        <div class="sg-value" id="sv-t1-econ"></div><div class="sg-label">Economy</div><div class="sg-value" id="sv-t2-econ"></div>
-        <div class="sg-value" id="sv-t1-h2h"></div><div class="sg-label">H2H Win%</div><div class="sg-value" id="sv-t2-h2h"></div>
-      </div>
-
+      <!-- Impact players -->
       <div class="impact-row" id="impact-row" style="display:none">
-        <div class="impact-card">
+        <div class="impact-card" id="impact-t1">
           <div class="impact-badge">Impact Player</div>
           <div class="impact-team" id="ip-t1-team"></div>
           <div class="impact-name" id="ip-t1-name"></div>
           <div class="impact-reason" id="ip-t1-reason"></div>
-          <div class="impact-stat" id="ip-t1-stat"></div>
-          <div class="impact-bench" id="ip-t1-bench"></div>
         </div>
-        <div class="impact-card">
+        <div class="impact-card" id="impact-t2">
           <div class="impact-badge">Impact Player</div>
           <div class="impact-team" id="ip-t2-team"></div>
           <div class="impact-name" id="ip-t2-name"></div>
           <div class="impact-reason" id="ip-t2-reason"></div>
-          <div class="impact-stat" id="ip-t2-stat"></div>
-          <div class="impact-bench" id="ip-t2-bench"></div>
         </div>
       </div>
-    </div>
-  </div>
-</section>
 
+    </div><!-- /predict-result -->
+  </section>
+
+  <!-- ═══ RIGHT PANEL — Insights ═══ -->
+  <aside class="panel panel-right">
+
+    <!-- Prediction History -->
+    <div class="panel-header">
+      <span class="panel-label">Recent Predictions</span>
+      <button class="clear-history-btn" onclick="clearHistory()" id="clear-hist-btn" style="display:none">Clear</button>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="history-empty">No predictions yet</div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <!-- Key Factors -->
+    <div class="panel-header">
+      <span class="panel-label">Key Factors</span>
+    </div>
+    <div class="factors-list" id="factors-list">
+      <div class="factor-empty">Run a prediction to see insights</div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <!-- About the model -->
+    <div class="panel-header">
+      <span class="panel-label">About the Model</span>
+    </div>
+    <div class="about-model">
+      <div class="am-row">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1.5" y="1.5" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M4 6.5h5M4 4.5h3M4 8.5h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        XGBoost gradient boosted tree classifier
+      </div>
+      <div class="am-row">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 10 Q3.5 4 6.5 5.5 Q9.5 7 11 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/></svg>
+        18 engineered features per match
+      </div>
+      <div class="am-row">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 4v2.5l1.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        IPL data from 2008–2024 (900+ matches)
+      </div>
+      <div class="am-row">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2.5 10.5l8-8M6 4h4v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Predictions are probabilistic, not deterministic
+      </div>
+    </div>
+
+  </aside>
+
+</main>
+
+<!-- ── OTHER VIEWS (Simulate, Ideal XI, Build XI) ──────── -->
 <!-- ════════════════════════════════════════════════════════
      VIEW: SIMULATE
      ════════════════════════════════════════════════════════ -->
 <section id="simulate-view" class="view-section hidden">
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Monte Carlo Simulation</span>
-      <span class="card-tag">6767 Matches</span>
+  <div class="panel panel-center">
+    <div class="panel-header">
+      <span class="panel-label">Monte Carlo Simulation</span>
+      <span class="model-dot">6767 Matches</span>
     </div>
 
     <div style="margin-bottom:14px">
       <div style="font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">XI Style</div>
-      <div class="style-pills">
+      <div class="style-pills" id="sim-style-pills">
         <button class="style-pill active" onclick="setStyle('balanced',this)">Balanced</button>
         <button class="style-pill" onclick="setStyle('aggressive',this)">Aggressive</button>
         <button class="style-pill" onclick="setStyle('bowling',this)">Bowling-heavy</button>
       </div>
     </div>
 
-    <button class="btn btn-purple btn-full" id="simulate-btn" onclick="runSimulate()">
+    <button class="btn-predict" id="simulate-btn" onclick="runSimulate()">
       🎲 Run Simulation
     </button>
 
@@ -360,22 +534,22 @@
      VIEW: IDEAL XI
      ════════════════════════════════════════════════════════ -->
 <section id="ideal-xi-view" class="view-section hidden">
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Ideal Playing XI</span>
-      <span class="card-tag">AI Selected</span>
+  <div class="panel panel-center">
+    <div class="panel-header">
+      <span class="panel-label">Ideal Playing XI</span>
+      <span class="model-dot">AI Selected</span>
     </div>
 
     <div style="margin-bottom:14px">
       <div style="font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">Strategy</div>
-      <div class="style-pills">
+      <div class="style-pills" id="xi-style-pills">
         <button class="style-pill active" onclick="setXIStyle('balanced',this)">Balanced</button>
         <button class="style-pill" onclick="setXIStyle('aggressive',this)">Aggressive</button>
         <button class="style-pill" onclick="setXIStyle('bowling',this)">Bowling-heavy</button>
       </div>
     </div>
 
-    <button class="btn btn-gold btn-full" onclick="loadIdealXI()">Generate Ideal XI</button>
+    <button class="btn-predict" onclick="loadIdealXI()">Generate Ideal XI</button>
     <div class="divider"></div>
     <div class="xi-grid" id="ideal-xi-grid"></div>
     <div class="impact-row" id="ideal-impact-row" style="display:none;margin-top:0"></div>
@@ -386,10 +560,10 @@
      VIEW: BUILDER
      ════════════════════════════════════════════════════════ -->
 <section id="builder-view" class="view-section hidden">
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Build Your XI</span>
-      <span class="card-tag">Manual</span>
+  <div class="panel panel-center">
+    <div class="panel-header">
+      <span class="panel-label">Build Your XI</span>
+      <span class="model-dot">Manual</span>
     </div>
 
     <div style="font-size:12px;color:var(--t2);margin-bottom:14px;font-weight:500">
@@ -414,879 +588,1250 @@
       </div>
     </div>
 
-    <button class="btn btn-orange btn-full" style="margin-top:16px" onclick="runCustomSimulate()">
+    <button class="btn-predict" style="margin-top:16px" onclick="runCustomSimulate()">
       Simulate with My XI
     </button>
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════
-     SQUAD MODAL
-     ════════════════════════════════════════════════════════ -->
-<div id="squad-modal">
+<!-- ── SQUAD MODAL ───────────────────────────────────────── -->
+<div id="squad-modal" style="display:none">
   <div class="squad-modal-inner">
     <div class="squad-modal-card">
       <div class="modal-header">
-        <div class="modal-title">Squads - IPL 2026</div>
-        <button class="modal-close" onclick="closeSquadModal()">✕</button>
+        <span class="modal-title">Squad Explorer</span>
+        <button class="modal-close" onclick="closeSquadModal()">×</button>
       </div>
-
       <div class="squad-controls">
-        <div style="flex:1;position:relative">
-          <select class="team-select" id="squad-team-sel" style="font-size:13px;padding:9px 36px 9px 12px">
-            {% for team in teams %}<option value="{{ team }}">{{ team }}</option>{% endfor %}
+        <div class="select-wrap" style="flex:1;max-width:220px">
+          <select class="setup-select" id="squad-team-sel" onchange="loadSquad()">
+            <option value="Chennai Super Kings">Chennai Super Kings</option>
+            <option value="Delhi Capitals">Delhi Capitals</option>
+            <option value="Gujarat Titans">Gujarat Titans</option>
+            <option value="Kolkata Knight Riders">Kolkata Knight Riders</option>
+            <option value="Lucknow Super Giants">Lucknow Super Giants</option>
+            <option value="Mumbai Indians">Mumbai Indians</option>
+            <option value="Punjab Kings">Punjab Kings</option>
+            <option value="Rajasthan Royals">Rajasthan Royals</option>
+            <option value="Royal Challengers Bengaluru">Royal Challengers Bengaluru</option>
+            <option value="Sunrisers Hyderabad">Sunrisers Hyderabad</option>
           </select>
+          <div class="select-caret">
+            <svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+          </div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="loadSquad()">Load</button>
       </div>
-
-      <div class="squad-filters">
+      <div class="squad-filters" id="squad-filters">
         <button class="sq-filter active" onclick="filterSquad('all',this)">All</button>
-        <button class="sq-filter" onclick="filterSquad('bat',this)">Batters</button>
-        <button class="sq-filter" onclick="filterSquad('bowl',this)">Bowlers</button>
-        <button class="sq-filter" onclick="filterSquad('ar',this)">All-rounders</button>
+        <button class="sq-filter" onclick="filterSquad('BAT',this)">Batters</button>
+        <button class="sq-filter" onclick="filterSquad('BOWL',this)">Bowlers</button>
+        <button class="sq-filter" onclick="filterSquad('AR',this)">All-rounders</button>
+        <button class="sq-filter" onclick="filterSquad('WK',this)">Wicketkeepers</button>
       </div>
-
-      <div id="squad-table-wrap">
-        <p style="text-align:center;padding:30px;color:var(--t2);font-size:13px">Select a team and click Load</p>
-      </div>
-
-      <div style="margin-top:14px">
-        <button class="btn btn-ghost btn-sm" onclick="openBuilderFromSquad()">Build XI from squad →</button>
-      </div>
+      <div id="squad-table-wrap"><p style="color:var(--t2);font-size:13px;padding:16px">Select a team to view squad.</p></div>
     </div>
   </div>
 </div>
 
 <script>
-/* ══ Team colors ══════════════════════════════════════════ */
-const TC = {
-  'Chennai Super Kings'        :'#F9CD05',
-  'Mumbai Indians'             :'#004BA0',
-  'Royal Challengers Bengaluru':'#EC1C24',
-  'Kolkata Knight Riders'      :'#3A225D',
-  'Delhi Capitals'             :'#174A92',
-  'Rajasthan Royals'           :'#EA1A85',
-  'Sunrisers Hyderabad'        :'#F26522',
-  'Punjab Kings'               :'#DD1F2D',
-  'Lucknow Super Giants'       :'#00B5DF',
-  'Gujarat Titans'             :'#1B2133',
+/* ════════════════════════════════════════════════════════════
+   CricIQ — IPL Intelligence JS (clean, deduplicated)
+   ════════════════════════════════════════════════════════════ */
+console.log("NEW FILE LOADED");
+/* ── Helpers ──────────────────────────────────────────────── */
+const $id = id => document.getElementById(id);
+const txt = (id, v) => { const el = $id(id); if (el) el.textContent = v; };
+
+/* ── Constants ────────────────────────────────────────────── */
+const TEAM_COLORS = {
+  'Chennai Super Kings':         '#F9CD05',
+  'Mumbai Indians':              '#004BA0',
+  'Royal Challengers Bangalore': '#EC1C24',
+  'Royal Challengers Bengaluru': '#EC1C24',
+  'Kolkata Knight Riders':       '#3A225D',
+  'Rajasthan Royals':            '#EA1A85',
+  'Sunrisers Hyderabad':         '#F26522',
+  'Delhi Capitals':              '#0078BC',
+  'Punjab Kings':                '#D71920',
+  'Lucknow Super Giants':        '#00B5DF',
+  'Gujarat Titans':              '#1C4E8A',
 };
 
-const OC={'0':'#4B5563','1':'#3B82F6','2':'#60A5FA','3':'#FBBF24','4':'#22C55E','6':'#A855F7','W':'#EF4444'};
-const OL={'0':'Dot','1':'1','2':'2','3':'3','4':'Four','6':'Six','W':'Wicket'};
+/* Ball outcome labels & colours */
+const OL = { '0':'Dot', '1':'Single', '2':'Double', '3':'Triple', '4':'Four', '6':'Six', 'W':'Wicket' };
+const OC = { '0':'#64748b', '1':'#3b82f6', '2':'#8b5cf6', '3':'#f59e0b', '4':'#10b981', '6':'#f97316', 'W':'#ef4444' };
 
-const FACTS=[
-  'Simulating powerplay aggression…','Evaluating death-over bowling…',
-  'Checking head-to-head records…','Applying toss probabilities…',
-  'Computing strike rates…','Weighing economy rates…',
-  'Running impact player scenarios…','Finalising win percentages…',
-  'Crunching 6767 match outcomes…','Almost done…',
+const FACTS = [
+  'CSK have won the IPL 5 times.',
+  'Mumbai Indians hold the record for most IPL titles (5).',
+  'Chris Gayle holds the record for the highest IPL score (175*).',
+  'Virat Kohli is the all-time leading run-scorer in IPL history.',
+  'Lasith Malinga took the most wickets in IPL history.',
+  'The IPL was founded in 2008 by the BCCI.',
+  'Rohit Sharma has captained Mumbai Indians to 5 IPL titles.',
+  'The DRS (Decision Review System) was introduced to IPL in 2018.',
+  'AB de Villiers has the highest batting average among foreign players.',
+  'The highest team score in IPL history is 287/2 by RCB.',
 ];
 
-/* ══ Helpers ══════════════════════════════════════════════ */
-function $id(id){return document.getElementById(id)}
-function txt(id,v){const e=$id(id);if(e)e.textContent=v}
-function clr(t){return TC[t]||'#3B82F6'}
-function abbr(n){return n.split(' ').map(w=>w[0]).join('').slice(0,3)}
+/* ── Helpers ──────────────────────────────────────────────── */
+const clr = t => TEAM_COLORS[t] || '#3B82F6';
 
-/* ══ View switching ═══════════════════════════════════════ */
-function showView(viewId,btn){
-  document.querySelectorAll('.view-section').forEach(s=>{
-    s.classList.toggle('hidden',s.id!==viewId);
-  });
-  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
+/* ── State ────────────────────────────────────────────────── */
+let simStyle   = 'balanced';
+let xiStyle    = 'balanced';
+let firstTeam  = 'Team 1';
+let animTimers = [];
+
+// Squad modal state
+let squadCache  = {};
+let sqFilter    = 'all';
+let sqSortCol   = 'bat_runs';
+let sqSortDir   = -1;
+
+// Custom builder state
+let custXI    = { t1: [], t2: [] };
+let custSquad = { t1: [], t2: [] };
+
+/* ── View router ──────────────────────────────────────────── */
+function showView(id, btn) {
+  document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  const el = $id(id);
+  if (el) { el.classList.remove('hidden'); el.style.display = ''; }
+  if (btn) btn.classList.add('active');
+
+  const dashboard = document.querySelector('.dashboard');
+  if (id !== 'predict-view') {
+    dashboard.classList.add('single-view');
+    // Smooth scroll to section
+    setTimeout(() => el?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  } else {
+    dashboard.classList.remove('single-view');
+  }
 }
 
-/* ══ Style pickers ════════════════════════════════════════ */
-let simStyle='balanced';
-function setStyle(s,btn){
-  simStyle=s;
-  document.querySelectorAll('#simulate-view .style-pill').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+/* ── Style pickers ────────────────────────────────────────── */
+function setStyle(style, btn) {
+  simStyle = style;
+  $id('sim-style-pills')?.querySelectorAll('.style-pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
 }
 
-let xiStyle='balanced';
-function setXIStyle(s,btn){
-  xiStyle=s;
-  document.querySelectorAll('#ideal-xi-view .style-pill').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+function setXIStyle(style, btn) {
+  xiStyle = style;
+  $id('xi-style-pills')?.querySelectorAll('.style-pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
 }
 
-/* ══ UI init ══════════════════════════════════════════════ */
-function updateChips(){
-  const t1=$id('team1').value, t2=$id('team2').value;
-  const c1=clr(t1), c2=clr(t2);
-  $id('t1-bar').style.background=c1;
-  $id('t2-bar').style.background=c2;
-
-  const tw=$id('toss_winner'), prev=tw.value;
-  tw.innerHTML=`<option value="${t1}">${t1}</option><option value="${t2}">${t2}</option>`;
-  if(prev===t2) tw.value=t2;
-
-  txt('reset-t1-lbl',abbr(t1));
-  txt('reset-t2-lbl',abbr(t2));
-  txt('builder-t1-head',t1);
-  txt('builder-t2-head',t2);
+/* ── Tab switcher ─────────────────────────────────────────── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const panel = $id('tab-' + name);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
 }
 
-$id('team1').addEventListener('change',updateChips);
-$id('team2').addEventListener('change',updateChips);
-window.addEventListener('DOMContentLoaded',()=>{
-  const opts=$id('team2').options;
-  if(opts.length>1) $id('team2').selectedIndex=1;
-  updateChips();
-});
-
-function swapTeams(){
-  const t1=$id('team1'),t2=$id('team2');
-  [t1.value,t2.value]=[t2.value,t1.value];
-  updateChips();
+/* ── Team color bars ──────────────────────────────────────── */
+function updateColors() {
+  const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
+  const c1 = clr(t1), c2 = clr(t2);
+  const applyBg = (id, bg) => { const el = $id(id); if (el) el.style.background = bg; };
+  applyBg('t1-bar', c1);
+  applyBg('t2-bar', c2);
+  applyBg('stripe-t1', c1);
+  applyBg('stripe-t2', c2);
+  populateTossWinner();
+  validateInputs();
 }
 
-/* ══ Toss toggle ══════════════════════════════════════════ */
-function onTossToggle(){
-  const known=$id('toss-toggle').checked;
-  $id('toss-fields').classList.toggle('collapsed',!known);
-  $id('toss-notice').classList.toggle('show',!known);
+/* ── Toss toggle ──────────────────────────────────────────── */
+function onTossToggle() {
+  const on = $id('toss-toggle').checked;
+  $id('toss-fields').style.display = on ? 'block' : 'none';
+  $id('toss-notice').style.display = on ? 'none' : 'flex';
 }
 
-/* ══ Tab switching ════════════════════════════════════════ */
-function switchTab(id,btn){
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  $id('tab-'+id).classList.add('active');
-  btn.classList.add('active');
+function populateTossWinner() {
+  const sel = $id('toss_winner'); if (!sel) return;
+  const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
+  const cur = sel.value;
+  sel.innerHTML = [t1, t2].filter(Boolean).map(t => `<option value="${t}">${t}</option>`).join('');
+  if ([t1, t2].includes(cur)) sel.value = cur;
 }
 
-/* ══ Animation system ════════════════════════════════════ */
-let animTimers=[];
-function clearAnimTimers(){animTimers.forEach(clearInterval);animTimers=[]}
+/* ── Validate inputs ──────────────────────────────────────── */
+function validateInputs() {
+  const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
+  const btn = $id('predict-btn');
+  const errEl = $id('error-msg');
+  const same = t1 && t2 && t1 === t2;
+  if (errEl) { errEl.style.display = same ? 'flex' : 'none'; }
+  if ($id('error-text') && same) $id('error-text').textContent = 'Teams must be different';
+  if (btn) btn.disabled = same;
+}
 
-function runCounter(counterId,factId,barId,total,isMatch){
+/* ── Swap teams ───────────────────────────────────────────── */
+function swapTeams() {
+  const s1 = $id('team1'), s2 = $id('team2');
+  if (!s1 || !s2) return;
+  const tmp = s1.value; s1.value = s2.value; s2.value = tmp;
+  const btn = document.querySelector('.swap-btn');
+  if (btn) { btn.classList.add('spinning'); setTimeout(() => btn.classList.remove('spinning'), 400); }
+  updateColors();
+}
+
+/* ── Prediction History ───────────────────────────────────── */
+const HISTORY_KEY = 'criciq_history';
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+}
+
+function saveHistory(item) {
+  const h = getHistory();
+  h.unshift(item);
+  if (h.length > 5) h.pop();
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+  renderHistory();
+}
+
+function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = $id('history-list'); if (!list) return;
+  const h = getHistory();
+  const btn = $id('clear-hist-btn');
+  if (btn) btn.style.display = h.length ? 'block' : 'none';
+  list.innerHTML = h.length
+    ? h.map(item => `
+        <div class="history-item">
+          <div class="hi-teams">
+            <span class="hi-winner">${item.winner}</span>
+            <span class="hi-prob">${item.prob}%</span>
+          </div>
+          <div class="hi-meta">${item.t1} vs ${item.t2} · ${item.time}</div>
+        </div>`).join('')
+    : '<div class="history-empty">No predictions yet</div>';
+}
+
+/* ── Confidence label ─────────────────────────────────────── */
+function confLabel(p) {
+  if (p >= 70) return { label: 'High',   cls: 'conf-high' };
+  if (p >= 58) return { label: 'Medium', cls: 'conf-med'  };
+  return              { label: 'Low',    cls: 'conf-low'  };
+}
+
+/* ── Key Factors ──────────────────────────────────────────── */
+function renderFactors(data) {
+  const list = $id('factors-list'); if (!list) return;
+  const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
+  const factors = [];
+
+  const s1 = data.team1_stats || {};
+  const s2 = data.team2_stats || {};
+
+  const t1sr   = parseFloat(s1.sr)       || 0;
+  const t2sr   = parseFloat(s2.sr)       || 0;
+  const t1econ = parseFloat(s1.econ)     || 0;
+  const t2econ = parseFloat(s2.econ)     || 0;
+  const t1h2h  = parseFloat(s1.h2h)      || 0;
+
+  if (t1sr && t2sr) {
+    const stronger = t1sr > t2sr ? t1 : t2;
+    factors.push({ icon: '⚡', label: 'Batting Firepower', text: `${stronger} has a higher strike rate (${Math.max(t1sr, t2sr).toFixed(1)}), favouring aggressive batting.` });
+  }
+  if (t1econ && t2econ) {
+    const better = t1econ < t2econ ? t1 : t2;
+    factors.push({ icon: '🎳', label: 'Bowling Economy', text: `${better}'s bowlers are more economical (${Math.min(t1econ, t2econ).toFixed(2)} runs/over).` });
+  }
+  if (t1h2h) {
+    const fav = t1h2h > 50 ? t1 : t2;
+    factors.push({ icon: '📈', label: 'Head-to-Head Edge', text: `${fav} holds a historical H2H advantage in this matchup.` });
+  }
+
+  const venue = $id('venue_status')?.value;
+  if (venue === 'home') factors.push({ icon: '🏟️', label: 'Home Advantage', text: `${t1} plays at home ground, adding ~3–5% probability boost.` });
+  if (venue === 'away') factors.push({ icon: '✈️', label: 'Away Disadvantage', text: `${t1} plays away from home, slight probability reduction.` });
+
+  const tossOn = $id('toss-toggle')?.checked;
+  if (tossOn) {
+    const tw = $id('toss_winner')?.value, td = $id('toss_decision')?.value;
+    if (tw && td) factors.push({ icon: '🪙', label: 'Toss Factor', text: `${tw} won the toss and chose to ${td === 'bat' ? 'bat' : 'bowl'} first.` });
+  } else {
+    factors.push({ icon: '🎲', label: 'Toss Averaged', text: 'Toss outcome unknown — model averages across all 4 toss scenarios.' });
+  }
+
+  list.innerHTML = factors.length
+    ? factors.slice(0, 5).map((f, i) => `
+        <div class="factor-item" style="animation-delay:${i * 60}ms">
+          <span class="factor-icon">${f.icon}</span>
+          <div>
+            <div class="factor-label">${f.label}</div>
+            <div class="factor-text">${f.text}</div>
+          </div>
+        </div>`).join('')
+    : '<div class="factor-empty">No factor data available</div>';
+}
+
+/* ── Main prediction ──────────────────────────────────────── */
+async function runPredict() {
+  const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
+  if (!t1 || !t2 || t1 === t2) return;
+
+  const btn   = $id('predict-btn');
+  const empty = $id('empty-state');
+  const anim  = $id('predict-anim');
+  const result = $id('predict-result');
+
+  if (empty)  empty.style.display = 'none';
+  if (result) result.style.display = 'none';
+  if (anim)   anim.style.display = 'flex';
+  if (btn)    { btn.disabled = true; txt('btn-label', 'Running…'); }
+
+  const steps = ['lstep-1', 'lstep-2', 'lstep-3'];
+  let si = 0;
+  const stepTimer = setInterval(() => {
+    steps.forEach(s => $id(s)?.classList.remove('active'));
+    if (si < steps.length) { $id(steps[si])?.classList.add('active'); si++; }
+  }, 600);
+
+  try {
+    const venue  = $id('venue_status')?.value || 'neutral';
+    const tossOn = $id('toss-toggle')?.checked;
+    // toss_known=false triggers backend to average all 4 scenarios and return toss_scenarios[]
+    let url = `/predict?team1=${encodeURIComponent(t1)}&team2=${encodeURIComponent(t2)}&venue_status=${venue}&toss_known=${tossOn ? 'true' : 'false'}`;
+    if (tossOn) {
+      const tw = $id('toss_winner')?.value;
+      const td = $id('toss_decision')?.value;
+      if (tw && td) url += `&toss_winner=${encodeURIComponent(tw)}&toss_decision=${td}`;
+    }
+
+    const data = await fetch(url).then(r => r.json());
+    console.log('API RESPONSE:', data);  // DEBUG: inspect full backend response
+    clearInterval(stepTimer);
+    if (data.error) throw new Error(data.error);
+
+    if (anim)   anim.style.display = 'none';
+    if (result) { result.style.display = 'block'; result.classList.add('result-enter'); }
+    if (btn)    { btn.disabled = false; txt('btn-label', 'Run Prediction'); }
+
+    renderResult(data, t1, t2);
+    renderFactors(data);
+    saveHistory({
+      winner: data.winner || t1,
+      prob: Math.round(parseFloat(data.probability) || 50),
+      t1, t2,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+
+    // Auto-scroll to results
+    setTimeout(() => result?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+
+  } catch (e) {
+    clearInterval(stepTimer);
+    if (anim)  anim.style.display = 'none';
+    if (empty) empty.style.display = 'flex';
+    if (btn)   { btn.disabled = false; txt('btn-label', 'Run Prediction'); }
+    const errEl = $id('error-msg');
+    if (errEl) { errEl.style.display = 'flex'; txt('error-text', e.message || 'Prediction failed'); }
+  }
+}
+
+/* ── Safe number formatter — NEVER returns '—' ────────────── */
+function safeNum(val, fallback, decimals = 1) {
+  const n = parseFloat(val);
+  return isNaN(n) ? fallback.toFixed(decimals) : n.toFixed(decimals);
+}
+
+/* ── renderPrediction: maps backend fields → UI ───────────── */
+function renderPrediction(data, t1, t2) {
+  // Backend returns: winner, probability (winner's %), confidence (max prob%)
+  // team1_stats: {sr, bat_avg, econ, h2h}, team2_stats: same
+  const c1 = clr(t1), c2 = clr(t2);
+  const winner = data.winner || t1;
+
+  // probability = winner's win %, so derive t1/t2 splits
+  const winnerProb = parseFloat(data.probability) || 50;
+  const t1Prob = winner === t1 ? winnerProb : (100 - winnerProb);
+  const t2Prob = 100 - t1Prob;
+  const p1 = Math.round(t1Prob);
+  const p2 = 100 - p1;
+
+  // Header
+  txt('rmh-t1', t1); txt('rmh-t2', t2);
+
+  // Winner + winning probability
+  txt('winner-name', winner);
+  txt('win-prob-display', Math.round(winnerProb));
+
+  // Highlight winner name colour
+  const winEl = $id('winner-name');
+  if (winEl) winEl.style.color = winner === t1 ? c1 : c2;
+
+  // Probability bar — animate
+  const bar1 = $id('pf-t1'), bar2 = $id('pf-t2');
+  if (bar1) { bar1.style.width = '0%'; bar1.style.background = c1; bar1.style.transition = 'width 0.8s cubic-bezier(0.16,1,0.3,1)'; setTimeout(() => { bar1.style.width = p1 + '%'; }, 50); }
+  if (bar2) bar2.style.background = c2;
+  txt('p-t1-lbl', t1); txt('p-t2-lbl', t2);
+  txt('prob-t1-pct', p1 + '%'); txt('prob-t2-pct', p2 + '%');
+
+  // Confidence — backend sends confidence as a percentage already
+  const confPct = parseFloat(data.confidence) || winnerProb;
+  const conf = confLabel(confPct);
+  const confEl = $id('conf-val');
+  if (confEl) { confEl.textContent = conf.label; confEl.className = 'mc-val ' + conf.cls; }
+
+  // Venue chip
+  const venue = $id('venue_status')?.value;
+  txt('venue-chip-val', { neutral: 'Neutral', home: 'Home', away: 'Away' }[venue] || '—');
+
+  // Toss chip
+  const tossOn = $id('toss-toggle')?.checked;
+  const tossChip = $id('toss-impact-chip');
+  if (tossChip) {
+    tossChip.style.display = tossOn ? 'flex' : 'none';
+    if (tossOn) txt('toss-impact-val', 'Included');
+  }
+
+  renderStats(data, t1, t2);
+  renderToss(data, tossOn);
+  renderImpact(data, t1, t2);
+}
+
+/* ── renderStats: team1_stats / team2_stats ───────────────── */
+function renderStats(data, t1, t2) {
+  const s1 = data.team1_stats || {};
+  const s2 = data.team2_stats || {};
+
+  txt('sg-t1', t1.split(' ')[0]);
+  txt('sg-t2', t2.split(' ')[0]);
+
+  // Defaults: sr→140, bat_avg→30, econ→8.5, bowl_avg→28
+  txt('sv-t1-sr',   safeNum(s1.sr,       140, 1));
+  txt('sv-t2-sr',   safeNum(s2.sr,       140, 1));
+  txt('sv-t1-bat',  safeNum(s1.bat_avg,  30,  1));
+  txt('sv-t2-bat',  safeNum(s2.bat_avg,  30,  1));
+  txt('sv-t1-econ', safeNum(s1.econ,     8.5, 1));
+  txt('sv-t2-econ', safeNum(s2.econ,     8.5, 1));
+
+  // H2H — backend puts h2h in team_stats as well
+  const h1 = parseFloat(s1.h2h);
+  const h2 = parseFloat(s2.h2h);
+  txt('sv-t1-h2h', isNaN(h1) ? '50.0%' : h1.toFixed(1) + '%');
+  txt('sv-t2-h2h', isNaN(h2) ? '50.0%' : h2.toFixed(1) + '%');
+}
+
+/* ── renderToss: toss scenarios grid ─────────────────────── */
+function renderToss(data, tossOn) {
+  const tsWrap = $id('toss-scenarios-wrap');
+  if (!tsWrap) return;
+  if (!tossOn && data.toss_scenarios?.length) {
+    tsWrap.style.display = 'block';
+    $id('ts-list').innerHTML = data.toss_scenarios.map(sc => `
+      <div class="ts-item">
+        <span class="ts-label">${sc.label || sc.scenario || '—'}</span>
+        <span class="ts-prob">${safeNum(sc.team1_win_pct, 50, 1)}%</span>
+      </div>`).join('');
+  } else {
+    tsWrap.style.display = 'none';
+  }
+}
+
+/* ── renderImpact: impact_players keyed by team name ─────── */
+function renderImpact(data, t1, t2) {
+  const ir = $id('impact-row');
+  if (!ir) return;
+  if (!data.impact_players) { ir.style.display = 'none'; return; }
+
+  // Backend: impact_players = { "Chennai Super Kings": {...}, "Mumbai Indians": {...} }
+  const ip1 = data.impact_players[t1] || {};
+  const ip2 = data.impact_players[t2] || {};
+  const hasAny = ip1.name || ip2.name;
+  if (!hasAny) { ir.style.display = 'none'; return; }
+
+  ir.style.display = 'grid';
+  txt('ip-t1-team', t1);
+  txt('ip-t1-name', ip1.name || '—');
+  txt('ip-t1-reason', ip1.reason || '');
+  txt('ip-t2-team', t2);
+  txt('ip-t2-name', ip2.name || '—');
+  txt('ip-t2-reason', ip2.reason || '');
+}
+
+/* ── Legacy wrapper kept for compatibility ────────────────── */
+function renderResult(data, t1, t2) {
+  renderPrediction(data, t1, t2);
+}
+
+/* ── Animation helpers ────────────────────────────────────── */
+function clearAnimTimers() { animTimers.forEach(clearInterval); animTimers = []; }
+
+function runCounter(counterId, factId, barId, total) {
   clearAnimTimers();
-  let count=0;
-  const step=Math.max(1,Math.floor(total/100));
-  const iv=setInterval(()=>{
-    const progress=count/total;
-    const speed=0.5+Math.sin(progress*Math.PI)*2.0;
-    count=Math.min(count+Math.ceil(speed*step),total);
-    if(counterId) txt(counterId,isMatch?count.toLocaleString():'');
-    if(barId) $id(barId).style.width=(count/total*100)+'%';
-    if(Math.random()<0.07) txt(factId,FACTS[Math.floor(Math.random()*FACTS.length)]);
-    if(count>=total) clearInterval(iv);
-  },55);
+  let count = 0;
+  const step = Math.max(1, Math.floor(total / 100));
+  const iv = setInterval(() => {
+    const progress = count / total;
+    const speed = 0.5 + Math.sin(progress * Math.PI) * 2.0;
+    count = Math.min(count + Math.ceil(speed * step), total);
+    if (counterId) txt(counterId, count.toLocaleString());
+    if (barId) { const b = $id(barId); if (b) b.style.width = (count / total * 100) + '%'; }
+    if (Math.random() < 0.07) txt(factId, FACTS[Math.floor(Math.random() * FACTS.length)]);
+    if (count >= total) clearInterval(iv);
+  }, 55);
   animTimers.push(iv);
 }
 
-function showAnim(id){$id(id).classList.add('show')}
-function hideAnim(id){$id(id).classList.remove('show')}
-function setBtn(id,dis){const e=$id(id);if(e)e.disabled=dis}
+function showAnim(id) { const e = $id(id); if (e) e.style.display = 'flex'; }
+function hideAnim(id) { const e = $id(id); if (e) e.style.display = 'none'; }
+function setBtn(id, dis) { const e = $id(id); if (e) e.disabled = dis; }
 
-/* ══ API ═════════════════════════════════════════════════ */
-async function api(endpoint,payload){
-  const res=await fetch(endpoint,{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
+/* ── Generic API helper ───────────────────────────────────── */
+async function api(endpoint, payload) {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   });
-  const d=await res.json();
-  if(d.error) throw new Error(d.error);
+  const d = await res.json();
+  if (d.error) throw new Error(d.error);
   return d;
-}
-
-/* ════════════════════════════════════════════════════════
-   PREDICT
-   ════════════════════════════════════════════════════════ */
-async function runPredict(){
-  const t1=$id('team1').value, t2=$id('team2').value;
-  if(t1===t2){alert('Select two different teams');return}
-  const tossKnown=$id('toss-toggle').checked;
-
-  $id('predict-result').style.display='none';
-  setBtn('predict-btn',true); showAnim('predict-anim');
-  txt('predict-desc',tossKnown?'Running XGBoost prediction…':'Averaging 4 toss scenarios…');
-  runCounter(null,'predict-fact','predict-bar',100,false);
-
-  try{
-    const d=await api('/predict',{
-      team1:t1,team2:t2,
-      team1_venue_status:$id('venue_status').value,
-      toss_known:tossKnown,
-      toss_winner:tossKnown?$id('toss_winner').value:'',
-      toss_decision:tossKnown?$id('toss_decision').value:'bat',
-    });
-    hideAnim('predict-anim');
-    renderPredict(d,t1,t2);
-  }catch(e){
-    hideAnim('predict-anim');
-    alert('Error: '+e.message);
-  }finally{
-    clearAnimTimers(); setBtn('predict-btn',false);
-  }
-}
-
-function renderPredict(d,t1,t2){
-  const wc=clr(d.winner);
-  $id('winner-logo').textContent=abbr(d.winner);
-  $id('winner-logo').style.cssText=`background:${wc};box-shadow:0 0 28px ${wc}66`;
-  txt('winner-name',d.winner);
-  txt('winner-sub',d.toss_known?'Predicted Winner · XGBoost':'Predicted Winner · Toss-Averaged');
-  txt('conf-val',d.confidence+'%');
-
-  const t1w=d.winner===t1;
-  const t1p=t1w?d.probability:+(100-d.probability).toFixed(1);
-  const t2p=t1w?+(100-d.probability).toFixed(1):d.probability;
-  txt('p-t1-lbl',`${abbr(t1)} ${t1p}%`);
-  txt('p-t2-lbl',`${t2p}% ${abbr(t2)}`);
-  $id('pf-t1').style.width=t1p+'%';
-  $id('pf-t1').style.background=clr(t1);
-  $id('pf-t2').style.background=clr(t2);
-
-  const tsWrap=$id('toss-scenarios-wrap');
-  if(d.toss_scenarios?.length){
-    const list=$id('ts-list'); list.innerHTML='';
-    d.toss_scenarios.forEach(sc=>{
-      const row=document.createElement('div'); row.className='ts-row';
-      row.innerHTML=`<span>${sc.scenario}</span><span class="ts-pct">${sc.team1_win_pct}% ${abbr(t1)}</span>`;
-      list.appendChild(row);
-    });
-    tsWrap.style.display='block';
-  } else tsWrap.style.display='none';
-
-  txt('sg-t1',abbr(t1)); txt('sg-t2',abbr(t2));
-  setStatHL('sv-t1-sr',d.team1_stats.sr,'sv-t2-sr',d.team2_stats.sr,true);
-  setStatHL('sv-t1-bat',d.team1_stats.bat_avg,'sv-t2-bat',d.team2_stats.bat_avg,true);
-  setStatHL('sv-t1-econ',d.team1_stats.econ,'sv-t2-econ',d.team2_stats.econ,false);
-  setStatHL('sv-t1-h2h',d.team1_stats.h2h+'%','sv-t2-h2h',d.team2_stats.h2h+'%',true);
-
-  if(d.impact_players){
-    const ip1=d.impact_players[t1]||{}, ip2=d.impact_players[t2]||{};
-    txt('ip-t1-team',t1); txt('ip-t1-name',ip1.name||'—');
-    txt('ip-t1-reason',ip1.reason||''); txt('ip-t1-stat',ip1.stat||'');
-    txt('ip-t1-bench',ip1.bench_player?`Replaces: ${ip1.bench_player}`:'Replaces 1 bench player after innings');
-    txt('ip-t2-team',t2); txt('ip-t2-name',ip2.name||'—');
-    txt('ip-t2-reason',ip2.reason||''); txt('ip-t2-stat',ip2.stat||'');
-    txt('ip-t2-bench',ip2.bench_player?`Replaces: ${ip2.bench_player}`:'Replaces 1 bench player after innings');
-    $id('impact-row').style.display='grid';
-  }
-
-  $id('predict-result').style.display='block';
-}
-
-function setStatHL(id1,v1,id2,v2,hiGood){
-  txt(id1,v1); txt(id2,v2);
-  const n1=parseFloat(v1), n2=parseFloat(v2);
-  const t1b=hiGood?n1>n2:n1<n2;
-  $id(id1).className='sg-value '+(t1b?'better':'worse');
-  $id(id2).className='sg-value '+(t1b?'worse':'better');
 }
 
 /* ════════════════════════════════════════════════════════
    SIMULATE
    ════════════════════════════════════════════════════════ */
-async function runSimulate(){
-  const t1=$id('team1').value, t2=$id('team2').value;
-  if(t1===t2){alert('Select two different teams');return}
-  const tossKnown=$id('toss-toggle').checked;
+async function runSimulate() {
+  const t1 = $id('team1').value, t2 = $id('team2').value;
+  if (t1 === t2) { alert('Select two different teams'); return; }
+  const tossKnown = $id('toss-toggle').checked;
 
-  $id('sim-result').style.display='none';
-  setBtn('simulate-btn',true); showAnim('sim-anim');
-  runCounter('sim-counter','sim-fact','sim-bar',6767,true);
+  const simResult = $id('sim-result');
+  if (simResult) simResult.style.display = 'none';
+  setBtn('simulate-btn', true);
+  showAnim('sim-anim');
+  runCounter('sim-counter', 'sim-fact', 'sim-bar', 6767);
 
-  try{
-    const d=await api('/simulate',{
-      team1:t1,team2:t2,
-      toss_known:tossKnown,
-      toss_winner:tossKnown?$id('toss_winner').value:'',
-      toss_decision:tossKnown?$id('toss_decision').value:'bat',
-      style1:simStyle,style2:simStyle,
-      n_matches:6767,
+  // Scroll to simulate view
+  setTimeout(() => $id('simulate-view')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+
+  try {
+    const d = await api('/simulate', {
+      team1: t1, team2: t2,
+      toss_known: tossKnown,
+      toss_winner:   tossKnown ? ($id('toss_winner')?.value || '') : '',
+      toss_decision: tossKnown ? ($id('toss_decision')?.value || 'bat') : 'bat',
+      style1: simStyle, style2: simStyle,
+      n_matches: 6767,
     });
+    console.log('SIM RESPONSE:', d);  // DEBUG
     hideAnim('sim-anim');
-    renderSim(d,t1,t2);
-  }catch(e){
+    renderSim(d, t1, t2);
+  } catch (e) {
+    console.error('SIM ERROR:', e);
     hideAnim('sim-anim');
-    alert('Error: '+e.message);
-  }finally{
-    clearAnimTimers(); setBtn('simulate-btn',false);
+    const errDiv = document.createElement('div');
+    errDiv.style.cssText = 'color:var(--red);font-size:13px;padding:16px;text-align:center';
+    errDiv.textContent = 'Simulation error: ' + e.message;
+    $id('sim-result').appendChild(errDiv);
+    $id('sim-result').style.display = 'block';
+  } finally {
+    clearAnimTimers();
+    setBtn('simulate-btn', false);
   }
 }
 
-async function runCustomSimulate(){
-  const t1=$id('team1').value, t2=$id('team2').value;
-  if(custXI.t1.length<11||custXI.t2.length<11){
+async function runCustomSimulate() {
+  const t1 = $id('team1').value, t2 = $id('team2').value;
+  if (custXI.t1.length < 11 || custXI.t2.length < 11) {
     alert(`Select 11 per team.\n${t1}: ${custXI.t1.length}/11\n${t2}: ${custXI.t2.length}/11`);
     return;
   }
-  showView('simulate-view',document.querySelectorAll('.nav-item')[1]);
-  $id('sim-result').style.display='none';
-  setBtn('simulate-btn',true); showAnim('sim-anim');
-  runCounter('sim-counter','sim-fact','sim-bar',6767,true);
-  const tossKnown=$id('toss-toggle').checked;
-  try{
-    const d=await api('/simulate-custom',{
-      team1:t1,team2:t2,
-      team1_batting:custXI.t1,
-      team1_bowling:custXI.t1.slice(-5), // T20: 5 bowlers
-      team2_batting:custXI.t2,
-      team2_bowling:custXI.t2.slice(-5),
-      toss_known:tossKnown,
-      toss_winner:tossKnown?$id('toss_winner').value:'',
-      toss_decision:tossKnown?$id('toss_decision').value:'bat',
-      n_matches:6767,
+  showView('simulate-view', document.querySelectorAll('.nav-item')[1]);
+  setTimeout(() => $id('simulate-view')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  $id('sim-result').style.display = 'none';
+  setBtn('simulate-btn', true);
+  showAnim('sim-anim');
+  runCounter('sim-counter', 'sim-fact', 'sim-bar', 6767);
+  const tossKnown = $id('toss-toggle').checked;
+
+  try {
+    const d = await api('/simulate-custom', {
+      team1: t1, team2: t2,
+      team1_batting: custXI.t1,
+      team1_bowling: custXI.t1.slice(-5),
+      team2_batting: custXI.t2,
+      team2_bowling: custXI.t2.slice(-5),
+      toss_known: tossKnown,
+      toss_winner:   tossKnown ? $id('toss_winner').value : '',
+      toss_decision: tossKnown ? $id('toss_decision').value : 'bat',
+      n_matches: 6767,
     });
-    hideAnim('sim-anim'); renderSim(d,t1,t2);
-  }catch(e){hideAnim('sim-anim');alert('Error: '+e.message)}
-  finally{clearAnimTimers();setBtn('simulate-btn',false)}
+    hideAnim('sim-anim');
+    renderSim(d, t1, t2);
+  } catch (e) {
+    hideAnim('sim-anim');
+    alert('Error: ' + e.message);
+  } finally {
+    clearAnimTimers();
+    setBtn('simulate-btn', false);
+  }
 }
 
-function renderSim(d,t1,t2){
-  const c1=clr(t1), c2=clr(t2);
-  const s1=d.predicted_scores[t1], s2=d.predicted_scores[t2];
-  const wp=d.win_probability;
+function renderSim(d, t1, t2) {
+  // Full guard — backend confirmed returns predicted_scores, win_probability, etc.
+  const ps = d.predicted_scores || {};
+  const wp = d.win_probability  || {};
+  const s1 = ps[t1] || { mean: 0, std: 0, p10: 0, p90: 0 };
+  const s2 = ps[t2] || { mean: 0, std: 0, p10: 0, p90: 0 };
+  const c1 = clr(t1), c2 = clr(t2);
 
-  ['1','2'].forEach((i,idx)=>{
-    const team=idx===0?t1:t2, s=idx===0?s1:s2, c=idx===0?c1:c2;
-    txt(`sc${i}-team`,team);
-    $id(`sc${i}-score`).textContent=Math.round(s.mean);
-    $id(`sc${i}-score`).style.color=c;
-    txt(`sc${i}-detail`,`avg ${s.mean} ± ${s.std}  ·  range ${s.p10}–${s.p90}`);
-    const badge=$id(`sc${i}-badge`);
-    badge.textContent=`${wp[team]}% win`;
-    badge.style.cssText=`background:${c}18;border:1px solid ${c}40;color:${c}`;
-    $id(`sc${i}`).style.borderColor=c+'44';
-    $id(`sc${i}`).style.boxShadow=`0 0 20px ${c}0d`;
-    const bar=$id(`sc${i}`).querySelector('.score-card::before');
-    if(bar) bar.style.background=c;
+  ['1', '2'].forEach((i, idx) => {
+    const team = idx === 0 ? t1 : t2;
+    const s    = idx === 0 ? s1 : s2;
+    const c    = idx === 0 ? c1 : c2;
+    txt(`sc${i}-team`, team);
+    const scoreEl = $id(`sc${i}-score`);
+    if (scoreEl) { scoreEl.textContent = s.mean ? Math.round(s.mean) : '—'; scoreEl.style.color = c; }
+    txt(`sc${i}-detail`, s.mean ? `avg ${s.mean} ± ${s.std}  ·  range ${s.p10}–${s.p90}` : 'No data');
+    const badge = $id(`sc${i}-badge`);
+    const winPct = wp[team];
+    if (badge && winPct !== undefined) {
+      badge.textContent = `${winPct}% win`;
+      badge.style.cssText = `background:${c}18;border:1px solid ${c}40;color:${c};padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600`;
+    }
+    const card = $id(`sc${i}`);
+    if (card) { card.style.borderColor = c + '44'; card.style.boxShadow = `0 0 20px ${c}0d`; }
   });
 
-  txt('mc-p10-t1',s1.p10); txt('mc-p90-t1',s1.p90);
-  txt('mc-p10-t2',s2.p10); txt('mc-p90-t2',s2.p90);
+  txt('mc-p10-t1', s1.p10 || '—'); txt('mc-p90-t1', s1.p90 || '—');
+  txt('mc-p10-t2', s2.p10 || '—'); txt('mc-p90-t2', s2.p90 || '—');
 
-  if(d.impact_players){
-    const ip1=d.impact_players[t1]||{}, ip2=d.impact_players[t2]||{};
-    txt('sim-ip-t1-team',t1); txt('sim-ip-t1-name',ip1.name||'—'); txt('sim-ip-t1-reason',ip1.reason||'');
-    txt('sim-ip-t2-team',t2); txt('sim-ip-t2-name',ip2.name||'—'); txt('sim-ip-t2-reason',ip2.reason||'');
-    $id('sim-impact-row').style.display='grid';
+  // Impact players — keyed by full team name
+  const simImpactRow = $id('sim-impact-row');
+  if (d.impact_players && simImpactRow) {
+    const ip1 = d.impact_players[t1] || {};
+    const ip2 = d.impact_players[t2] || {};
+    if (ip1.name || ip2.name) {
+      txt('sim-ip-t1-team', t1);
+      txt('sim-ip-t1-name', ip1.name || '—');
+      txt('sim-ip-t1-reason', ip1.reason || '');
+      txt('sim-ip-t2-team', t2);
+      txt('sim-ip-t2-name', ip2.name || '—');
+      txt('sim-ip-t2-reason', ip2.reason || '');
+      simImpactRow.style.display = 'grid';
+    } else {
+      simImpactRow.style.display = 'none';
+    }
   }
 
-  firstTeam=t1;
-  const rm=d.representative_match;
-  if(rm){
-    renderMomentum(rm.momentum||[],t1,t2);
-    renderBBB('bbb-inn1',rm.innings1);
-    renderBBB('bbb-inn2',rm.innings2);
-    txt('inn1-header',`${rm.innings1?.team||t1} - ${rm.innings1?.score||'?'}/${rm.innings1?.wickets||'?'}`);
-    txt('inn2-header',`${rm.innings2?.team||t2} - ${rm.innings2?.score||'?'}/${rm.innings2?.wickets||'?'}`);
-    renderScorecard(rm,t1,t2);
-  }
-  renderDist(d.ball_outcome_distribution,d.total_balls_simulated);
-  if(d.playing11) renderXI(d.playing11,t1,t2);
+  firstTeam = t1;
 
-  $id('sim-result').style.display='block';
+  // Representative match — build innings header strings, render charts with guards
+  const rm = d.representative_match;
+  if (rm) {
+    const inn1 = rm.innings1, inn2 = rm.innings2;
+    if (inn1) {
+      // Backend innings1 has team=t1 (first batting), score=total, wickets
+      txt('inn1-header', `${inn1.team || t1}  ${inn1.score || inn1.total || '?'}/${inn1.wickets || '?'}`);
+      renderBBB('bbb-inn1', inn1);
+    }
+    if (inn2) {
+      txt('inn2-header', `${inn2.team || t2}  ${inn2.score || inn2.total || '?'}/${inn2.wickets || '?'}`);
+      renderBBB('bbb-inn2', inn2);
+    }
+    if (rm.momentum?.length) renderMomentum(rm.momentum, t1, t2);
+    else {
+      const svg = $id('momentum-svg');
+      if (svg) {
+        svg.innerHTML = '<text x="450" y="120" fill="#475569" font-size="12" text-anchor="middle" font-family="DM Sans">No momentum data for this match</text>';
+      }
+    }
+    renderScorecard(rm, t1, t2);
+  }
+
+  if (d.ball_outcome_distribution) {
+    renderDist(d.ball_outcome_distribution, d.total_balls_simulated || 0);
+  }
+  if (d.playing11) renderXI(d.playing11, t1, t2);
+
+  // Show result and scroll to it
+  const simResult = $id('sim-result');
+  if (simResult) {
+    simResult.style.display = 'block';
+    setTimeout(() => simResult.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  }
+
+  // Reset tabs to momentum
+  switchTab('momentum', document.querySelector('.tab-btn'));
 }
 
 /* ════════════════════════════════════════════════════════
-   MOMENTUM GRAPH - high quality canvas-like SVG
+   MOMENTUM GRAPH
    ════════════════════════════════════════════════════════ */
-let firstTeam='Team 1';
+function mkEl(tag)         { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
+function setAttr(el, attrs){ Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v)); }
+function addStop(grad, offset, color, opacity) {
+  const s = mkEl('stop');
+  s.setAttribute('offset', offset);
+  s.setAttribute('stop-color', color);
+  s.setAttribute('stop-opacity', opacity);
+  grad.appendChild(s);
+}
 
-function renderMomentum(points,t1,t2){
-  const svg=$id('momentum-svg');
-  svg.innerHTML='';
-  $id('mom-title-txt').textContent=`${t1} win probability - hover any point`;
+function renderMomentum(points, t1, t2) {
+  const svg = $id('momentum-svg');
+  svg.innerHTML = '';
+  txt('mom-title-txt', `${t1} win probability · hover any point`);
 
-  if(!points?.length){
-    const noData=mkEl('text');
-    setAttr(noData,{x:'450',y:'120',fill:'#475569','font-size':'12','text-anchor':'middle','font-family':'Inter'});
-    noData.textContent='No momentum data';
+  if (!points?.length) {
+    const noData = mkEl('text');
+    setAttr(noData, { x:'450', y:'120', fill:'#475569', 'font-size':'12', 'text-anchor':'middle', 'font-family':'DM Sans' });
+    noData.textContent = 'No momentum data';
     svg.appendChild(noData);
     return;
   }
 
-  const W=900, H=240;
-  const PAD={top:24,right:24,bottom:36,left:48};
-  const plotW=W-PAD.left-PAD.right;
-  const plotH=H-PAD.top-PAD.bottom;
-  const maxOver=Math.max(...points.map(p=>p.over),40);
+  const W = 900, H = 240;
+  const PAD = { top: 24, right: 24, bottom: 36, left: 48 };
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top - PAD.bottom;
+  const maxOver = Math.max(...points.map(p => p.over), 40);
 
-  const px=over=>PAD.left+(over/maxOver)*plotW;
-  const py=prob=>PAD.top+(1-prob)*plotH;
+  const px = over => PAD.left + (over / maxOver) * plotW;
+  const py = prob => PAD.top + (1 - prob) * plotH;
 
-  // ── Defs: gradients ──
-  const defs=mkEl('defs');
-
-  // T1 area gradient
-  const gT1=mkEl('linearGradient');
-  setAttr(gT1,{id:'gradT1',x1:'0',x2:'0',y1:'0',y2:'1'});
-  addStop(gT1,'0%',clr(t1),0.28);
-  addStop(gT1,'100%',clr(t1),0);
+  /* Defs */
+  const defs = mkEl('defs');
+  const gT1 = mkEl('linearGradient');
+  setAttr(gT1, { id: 'gradT1', x1: '0', x2: '0', y1: '0', y2: '1' });
+  addStop(gT1, '0%',   clr(t1), 0.28);
+  addStop(gT1, '100%', clr(t1), 0);
   defs.appendChild(gT1);
 
-  // T2 area gradient (below 50%)
-  const gT2=mkEl('linearGradient');
-  setAttr(gT2,{id:'gradT2',x1:'0',x2:'0',y1:'0',y2:'1'});
-  addStop(gT2,'0%',clr(t2),0);
-  addStop(gT2,'100%',clr(t2),0.28);
+  const gT2 = mkEl('linearGradient');
+  setAttr(gT2, { id: 'gradT2', x1: '0', x2: '0', y1: '0', y2: '1' });
+  addStop(gT2, '0%',   clr(t2), 0);
+  addStop(gT2, '100%', clr(t2), 0.28);
   defs.appendChild(gT2);
 
-  // Line animation
-  const cssAnim=mkEl('style');
-  cssAnim.textContent='@keyframes drawLine{to{stroke-dashoffset:0}} @keyframes areaPop{from{opacity:0}to{opacity:1}}';
+  const cssAnim = mkEl('style');
+  cssAnim.textContent = '@keyframes drawLine{to{stroke-dashoffset:0}} @keyframes areaPop{from{opacity:0}to{opacity:1}}';
   defs.appendChild(cssAnim);
   svg.appendChild(defs);
 
-  // ── Phase zone backgrounds ──
-  const phases=[
-    {from:0,to:6,fill:'rgba(59,130,246,0.035)',label:'PP',labelX:3},
-    {from:6,to:15,fill:'transparent',label:'MIDDLE',labelX:6},
-    {from:15,to:20,fill:'rgba(239,68,68,0.03)',label:'DEATH',labelX:15.5},
-    {from:20,to:26,fill:'rgba(59,130,246,0.035)',label:'PP',labelX:23},
-    {from:26,to:35,fill:'transparent',label:'MIDDLE',labelX:26},
-    {from:35,to:40,fill:'rgba(239,68,68,0.03)',label:'DEATH',labelX:35.5},
+  /* Phase zones */
+  const phases = [
+    { from: 0,  to: 6,  fill: 'rgba(59,130,246,0.035)',  label: 'PP',     labelX: 3    },
+    { from: 6,  to: 15, fill: 'transparent',              label: 'MIDDLE', labelX: 6    },
+    { from: 15, to: 20, fill: 'rgba(239,68,68,0.03)',     label: 'DEATH',  labelX: 15.5 },
+    { from: 20, to: 26, fill: 'rgba(59,130,246,0.035)',   label: 'PP',     labelX: 23   },
+    { from: 26, to: 35, fill: 'transparent',              label: 'MIDDLE', labelX: 26   },
+    { from: 35, to: 40, fill: 'rgba(239,68,68,0.03)',     label: 'DEATH',  labelX: 35.5 },
   ];
-  phases.forEach(ph=>{
-    const r=mkEl('rect');
-    setAttr(r,{x:px(ph.from),y:PAD.top,width:px(ph.to)-px(ph.from),height:plotH,fill:ph.fill});
+  phases.forEach(ph => {
+    const r = mkEl('rect');
+    setAttr(r, { x: px(ph.from), y: PAD.top, width: px(ph.to) - px(ph.from), height: plotH, fill: ph.fill });
     svg.appendChild(r);
-    if(ph.fill!=='transparent'){
-      const lbl=mkEl('text');
-      setAttr(lbl,{x:px(ph.labelX)+3,y:PAD.top+11,fill:'rgba(255,255,255,0.18)','font-size':'8','font-family':'Inter','font-weight':'700','letter-spacing':'0.5'});
-      lbl.textContent=ph.label;
+    if (ph.fill !== 'transparent') {
+      const lbl = mkEl('text');
+      setAttr(lbl, { x: px(ph.labelX) + 3, y: PAD.top + 11, fill: 'rgba(255,255,255,0.18)', 'font-size': '8', 'font-family': 'DM Sans', 'font-weight': '700', 'letter-spacing': '0.5' });
+      lbl.textContent = ph.label;
       svg.appendChild(lbl);
     }
   });
 
-  // ── Y-axis grid lines ──
-  [0.25,0.5,0.75].forEach(v=>{
-    const line=mkEl('line');
-    setAttr(line,{x1:PAD.left,x2:PAD.left+plotW,y1:py(v),y2:py(v),
-      stroke:v===0.5?'rgba(255,255,255,0.12)':'rgba(255,255,255,0.05)',
-      'stroke-dasharray':v===0.5?'6,4':'2,4'});
+  /* Y-axis gridlines */
+  [0.25, 0.5, 0.75].forEach(v => {
+    const line = mkEl('line');
+    setAttr(line, { x1: PAD.left, x2: PAD.left + plotW, y1: py(v), y2: py(v),
+      stroke: v === 0.5 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)',
+      'stroke-dasharray': v === 0.5 ? '6,4' : '2,4' });
     svg.appendChild(line);
-    const lbl=mkEl('text');
-    setAttr(lbl,{x:PAD.left-5,y:py(v)+4,fill:'rgba(255,255,255,0.25)','font-size':'9','font-family':'Inter','font-weight':'600','text-anchor':'end'});
-    lbl.textContent=(v*100)+'%';
+    const lbl = mkEl('text');
+    setAttr(lbl, { x: PAD.left - 5, y: py(v) + 4, fill: 'rgba(255,255,255,0.25)', 'font-size': '9', 'font-family': 'DM Sans', 'font-weight': '600', 'text-anchor': 'end' });
+    lbl.textContent = (v * 100) + '%';
     svg.appendChild(lbl);
   });
 
-  // ── Innings separator ──
-  const sepX=px(20);
-  const sepLine=mkEl('line');
-  setAttr(sepLine,{x1:sepX,x2:sepX,y1:PAD.top,y2:PAD.top+plotH,
-    stroke:'rgba(255,255,255,0.18)','stroke-dasharray':'5,3'});
+  /* Innings separator */
+  const sepLine = mkEl('line');
+  setAttr(sepLine, { x1: px(20), x2: px(20), y1: PAD.top, y2: PAD.top + plotH, stroke: 'rgba(255,255,255,0.18)', 'stroke-dasharray': '5,3' });
   svg.appendChild(sepLine);
-  const sepLbl=mkEl('text');
-  setAttr(sepLbl,{x:sepX+4,y:PAD.top+14,fill:'rgba(255,255,255,0.3)','font-size':'8','font-family':'Inter','font-weight':'700'});
-  sepLbl.textContent='INN 2';
+  const sepLbl = mkEl('text');
+  setAttr(sepLbl, { x: px(20) + 4, y: PAD.top + 14, fill: 'rgba(255,255,255,0.3)', 'font-size': '8', 'font-family': 'DM Sans', 'font-weight': '700' });
+  sepLbl.textContent = 'INN 2';
   svg.appendChild(sepLbl);
 
-  // ── Build path data ──
-  const lineD=points.map((p,i)=>`${i===0?'M':'L'}${px(p.over)},${py(p.win_prob_t1)}`).join(' ');
-  const first=points[0], last=points[points.length-1];
-  const midY=py(0.5);
+  /* Path data */
+  const lineD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.over)},${py(p.win_prob_t1)}`).join(' ');
+  const first = points[0], last = points[points.length - 1];
+  const midY = py(0.5);
 
-  // Area above 50% (T1 advantage)
-  const areaAbove=mkEl('path');
-  const areaAboveD=`M${px(first.over)},${midY} ` +
-    points.map(p=>`L${px(p.over)},${py(Math.max(p.win_prob_t1,0.5))}`).join(' ') +
+  /* Areas */
+  const areaAbove = mkEl('path');
+  const areaAboveD = `M${px(first.over)},${midY} ` +
+    points.map(p => `L${px(p.over)},${py(Math.max(p.win_prob_t1, 0.5))}`).join(' ') +
     ` L${px(last.over)},${midY} Z`;
-  setAttr(areaAbove,{d:areaAboveD,fill:'url(#gradT1)',opacity:'0',style:'animation:areaPop .8s ease .3s forwards'});
+  setAttr(areaAbove, { d: areaAboveD, fill: 'url(#gradT1)', opacity: '0', style: 'animation:areaPop .8s ease .3s forwards' });
   svg.appendChild(areaAbove);
 
-  // Area below 50% (T2 advantage)
-  const areaBelow=mkEl('path');
-  const areaBelowD=`M${px(first.over)},${midY} ` +
-    points.map(p=>`L${px(p.over)},${py(Math.min(p.win_prob_t1,0.5))}`).join(' ') +
+  const areaBelow = mkEl('path');
+  const areaBelowD = `M${px(first.over)},${midY} ` +
+    points.map(p => `L${px(p.over)},${py(Math.min(p.win_prob_t1, 0.5))}`).join(' ') +
     ` L${px(last.over)},${midY} Z`;
-  setAttr(areaBelow,{d:areaBelowD,fill:'url(#gradT2)',opacity:'0',style:'animation:areaPop .8s ease .5s forwards'});
+  setAttr(areaBelow, { d: areaBelowD, fill: 'url(#gradT2)', opacity: '0', style: 'animation:areaPop .8s ease .5s forwards' });
   svg.appendChild(areaBelow);
 
-  // Main line
-  const line=mkEl('path');
-  setAttr(line,{d:lineD,fill:'none',stroke:clr(t1),'stroke-width':'2.5','stroke-linejoin':'round','stroke-linecap':'round'});
-  // Animate draw
-  line.style.strokeDasharray='3000';
-  line.style.strokeDashoffset='3000';
-  line.style.animation='drawLine 1.8s cubic-bezier(0.16,1,0.3,1) forwards';
+  /* Main line */
+  const line = mkEl('path');
+  setAttr(line, { d: lineD, fill: 'none', stroke: clr(t1), 'stroke-width': '2.5', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+  line.style.strokeDasharray = '3000';
+  line.style.strokeDashoffset = '3000';
+  line.style.animation = 'drawLine 1.8s cubic-bezier(0.16,1,0.3,1) forwards';
   svg.appendChild(line);
 
-  // ── Interactive dots ──
-  const tooltip=$id('momentum-tooltip');
-  const container=$id('momentum-container');
+  /* Interactive dots */
+  const tooltip  = $id('momentum-tooltip');
+  const container = $id('momentum-container');
 
-  points.forEach((p,i)=>{
-    // Show: all wickets + every 3rd over boundary + key events
-    const show=p.is_wicket||(i%3===0)||(p.over===6||p.over===10||p.over===15||p.over===20);
-    if(!show) return;
+  points.forEach((p, i) => {
+    const show = p.is_wicket || (i % 3 === 0) || [6, 10, 15, 20].includes(p.over);
+    if (!show) return;
 
-    const cx=px(p.over), cy=py(p.win_prob_t1);
-    const isW=p.is_wicket;
-    const r=isW?5.5:3.5;
+    const cx = px(p.over), cy = py(p.win_prob_t1);
+    const isW = p.is_wicket;
+    const r = isW ? 5.5 : 3.5;
 
-    const circle=mkEl('circle');
-    setAttr(circle,{cx,cy,r,
-      fill:isW?'#EF4444':clr(t1),
-      stroke:isW?'rgba(239,68,68,0.5)':'rgba(255,255,255,0.2)',
-      'stroke-width':isW?'2':'1.5'
-    });
-    if(isW) circle.setAttribute('filter','drop-shadow(0 0 5px rgba(239,68,68,0.9))');
-    circle.style.cursor='pointer';
-    circle.style.transition='r .12s,filter .12s';
-    circle.style.animationDelay=Math.min(i*30,1200)+'ms';
+    const circle = mkEl('circle');
+    setAttr(circle, { cx, cy, r,
+      fill: isW ? '#EF4444' : clr(t1),
+      stroke: isW ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.2)',
+      'stroke-width': isW ? '2' : '1.5' });
+    if (isW) circle.setAttribute('filter', 'drop-shadow(0 0 5px rgba(239,68,68,0.9))');
+    circle.style.cursor = 'pointer';
 
-    circle.addEventListener('mouseenter',(e)=>{
-      circle.setAttribute('r',isW?8:6);
-      if(!isW) circle.setAttribute('filter','drop-shadow(0 0 5px '+clr(t1)+'cc)');
-
-      const cRect=container.getBoundingClientRect();
-      const svgRect=svg.getBoundingClientRect();
-      // Compute pixel position in container
-      const scaleX=svgRect.width/W;
-      const scaleY=svgRect.height/H;
-      const dotX=cx*scaleX, dotY=cy*scaleY;
-      const tipW=160, tipH=100;
-      const leftPos=dotX+tipW+20>cRect.width ? dotX-tipW-10 : dotX+12;
-      const topPos=Math.max(4,Math.min(dotY-30, cRect.height-tipH-10));
-
-      tooltip.style.left=leftPos+'px';
-      tooltip.style.top=topPos+'px';
-      txt('tt-over',`${p.innings===1?'Innings 1':'Innings 2'} · Over ${p.innings===1?p.over:p.over-20}`);
-      txt('tt-prob',`${(p.win_prob_t1*100).toFixed(1)}%`);
-      txt('tt-team',`${firstTeam} lead`);
-      txt('tt-event',isW?`Wicket - ${p.event||'out'}`:`${p.event} runs`);
-      $id('tt-event').className='tt-event'+(isW?' tt-wicket':'');
-      txt('tt-score',`${p.runs||0}/${p.wickets||0}`);
+    circle.addEventListener('mouseenter', () => {
+      circle.setAttribute('r', isW ? 8 : 6);
+      if (!isW) circle.setAttribute('filter', `drop-shadow(0 0 5px ${clr(t1)}cc)`);
+      const svgRect = svg.getBoundingClientRect();
+      const contRect = container.getBoundingClientRect();
+      const scaleX = svgRect.width / W, scaleY = svgRect.height / H;
+      const dotX = cx * scaleX, dotY = cy * scaleY;
+      const tipW = 160, tipH = 100;
+      const leftPos = dotX + tipW + 20 > contRect.width ? dotX - tipW - 10 : dotX + 12;
+      const topPos  = Math.max(4, Math.min(dotY - 30, contRect.height - tipH - 10));
+      tooltip.style.left = leftPos + 'px';
+      tooltip.style.top  = topPos + 'px';
+      txt('tt-over',  `${p.innings === 1 ? 'Innings 1' : 'Innings 2'} · Over ${p.innings === 1 ? p.over : p.over - 20}`);
+      txt('tt-prob',  `${(p.win_prob_t1 * 100).toFixed(1)}%`);
+      txt('tt-team',  `${firstTeam} lead`);
+      txt('tt-event', isW ? `Wicket - ${p.event || 'out'}` : `${p.event} runs`);
+      const evEl = $id('tt-event'); if (evEl) evEl.className = 'tt-event' + (isW ? ' tt-wicket' : '');
+      txt('tt-score', `${p.runs || 0}/${p.wickets || 0}`);
       tooltip.classList.add('show');
     });
-    circle.addEventListener('mouseleave',()=>{
-      circle.setAttribute('r',r);
+    circle.addEventListener('mouseleave', () => {
+      circle.setAttribute('r', r);
       circle.removeAttribute('filter');
-      if(isW) circle.setAttribute('filter','drop-shadow(0 0 5px rgba(239,68,68,0.9))');
+      if (isW) circle.setAttribute('filter', 'drop-shadow(0 0 5px rgba(239,68,68,0.9))');
       tooltip.classList.remove('show');
     });
     svg.appendChild(circle);
   });
 
-  // X axis over labels
-  [0,6,10,15,20,26,30,35,40].filter(o=>o<=maxOver).forEach(o=>{
-    const lbl=mkEl('text');
-    setAttr(lbl,{x:px(o),y:PAD.top+plotH+16,fill:'rgba(255,255,255,0.25)','font-size':'9','font-family':'Inter','font-weight':'600','text-anchor':'middle'});
-    lbl.textContent=o;
+  /* X-axis labels */
+  [0, 6, 10, 15, 20, 26, 30, 35, 40].filter(o => o <= maxOver).forEach(o => {
+    const lbl = mkEl('text');
+    setAttr(lbl, { x: px(o), y: PAD.top + plotH + 16, fill: 'rgba(255,255,255,0.25)', 'font-size': '9', 'font-family': 'DM Sans', 'font-weight': '600', 'text-anchor': 'middle' });
+    lbl.textContent = o;
     svg.appendChild(lbl);
   });
 
-  // Legend
-  $id('momentum-legend').innerHTML=`
-    <div class="mom-leg-item">
-      <div class="mom-leg-dot" style="background:${clr(t1)};box-shadow:0 0 6px ${clr(t1)}88"></div>${t1}
-    </div>
-    <div class="mom-leg-item">
-      <div class="mom-leg-dot" style="background:${clr(t2)};box-shadow:0 0 6px ${clr(t2)}88"></div>${t2}
-    </div>
-    <div class="mom-leg-item">
-      <div class="mom-leg-dot" style="background:#EF4444;box-shadow:0 0 6px rgba(239,68,68,.6)"></div>Wicket
-    </div>
+  /* Legend */
+  $id('momentum-legend').innerHTML = `
+    <div class="mom-leg-item"><div class="mom-leg-dot" style="background:${clr(t1)};box-shadow:0 0 6px ${clr(t1)}88"></div>${t1}</div>
+    <div class="mom-leg-item"><div class="mom-leg-dot" style="background:${clr(t2)};box-shadow:0 0 6px ${clr(t2)}88"></div>${t2}</div>
+    <div class="mom-leg-item"><div class="mom-leg-dot" style="background:#EF4444;box-shadow:0 0 6px rgba(239,68,68,.6)"></div>Wicket</div>
   `;
-}
-
-function mkEl(tag){return document.createElementNS('http://www.w3.org/2000/svg',tag)}
-function setAttr(el,attrs){Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v))}
-function addStop(grad,offset,color,opacity){
-  const s=mkEl('stop');
-  s.setAttribute('offset',offset);
-  s.setAttribute('stop-color',color);
-  s.setAttribute('stop-opacity',opacity);
-  grad.appendChild(s);
 }
 
 /* ════════════════════════════════════════════════════════
    IDEAL XI
    ════════════════════════════════════════════════════════ */
-async function loadIdealXI(){
-  const t1=$id('team1').value, t2=$id('team2').value;
-  const grid=$id('ideal-xi-grid');
-  grid.innerHTML='<p style="color:var(--t2);font-size:13px;padding:8px">Loading…</p>';
-  const impactRow=$id('ideal-impact-row');
-  impactRow.style.display='none';
+async function loadIdealXI() {
+  const t1 = $id('team1').value, t2 = $id('team2').value;
+  const grid = $id('ideal-xi-grid');
+  grid.innerHTML = '<p style="color:var(--t2);font-size:13px;padding:8px">Loading…</p>';
+  const impactRow = $id('ideal-impact-row');
+  impactRow.style.display = 'none';
 
-  try{
-    const [r1,r2]=await Promise.all([
-      fetch(`/ideal-xi/${encodeURIComponent(t1)}?style=${xiStyle}`).then(r=>r.json()),
-      fetch(`/ideal-xi/${encodeURIComponent(t2)}?style=${xiStyle}`).then(r=>r.json()),
+  // Smooth scroll to this section
+  $id('ideal-xi-view')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    const [r1, r2] = await Promise.all([
+      fetch(`/ideal-xi/${encodeURIComponent(t1)}?style=${xiStyle}`).then(r => r.json()),
+      fetch(`/ideal-xi/${encodeURIComponent(t2)}?style=${xiStyle}`).then(r => r.json()),
     ]);
-    grid.innerHTML='';
-    [r1,r2].forEach((xi,idx)=>{
-      const team=idx===0?t1:t2;
-      const col=document.createElement('div'); col.className='xi-card';
-      col.innerHTML=`<div class="xi-card-head">${team}</div>`+
-        (xi.batting||[]).map((p,i)=>{
-          const role=p.role||'';
-          const tag=
-            role==='Wicketkeeper'?'<span class="xi-role-tag role-wk">WK</span>':
-            p.is_bowler?'<span class="xi-role-tag role-bowl">Bowl</span>':
-            role==='All-rounder'?'<span class="xi-role-tag role-ar">AR</span>':
-            '<span class="xi-role-tag role-bat">Bat</span>';
-          return `<div class="xi-player" style="animation-delay:${i*0.04}s">
-            <span class="xi-num">${i+1}</span>
-            <span class="xi-pos" title="${p.position||''}">${(p.position||'').slice(0,4)}</span>
+    grid.innerHTML = '';
+    [r1, r2].forEach((xi, idx) => {
+      const team = idx === 0 ? t1 : t2;
+      const col  = document.createElement('div');
+      col.className = 'xi-card';
+      col.innerHTML = `<div class="xi-card-head">${team}</div>` +
+        (xi.batting || []).map((p, i) => {
+          const role = p.role || '';
+          const tag  =
+            role === 'Wicketkeeper'  ? '<span class="xi-role-tag role-wk">WK</span>'   :
+            p.is_bowler              ? '<span class="xi-role-tag role-bowl">Bowl</span>' :
+            role === 'All-rounder'   ? '<span class="xi-role-tag role-ar">AR</span>'    :
+                                       '<span class="xi-role-tag role-bat">Bat</span>';
+          return `<div class="xi-player" style="animation-delay:${i * 0.04}s">
+            <span class="xi-num">${i + 1}</span>
+            <span class="xi-pos" title="${p.position || ''}">${(p.position || '').slice(0, 4)}</span>
             <span class="xi-name">${p.name}</span>${tag}
           </div>`;
         }).join('');
       grid.appendChild(col);
     });
 
-    if(r1.impact_player||r2.impact_player){
-      const ip1=r1.impact_player||{}, ip2=r2.impact_player||{};
-      impactRow.innerHTML=`
+    if (r1.impact_player || r2.impact_player) {
+      const ip1 = r1.impact_player || {}, ip2 = r2.impact_player || {};
+      impactRow.innerHTML = `
         <div class="impact-card">
           <div class="impact-badge">Impact Player</div>
           <div class="impact-team">${t1}</div>
-          <div class="impact-name">${ip1.name||'—'}</div>
-          <div class="impact-reason">${ip1.reason||''}</div>
-          <div class="impact-stat">${ip1.stat||''}</div>
-          <div class="impact-bench">${ip1.bench_player?'Replaces: '+ip1.bench_player:'Replaces 1 bench player after innings'}</div>
+          <div class="impact-name">${ip1.name || '—'}</div>
+          <div class="impact-reason">${ip1.reason || ''}</div>
+          <div class="impact-stat">${ip1.stat || ''}</div>
+          <div class="impact-bench">${ip1.bench_player ? 'Replaces: ' + ip1.bench_player : 'Replaces 1 bench player after innings'}</div>
         </div>
         <div class="impact-card">
           <div class="impact-badge">Impact Player</div>
           <div class="impact-team">${t2}</div>
-          <div class="impact-name">${ip2.name||'—'}</div>
-          <div class="impact-reason">${ip2.reason||''}</div>
-          <div class="impact-stat">${ip2.stat||''}</div>
-          <div class="impact-bench">${ip2.bench_player?'Replaces: '+ip2.bench_player:'Replaces 1 bench player after innings'}</div>
-        </div>
-      `;
-      impactRow.style.display='grid';
+          <div class="impact-name">${ip2.name || '—'}</div>
+          <div class="impact-reason">${ip2.reason || ''}</div>
+          <div class="impact-stat">${ip2.stat || ''}</div>
+          <div class="impact-bench">${ip2.bench_player ? 'Replaces: ' + ip2.bench_player : 'Replaces 1 bench player after innings'}</div>
+        </div>`;
+      impactRow.style.display = 'grid';
     }
-  }catch(e){
-    grid.innerHTML=`<p style="color:var(--red)">Error: ${e.message}</p>`;
+  } catch (e) {
+    grid.innerHTML = `<p style="color:var(--red)">Error: ${e.message}</p>`;
   }
 }
 
 /* ════════════════════════════════════════════════════════
    SQUAD MODAL
    ════════════════════════════════════════════════════════ */
-let squadCache={}, sqFilter='all', sqSortCol='bat_runs', sqSortDir=-1;
-function openSquadModal(){$id('squad-modal').style.display='block';document.body.style.overflow='hidden'}
-function closeSquadModal(){$id('squad-modal').style.display='none';document.body.style.overflow=''}
-
-async function loadSquad(){
-  const team=$id('squad-team-sel').value;
-  $id('squad-table-wrap').innerHTML='<p style="text-align:center;padding:24px;color:var(--t2);font-size:13px">Loading…</p>';
-  try{
-    const d=await fetch(`/squad/${encodeURIComponent(team)}`).then(r=>r.json());
-    if(d.error){$id('squad-table-wrap').innerHTML=`<p style="color:var(--red);text-align:center;padding:20px">${d.error}</p>`;return}
-    squadCache[team]=d.squad; renderSquadTable(d.squad);
-  }catch(e){$id('squad-table-wrap').innerHTML='<p style="color:var(--red);text-align:center;padding:20px">Failed</p>'}
+function openSquadModal() {
+  $id('squad-modal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  const team = $id('team1')?.value;
+  if (team) { $id('squad-team-sel').value = team; loadSquad(); }
 }
 
-function filterSquad(f,btn){
-  sqFilter=f;
-  document.querySelectorAll('.sq-filter').forEach(b=>b.classList.remove('active'));
+function closeSquadModal() {
+  $id('squad-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function loadSquad() {
+  const team = $id('squad-team-sel').value;
+  $id('squad-table-wrap').innerHTML = '<p style="text-align:center;padding:24px;color:var(--t2);font-size:13px">Loading…</p>';
+  try {
+    const d = await fetch(`/squad/${encodeURIComponent(team)}`).then(r => r.json());
+    if (d.error) { $id('squad-table-wrap').innerHTML = `<p style="color:var(--red);text-align:center;padding:20px">${d.error}</p>`; return; }
+    squadCache[team] = d.squad;
+    renderSquadTable(d.squad);
+  } catch {
+    $id('squad-table-wrap').innerHTML = '<p style="color:var(--red);text-align:center;padding:20px">Failed to load squad.</p>';
+  }
+}
+
+function filterSquad(f, btn) {
+  sqFilter = f;
+  document.querySelectorAll('.sq-filter').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  const t=$id('squad-team-sel').value;
-  if(squadCache[t]) renderSquadTable(squadCache[t]);
+  const team = $id('squad-team-sel')?.value;
+  if (squadCache[team]) renderSquadTable(squadCache[team]);
 }
 
-function renderSquadTable(players){
-  let f=[...players];
-  if(sqFilter==='bat') f=players.filter(p=>p.bowl_wkts<10&&p.bat_runs>80);
-  else if(sqFilter==='bowl') f=players.filter(p=>p.bowl_wkts>5);
-  else if(sqFilter==='ar') f=players.filter(p=>p.bat_runs>80&&p.bowl_wkts>5);
-  f.sort((a,b)=>(a[sqSortCol]-b[sqSortCol])*sqSortDir);
-  if(!f.length){$id('squad-table-wrap').innerHTML='<p style="text-align:center;padding:16px;color:var(--t2)">No players match</p>';return}
-  const th=(col,label)=>`<th onclick="sortSq('${col}')" style="user-select:none">${label}${sqSortCol===col?sqSortDir>0?' ↑':' ↓':''}</th>`;
-  $id('squad-table-wrap').innerHTML=`<div style="overflow-x:auto"><table class="squad-table">
+function renderSquadTable(players) {
+  let f = [...players];
+  if      (sqFilter === 'bat') f = players.filter(p => p.bowl_wkts < 10 && p.bat_runs > 80);
+  else if (sqFilter === 'bowl') f = players.filter(p => p.bowl_wkts > 5);
+  else if (sqFilter === 'ar')  f = players.filter(p => p.bat_runs > 80 && p.bowl_wkts > 5);
+  f.sort((a, b) => (a[sqSortCol] - b[sqSortCol]) * sqSortDir);
+
+  if (!f.length) {
+    $id('squad-table-wrap').innerHTML = '<p style="text-align:center;padding:16px;color:var(--t2)">No players match</p>';
+    return;
+  }
+
+  const th = (col, label) =>
+    `<th onclick="sortSq('${col}')" style="user-select:none;cursor:pointer">${label}${sqSortCol === col ? (sqSortDir > 0 ? ' ↑' : ' ↓') : ''}</th>`;
+
+  $id('squad-table-wrap').innerHTML = `<div style="overflow-x:auto"><table class="squad-table">
     <thead><tr>
-      ${th('bat_runs','Player')}
-      ${th('bat_runs','Runs')}
-      ${th('bat_sr','SR')}
-      ${th('bat_avg','Avg')}
+      ${th('bat_runs',    'Player')}
+      ${th('bat_runs',    'Runs')}
+      ${th('bat_sr',      'SR')}
+      ${th('bat_avg',     'Avg')}
       ${th('boundary_pct','Bdry%')}
-      ${th('bowl_wkts','Wkts')}
-      ${th('bowl_econ','Econ')}
+      ${th('bowl_wkts',   'Wkts')}
+      ${th('bowl_econ',   'Econ')}
     </tr></thead>
-    <tbody>${f.map((p,i)=>`<tr style="animation-delay:${i*.015}s">
-      <td><div class="player-name">${p.name}</div><div class="player-role">${p.role||''}</div></td>
+    <tbody>${f.map((p, i) => `<tr style="animation-delay:${i * 0.015}s">
+      <td><div class="player-name">${p.name}</div><div class="player-role">${p.role || ''}</div></td>
       <td>${p.bat_runs}</td>
-      <td class="${p.bat_sr>155?'stat-good':p.bat_sr>130?'stat-avg':'stat-bad'}">${p.bat_sr}</td>
+      <td class="${p.bat_sr > 155 ? 'stat-good' : p.bat_sr > 130 ? 'stat-avg' : 'stat-bad'}">${p.bat_sr}</td>
       <td>${p.bat_avg}</td>
       <td>${p.boundary_pct}%</td>
-      <td class="${p.bowl_wkts>50?'stat-good':p.bowl_wkts>15?'stat-avg':'stat-bad'}">${p.bowl_wkts}</td>
-      <td class="${p.bowl_econ>0&&p.bowl_econ<8?'stat-good':p.bowl_econ<10?'stat-avg':p.bowl_econ>0?'stat-bad':''}">${p.bowl_econ>0?p.bowl_econ:'—'}</td>
+      <td class="${p.bowl_wkts > 50 ? 'stat-good' : p.bowl_wkts > 15 ? 'stat-avg' : 'stat-bad'}">${p.bowl_wkts}</td>
+      <td class="${p.bowl_econ > 0 && p.bowl_econ < 8 ? 'stat-good' : p.bowl_econ < 10 ? 'stat-avg' : p.bowl_econ > 0 ? 'stat-bad' : ''}">${p.bowl_econ > 0 ? p.bowl_econ : '—'}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
 
-function sortSq(col){
-  if(sqSortCol===col) sqSortDir*=-1; else{sqSortCol=col;sqSortDir=-1}
-  const t=$id('squad-team-sel').value;
-  if(squadCache[t]) renderSquadTable(squadCache[t]);
+function sortSq(col) {
+  if (sqSortCol === col) sqSortDir *= -1; else { sqSortCol = col; sqSortDir = -1; }
+  const team = $id('squad-team-sel')?.value;
+  if (squadCache[team]) renderSquadTable(squadCache[team]);
 }
 
-function openBuilderFromSquad(){closeSquadModal();showView('builder-view',document.querySelectorAll('.nav-item')[3]);loadBothPools()}
+function openBuilderFromSquad() {
+  closeSquadModal();
+  showView('builder-view', document.querySelectorAll('.nav-item')[3]);
+  loadBothPools();
+}
 
 /* ════════════════════════════════════════════════════════
-   CUSTOM XI BUILDER - T20 rules: 5 bowlers max 4 overs each
+   CUSTOM XI BUILDER
    ════════════════════════════════════════════════════════ */
-let custXI={t1:[],t2:[]}, custSquad={t1:[],t2:[]};
-
-async function loadBothPools(){
-  await Promise.all([loadPool('t1',$id('team1').value),loadPool('t2',$id('team2').value)]);
+async function loadBothPools() {
+  await Promise.all([
+    loadPool('t1', $id('team1').value),
+    loadPool('t2', $id('team2').value),
+  ]);
 }
 
-async function loadPool(side,team){
-  const el=$id(`pool-${side}`);
-  el.innerHTML='<p style="color:var(--t2);font-size:12px;padding:8px">Loading…</p>';
-  try{
-    const d=await fetch(`/squad/${encodeURIComponent(team)}`).then(r=>r.json());
-    if(d.error){el.innerHTML=`<p style="color:var(--red);font-size:12px">${d.error}</p>`;return}
-    custSquad[side]=d.squad; custXI[side]=[]; renderPool(side);
-  }catch(e){el.innerHTML='<p style="color:var(--red);font-size:12px">Failed</p>'}
+async function loadPool(side, team) {
+  const el = $id(`pool-${side}`);
+  el.innerHTML = '<p style="color:var(--t2);font-size:12px;padding:8px">Loading…</p>';
+  try {
+    const d = await fetch(`/squad/${encodeURIComponent(team)}`).then(r => r.json());
+    if (d.error) { el.innerHTML = `<p style="color:var(--red);font-size:12px">${d.error}</p>`; return; }
+    custSquad[side] = d.squad;
+    custXI[side] = [];
+    renderPool(side);
+  } catch {
+    el.innerHTML = '<p style="color:var(--red);font-size:12px">Failed to load</p>';
+  }
 }
 
-function renderPool(side){
-  const el=$id(`pool-${side}`), squad=custSquad[side];
-  if(!squad?.length){el.innerHTML='<p style="color:var(--t2);font-size:12px;padding:8px">No players</p>';return}
-  el.innerHTML=squad.map(p=>{
-    const sel=custXI[side].includes(p.name);
-    const idx=sel?custXI[side].indexOf(p.name)+1:'';
-    const isBowler=p.bowl_wkts>5;
-    const safeName=p.name.replace(/'/g,"\\'");
-    return `<div class="builder-player${sel?' selected':''}" onclick="togglePlayer('${side}','${safeName}')">
+function renderPool(side) {
+  const el    = $id(`pool-${side}`);
+  const squad = custSquad[side];
+  if (!squad?.length) { el.innerHTML = '<p style="color:var(--t2);font-size:12px;padding:8px">No players</p>'; return; }
+  el.innerHTML = squad.map(p => {
+    const sel      = custXI[side].includes(p.name);
+    const idx      = sel ? custXI[side].indexOf(p.name) + 1 : '';
+    const isBowler = p.bowl_wkts > 5;
+    const safeName = p.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return `<div class="builder-player${sel ? ' selected' : ''}" onclick="togglePlayer('${side}','${safeName}')">
       <span style="display:flex;align-items:center">
-        ${sel?`<span class="bp-order">${idx}</span>`:''}
+        ${sel ? `<span class="bp-order">${idx}</span>` : ''}
         ${p.name}
-        ${isBowler?'<span style="font-size:10px;color:var(--t2);margin-left:5px;font-weight:700">·B</span>':''}
+        ${isBowler ? '<span style="font-size:10px;color:var(--t2);margin-left:5px;font-weight:700">·B</span>' : ''}
       </span>
       <span style="display:flex;align-items:center;gap:5px">
         <span class="bp-sr">${p.bat_sr}</span>
-        ${sel?'<span class="bp-check">✓</span>':''}
+        ${sel ? '<span class="bp-check">✓</span>' : ''}
       </span>
     </div>`;
   }).join('');
-  txt(`builder-${side}-count`,`${custXI[side].length} / 11`);
+  txt(`builder-${side}-count`, `${custXI[side].length} / 11`);
 }
 
-function togglePlayer(side,name){
-  const xi=custXI[side], idx=xi.indexOf(name);
-  if(idx===-1){
-    if(xi.length>=11){alert('Already 11 selected - deselect one first');return}
+function togglePlayer(side, name) {
+  const xi  = custXI[side];
+  const idx = xi.indexOf(name);
+  if (idx === -1) {
+    if (xi.length >= 11) { alert('Already 11 selected — deselect one first'); return; }
     xi.push(name);
-  } else xi.splice(idx,1);
+  } else {
+    xi.splice(idx, 1);
+  }
   renderPool(side);
 }
 
-async function loadDefaultXI(num){
-  const side=num===1?'t1':'t2', team=$id(`team${num}`).value;
-  try{
-    const d=await fetch(`/playing11/${encodeURIComponent(team)}`).then(r=>r.json());
-    if(d.error){alert(d.error);return}
-    custXI[side]=(d.playing11||[]).map(p=>typeof p==='object'?p.name||p:p);
-    if(!custSquad[side]?.length) await loadPool(side,team);
+async function loadDefaultXI(num) {
+  const side = num === 1 ? 't1' : 't2';
+  const team = $id(`team${num}`).value;
+  try {
+    const d = await fetch(`/playing11/${encodeURIComponent(team)}`).then(r => r.json());
+    if (d.error) { alert(d.error); return; }
+    custXI[side] = (d.playing11 || []).map(p => typeof p === 'object' ? p.name || p : p);
+    if (!custSquad[side]?.length) await loadPool(side, team);
     else renderPool(side);
-  }catch(e){alert('Failed: '+e.message)}
+  } catch (e) {
+    alert('Failed: ' + e.message);
+  }
 }
 
 /* ════════════════════════════════════════════════════════
    BALL-BY-BALL
    ════════════════════════════════════════════════════════ */
-function renderBBB(cid,innings){
-  const c=$id(cid); c.innerHTML='';
-  if(!innings?.ball_log?.length){
-    c.innerHTML='<p style="color:var(--t2);font-size:13px;padding:10px">No data</p>'; return;
+function renderBBB(cid, innings) {
+  const c = $id(cid);
+  c.innerHTML = '';
+  if (!innings?.ball_log?.length) {
+    c.innerHTML = '<p style="color:var(--t2);font-size:13px;padding:10px">No data</p>';
+    return;
   }
-  let prev=0;
-  innings.ball_log.forEach((b,i)=>{
-    if(b.over!==prev){
-      const sep=document.createElement('div'); sep.className='bbb-over-sep';
-      sep.textContent=`OVER ${b.over}`; c.appendChild(sep); prev=b.over;
+  let prev = 0;
+  innings.ball_log.forEach((b, i) => {
+    if (b.over !== prev) {
+      const sep = document.createElement('div');
+      sep.className = 'bbb-over-sep';
+      sep.textContent = `OVER ${b.over}`;
+      c.appendChild(sep);
+      prev = b.over;
     }
-    const cls=b.wicket?'bW':`b${b.runs}`;
-    const ball=document.createElement('div'); ball.className=`ball ${cls}`;
-    ball.title=`${b.batter} vs ${b.bowler} · ${b.wicket?'OUT':b.runs+' run'+(b.runs!==1?'s':'')} · ${b.score||0}/${b.wkts||0}`;
-    ball.textContent=b.wicket?'W':b.runs;
-    ball.style.animationDelay=Math.min(i*8,600)+'ms';
+    const ball = document.createElement('div');
+    ball.className = `ball ${b.wicket ? 'bW' : 'b' + b.runs}`;
+    ball.title = `${b.batter} vs ${b.bowler} · ${b.wicket ? 'OUT' : b.runs + ' run' + (b.runs !== 1 ? 's' : '')} · ${b.score || 0}/${b.wkts || 0}`;
+    ball.textContent = b.wicket ? 'W' : b.runs;
+    ball.style.animationDelay = Math.min(i * 8, 600) + 'ms';
     c.appendChild(ball);
   });
 }
 
-/* ── Distribution ─────────────────────────────────────── */
-function renderDist(dist,total){
-  const c=$id('dist-chart'); c.innerHTML='';
-  const keys=['0','1','2','3','4','6','W'];
-  const maxP=Math.max(...keys.map(k=>dist[k]||0));
-  keys.forEach((k,i)=>{
-    const p=dist[k]||0, h=maxP>0?(p/maxP*100):0;
-    const col=document.createElement('div'); col.className='dist-col';
-    col.innerHTML=`
-      <div class="dist-pct">${(p*100).toFixed(1)}%</div>
-      <div class="dist-bar" title="${OL[k]}: ${(p*100).toFixed(2)}%"
-           style="height:${Math.max(h,2)}%;background:${OC[k]}55;border:1px solid ${OC[k]};animation-delay:${i*0.06}s"></div>
-      <div class="dist-key" style="color:${OC[k]}">${k==='W'?'W':k}</div>
-    `;
+/* ── Ball distribution ────────────────────────────────────── */
+function renderDist(dist, total) {
+  const c = $id('dist-chart');
+  if (!c) return;
+  if (!dist || typeof dist !== 'object') {
+    c.innerHTML = '<p style="color:var(--t2);font-size:13px;padding:10px">No distribution data</p>';
+    return;
+  }
+  c.innerHTML = '';
+  const keys  = ['0', '1', '2', '3', '4', '6', 'W'];
+  const maxP  = Math.max(...keys.map(k => dist[k] || 0));
+  keys.forEach((k, i) => {
+    const p = dist[k] || 0;
+    const h = maxP > 0 ? (p / maxP * 100) : 0;
+    const col = document.createElement('div');
+    col.className = 'dist-col';
+    col.innerHTML = `
+      <div class="dist-pct">${(p * 100).toFixed(1)}%</div>
+      <div class="dist-bar" title="${OL[k]}: ${(p * 100).toFixed(2)}%"
+           style="height:${Math.max(h, 2)}%;background:${OC[k]}55;border:1px solid ${OC[k]};animation-delay:${i * 0.06}s"></div>
+      <div class="dist-key" style="color:${OC[k]}">${k === 'W' ? 'W' : k}</div>`;
     c.appendChild(col);
   });
-  const tags=$id('dist-tags'); tags.innerHTML='';
-  Object.entries(OL).forEach(([k,label])=>{
-    const p=dist[k]||0;
-    const tag=document.createElement('div'); tag.className='dist-tag';
-    tag.style.cssText=`border-color:${OC[k]}55;color:${OC[k]};background:${OC[k]}0d`;
-    tag.title=`${Math.round(p*(total||0)).toLocaleString()} deliveries`;
-    tag.textContent=`${label}: ${(p*100).toFixed(1)}%`;
+
+  const tags = $id('dist-tags');
+  tags.innerHTML = '';
+  Object.entries(OL).forEach(([k, label]) => {
+    const p = dist[k] || 0;
+    const tag = document.createElement('div');
+    tag.className = 'dist-tag';
+    tag.style.cssText = `border-color:${OC[k]}55;color:${OC[k]};background:${OC[k]}0d`;
+    tag.title = `${Math.round(p * (total || 0)).toLocaleString()} deliveries`;
+    tag.textContent = `${label}: ${(p * 100).toFixed(1)}%`;
     tags.appendChild(tag);
   });
 }
 
-/* ── Playing XI ───────────────────────────────────────── */
-function renderXI(xi,t1,t2){
-  const grid=$id('xi-grid'); grid.innerHTML='';
-  [t1,t2].forEach(team=>{
-    const players=xi[team]||[];
-    const col=document.createElement('div'); col.className='xi-card';
-    col.innerHTML=`<div class="xi-card-head">${team}</div>`+
-      players.map((p,i)=>`<div class="xi-player" style="animation-delay:${i*0.03}s">
-        <span class="xi-num">${i+1}</span>
-        <span class="xi-name">${typeof p==='object'?p.name||p:p}</span>
+/* ── Playing XI ───────────────────────────────────────────── */
+function renderXI(xi, t1, t2) {
+  const grid = $id('xi-grid');
+  grid.innerHTML = '';
+  [t1, t2].forEach(team => {
+    const players = xi[team] || [];
+    const col = document.createElement('div');
+    col.className = 'xi-card';
+    col.innerHTML = `<div class="xi-card-head">${team}</div>` +
+      players.map((p, i) => `<div class="xi-player" style="animation-delay:${i * 0.03}s">
+        <span class="xi-num">${i + 1}</span>
+        <span class="xi-name">${typeof p === 'object' ? p.name || p : p}</span>
       </div>`).join('');
     grid.appendChild(col);
   });
 }
 
-/* ── Scorecard ────────────────────────────────────────── */
-function renderScorecard(match,t1,t2){
-  const wrap=$id('scorecard-content');
-  if(!match){wrap.innerHTML='<p style="color:var(--t2)">No data</p>';return}
-  let html='';
-  [match.innings1,match.innings2].forEach((inn,idx)=>{
-    if(!inn) return;
-    const c=idx===0?clr(t1):clr(t2);
-    html+=`<div style="margin-bottom:22px">
+/* ── Scorecard ────────────────────────────────────────────── */
+function renderScorecard(match, t1, t2) {
+  const wrap = $id('scorecard-content');
+  if (!match || (!match.innings1 && !match.innings2)) {
+    wrap.innerHTML = '<p style="color:var(--t2);padding:12px">No scorecard data</p>'; return;
+  }
+  let html = '';
+  [match.innings1, match.innings2].forEach((inn, idx) => {
+    if (!inn) return;
+    const teamName = inn.team || (idx === 0 ? t1 : t2);
+    const c = idx === 0 ? clr(t1) : clr(t2);
+    // Backend may return either score or total for the runs
+    const runs = inn.score ?? inn.total ?? '?';
+    const wkts = inn.wickets ?? '?';
+    html += `<div style="margin-bottom:22px">
       <div style="font-size:12px;font-weight:700;color:${c};margin:10px 0 8px;padding:7px 12px;
                   background:${c}14;border-radius:7px;border-left:2px solid ${c}">
-        ${inn.team||''} - ${inn.score||'?'}/${inn.wickets||'?'}
+        ${teamName} — ${runs}/${wkts}
       </div>
-      <table class="squad-table"><thead><tr><th>Batter</th><th>R</th><th>B</th><th>SR</th></tr></thead><tbody>`;
-    (inn.scorecard?.batting||[]).forEach(r=>{
-      html+=`<tr><td><div class="player-name">${r.batter}</div></td><td>${r.runs}</td><td>${r.balls}</td>
-             <td class="${r.sr>150?'stat-good':r.sr>120?'stat-avg':'stat-bad'}">${r.sr}</td></tr>`;
+      <table class="squad-table">
+        <thead><tr><th>Batter</th><th>R</th><th>B</th><th>SR</th></tr></thead>
+        <tbody>`;
+    (inn.scorecard?.batting || []).forEach(r => {
+      const srCls = r.sr > 150 ? 'stat-good' : r.sr > 120 ? 'stat-avg' : 'stat-bad';
+      html += `<tr>
+        <td><div class="player-name">${r.batter || '—'}</div></td>
+        <td>${r.runs ?? 0}</td><td>${r.balls ?? 0}</td>
+        <td class="${srCls}">${r.sr ?? 0}</td>
+      </tr>`;
     });
-    html+=`</tbody></table>
+    html += `</tbody></table>
     <table class="squad-table" style="margin-top:6px">
-      <thead><tr><th>Bowler</th><th>W</th><th>R</th><th>Balls</th><th>Econ</th></tr></thead><tbody>`;
-    (inn.scorecard?.bowling||[]).forEach(r=>{
-      html+=`<tr><td><div class="player-name">${r.bowler}</div></td><td>${r.wickets}</td><td>${r.runs}</td><td>${r.balls}</td>
-             <td class="${r.econ<8?'stat-good':r.econ<10?'stat-avg':'stat-bad'}">${r.econ}</td></tr>`;
+      <thead><tr><th>Bowler</th><th>W</th><th>R</th><th>Balls</th><th>Econ</th></tr></thead>
+      <tbody>`;
+    (inn.scorecard?.bowling || []).forEach(r => {
+      const econCls = r.econ < 8 ? 'stat-good' : r.econ < 10 ? 'stat-avg' : 'stat-bad';
+      html += `<tr>
+        <td><div class="player-name">${r.bowler || '—'}</div></td>
+        <td>${r.wickets ?? 0}</td><td>${r.runs ?? 0}</td><td>${r.balls ?? 0}</td>
+        <td class="${econCls}">${r.econ ?? 0}</td>
+      </tr>`;
     });
-    html+='</tbody></table></div>';
+    html += '</tbody></table></div>';
   });
-  wrap.innerHTML=html;
+  wrap.innerHTML = html || '<p style="color:var(--t2);padding:12px">No scorecard data</p>';
 }
 
-/* Close squad modal on backdrop click */
-$id('squad-modal').addEventListener('click',function(e){
-  if(e.target===this) closeSquadModal();
+/* ── Keyboard shortcut ────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !$id('predict-btn')?.disabled) runPredict();
+});
+
+/* ── Squad modal backdrop ─────────────────────────────────── */
+$id('squad-modal').addEventListener('click', function (e) {
+  if (e.target === this) closeSquadModal();
+});
+
+/* ── Init ─────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  updateColors();
+  onTossToggle();
+  renderHistory();
+  $id('team1')?.addEventListener('change', updateColors);
+  $id('team2')?.addEventListener('change', updateColors);
 });
 </script>
 </body>
