@@ -1,0 +1,68 @@
+{
+  "match_model": {
+    "features": [
+      "team1_sr",
+      "team2_sr",
+      "team1_econ",
+      "team2_econ",
+      "team1_bat_avg",
+      "team2_bat_avg",
+      "team1_bowl_avg",
+      "team2_bowl_avg",
+      "team1_is_home",
+      "team2_is_home",
+      "toss_winner_is_team1",
+      "toss_decision_bat",
+      "team1_h2h_win_pct",
+      "team1_last5_wins",
+      "team2_last5_wins",
+      "team1_venue_winrate",
+      "team2_venue_winrate",
+      "team1_chase_winrate",
+      "team2_chase_winrate",
+      "team1_death_econ",
+      "team2_death_econ"
+    ],
+    "accuracy": 0.5379,
+    "roc_auc": 0.5094,
+    "log_loss": 0.6885,
+    "brier_score": 0.2477
+  },
+  "ball_model": {
+    "features": [
+      "batter_cum_runs",
+      "batter_cum_balls",
+      "batter_roll_sr",
+      "striker_sr_vs_pace",
+      "striker_sr_vs_spin",
+      "dot_ball_pressure",
+      "bowler_cum_balls",
+      "bowler_cum_wkts",
+      "bowler_roll_econ",
+      "bowler_roll_wktr",
+      "bowler_economy_this_phase",
+      "batter_vs_bowler_matchup_sr",
+      "innings",
+      "over",
+      "ball_in_over",
+      "phase_pp",
+      "phase_mid",
+      "phase_death",
+      "wickets_in_hand",
+      "runs_in_innings",
+      "balls_remaining",
+      "required_run_rate"
+    ],
+    "classes": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      6
+    ],
+    "accuracy": 0.457,
+    "log_loss": 1.2464,
+    "roc_auc": 0.663
+  }
+}
