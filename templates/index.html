@@ -27,7 +27,7 @@
     <button class="nav-item active" onclick="showView('predict-view',this)">Predict</button>
     <button class="nav-item" onclick="showView('simulate-view',this)">Simulate</button>
     <button class="nav-item" onclick="showView('ideal-xi-view',this); setTimeout(()=>$id('ideal-xi-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60)">Ideal XI</button>
-    <button class="nav-item" onclick="showView('builder-view',this); setTimeout(()=>$id('builder-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60)">Build XI</button>
+    <button class="nav-item" onclick="showView('builder-view',this); setTimeout(()=>$id('builder-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60); loadBothPools()">Build XI</button>
   </nav>
 
   <div class="nav-right">
@@ -1616,9 +1616,18 @@ function openBuilderFromSquad() {
    CUSTOM XI BUILDER
    ════════════════════════════════════════════════════════ */
 async function loadBothPools() {
+  const t1 = $id('team1').value;
+  const t2 = $id('team2').value;
+
+  // Update headers and reset button labels
+  txt('builder-t1-head', t1);
+  txt('builder-t2-head', t2);
+  txt('reset-t1-lbl', t1.split(' ').pop());
+  txt('reset-t2-lbl', t2.split(' ').pop());
+
   await Promise.all([
-    loadPool('t1', $id('team1').value),
-    loadPool('t2', $id('team2').value),
+    loadPool('t1', t1),
+    loadPool('t2', t2),
   ]);
 }
 
@@ -1832,6 +1841,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderHistory();
   $id('team1')?.addEventListener('change', updateColors);
   $id('team2')?.addEventListener('change', updateColors);
+
+  $id('team1')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); });
+  $id('team2')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); });
 });
 </script>
 </body>

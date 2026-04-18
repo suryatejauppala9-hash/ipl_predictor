@@ -115,6 +115,20 @@ if "season" not in matches_df.columns:
 team_stats = pd.read_csv("team_stats.csv", index_col=0)
 h2h_df     = pd.read_csv("h2h_stats.csv")
 player_df  = pd.read_csv("player_stats.csv")
+
+# Filter to 2026 squad players only
+import ipl_squads as _squads
+
+_squad_team_map = {
+    name: team
+    for team, players in _squads.SQUADS.items()
+    for name, *_ in players
+}
+_squad_names = set(_squad_team_map.keys())
+
+# Keep only 2026 squad members, fix their team assignment
+player_df = player_df[player_df["player"].isin(_squad_names)].copy()
+player_df["team"] = player_df["player"].map(_squad_team_map)
 matchup_df = pd.read_csv("matchup_stats.csv")
 print(f"  → {len(player_df)} players | {len(matchup_df)} matchup records")
 
