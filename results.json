@@ -21,12 +21,21 @@
       "team1_chase_winrate",
       "team2_chase_winrate",
       "team1_death_econ",
-      "team2_death_econ"
+      "team2_death_econ",
+      "sr_diff",
+      "econ_diff",
+      "form_diff",
+      "team1_encoded",
+      "team2_encoded",
+      "team1_matchup_strength",
+      "team2_matchup_strength",
+      "team1_depth",
+      "team2_depth"
     ],
-    "accuracy": 0.5379,
-    "roc_auc": 0.5094,
-    "log_loss": 0.6885,
-    "brier_score": 0.2477
+    "accuracy": 0.6621,
+    "roc_auc": 0.7428,
+    "log_loss": 0.5911,
+    "brier_score": 0.2056
   },
   "ball_model": {
     "features": [
@@ -51,7 +60,10 @@
       "wickets_in_hand",
       "runs_in_innings",
       "balls_remaining",
-      "required_run_rate"
+      "required_run_rate",
+      "last12_runs",
+      "last12_wickets",
+      "pressure_index"
     ],
     "classes": [
       0,
@@ -61,8 +73,8 @@
       4,
       6
     ],
-    "accuracy": 0.457,
-    "log_loss": 1.2464,
-    "roc_auc": 0.663
+    "accuracy": 0.4574,
+    "log_loss": 1.2469,
+    "roc_auc": 0.6613
   }
 }
