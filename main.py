@@ -70,6 +70,11 @@ MATCH_FEATURES = [
     "team1_phase_mid_rr", "team2_phase_mid_rr",
     "team1_phase_death_rr", "team2_phase_death_rr",
     "team1_death_econ", "team2_death_econ",
+    # upgrade features
+    "sr_diff", "econ_diff", "form_diff",
+    "team1_encoded", "team2_encoded",
+    "team1_matchup_strength", "team2_matchup_strength",
+    "team1_depth", "team2_depth",
 ]
 
 BALL_FEATURES = [
@@ -86,6 +91,8 @@ BALL_FEATURES = [
     "runs_in_innings",
     "balls_remaining",
     "required_run_rate",
+    # upgrade features
+    "last12_runs", "last12_wickets", "pressure_index",
 ]
 
 TRAIN_SEASONS_END = 2022
@@ -171,6 +178,22 @@ for _, row in player_df.iterrows():
 matchup_lookup: dict[tuple[str, str], dict] = {}
 for _, row in matchup_df.iterrows():
     matchup_lookup[(str(row["batter"]), str(row["bowler"]))] = row.to_dict()
+
+# ── Load team label encoder ───────────────────────────────────────────────────
+try:
+    _team_label_enc = joblib.load("team_encoder.joblib")
+    print("  → team_encoder.joblib loaded")
+except FileNotFoundError:
+    _team_label_enc = None
+    print("  ! team_encoder.joblib missing — encoding defaults to 0")
+
+def _team_enc(name: str) -> int:
+    if _team_label_enc is None:
+        return 0
+    try:
+        return int(_team_label_enc.transform([name])[0])
+    except Exception:
+        return 0
 
 # ── Load or train models ───────────────────────────────────────────────────────
 
@@ -320,7 +343,9 @@ def _model_dist(bat_sr: float, bat_runs: float, bat_balls: float,
                 innings: int, over: int, ball_in_over: int,
                 phase: str,
                 wickets_in_hand: int, runs_in_innings: int,
-                balls_remaining: int, req_rr: float) -> dict[int, float]:
+                balls_remaining: int, req_rr: float,
+                last12_runs: float = 0.0, last12_wickets: float = 0.0,
+                pressure_index: float = 1.0) -> dict[int, float]:
     # ── Cache key (coarse-grained to maximise hit rate) ───────────────────────
     cache_key = (
         innings, over, ball_in_over, phase, wickets_in_hand,
@@ -354,6 +379,9 @@ def _model_dist(bat_sr: float, bat_runs: float, bat_balls: float,
         "runs_in_innings":   runs_in_innings,
         "balls_remaining":   balls_remaining,
         "required_run_rate": req_rr,
+        "last12_runs":       last12_runs,
+        "last12_wickets":    last12_wickets,
+        "pressure_index":    pressure_index,
     }
     # Build numpy array directly — avoids per-ball DataFrame overhead
     avail = {f: row_dict.get(f, 0.0) for f in _ball_features_used}
@@ -373,10 +401,41 @@ def _dismiss_prob(batter: str, bowler: str, phase: str) -> float:
     elif phase == "powerplay": wr *= 1.08
     return float(np.clip(wr, 0.01, 0.22))
 
+
+def _team_matchup_strength(team: str, opponent: str) -> float:
+    """Mean matchup SR for team's batters vs opponent's bowlers."""
+    batters  = team_roster.get(team, [])
+    bowlers  = team_roster.get(opponent, [])
+    srs = []
+    for batter in batters:
+        for bowler in bowlers:
+            m = matchup_lookup.get((batter, bowler))
+            if m and _safe_float(m.get("m_balls"), 0) >= 6:
+                sr = _safe_float(m.get("m_sr"), 0)
+                if sr > 0:
+                    srs.append(sr)
+    return float(np.mean(srs)) if srs else 130.0
+
+
+def _batting_depth(team: str) -> float:
+    """Mean bat SR of players in positions 5–8 (0-based indices 4–7)."""
+    roster = team_roster.get(team, [])
+    if not roster:
+        return 130.0
+    sorted_players = sorted(roster,
+                            key=lambda n: _safe_float(player_lookup.get(n, {}).get("bat_avg"), 0),
+                            reverse=True)
+    depth_players = sorted_players[4:8]
+    if not depth_players:
+        return 130.0
+    srs = [_safe_float(player_lookup.get(n, {}).get("bat_sr"), 130.0) for n in depth_players]
+    return float(np.mean(srs))
+
 # ── Innings simulation ────────────────────────────────────────────────────────
 
 def _simulate_innings(batting_order: list[str], bowling_order: list[str],
                       innings: int = 1, target: int | None = None) -> dict[str, Any]:
+    from collections import deque
     total_runs = total_wkts = 0
     ball_log: list[dict]      = []
     over_snapshots: list[dict] = []
@@ -395,6 +454,9 @@ def _simulate_innings(batting_order: list[str], bowling_order: list[str],
     # Phase-specific bowl runs/balls
     bw_phase_runs: defaultdict[tuple, int]  = defaultdict(int)
     bw_phase_balls:defaultdict[tuple, int]  = defaultdict(int)
+
+    # Rolling last-12-ball window: (runs, is_wicket)
+    last12_deque: deque = deque(maxlen=12)
 
     last_ball = 0
     last_dist: dict | None = None
@@ -434,6 +496,12 @@ def _simulate_innings(batting_order: list[str], bowling_order: list[str],
             balls_left = max(120 - ball_num, 1)
             req_rr = max(0.0, (target - total_runs) / (balls_left / 6))
 
+        # ── Compute last12 / pressure for model ────────────────────────────
+        current_rr = total_runs / max(ball_num / 6, 0.01) if ball_num > 0 else 0.0
+        l12_runs   = sum(r for r, _ in last12_deque)
+        l12_wkts   = sum(1 for _, w in last12_deque if w)
+        p_index    = (req_rr / max(current_rr, 0.5)) if innings == 2 and current_rr > 0 else 1.0
+
         # ── Ball outcome distribution ──────────────────────────────────────
         if ball_model is not None and _ball_features_used and (ball_num % 2 == 0 or last_dist is None):
             last_dist = _model_dist(
@@ -454,10 +522,41 @@ def _simulate_innings(batting_order: list[str], bowling_order: list[str],
                 runs_in_innings=total_runs,
                 balls_remaining=120 - ball_num,
                 req_rr=req_rr,
+                last12_runs=l12_runs, last12_wickets=l12_wkts,
+                pressure_index=p_index,
             )
         dist = last_dist if last_dist is not None else _heuristic_dist(bs, be, phase, b_in_over)
 
         full_dist = {k: dist.get(k, 0.0) for k in BALL_OUTCOMES}
+        s = sum(full_dist.values())
+        if s > 0:
+            full_dist = {k: v / s for k, v in full_dist.items()}
+
+        # ── 2A: Pressure + momentum behaviour modifiers ────────────────────
+        # 1. Pressure modifier (2nd innings chase)
+        if innings == 2 and req_rr > 10:
+            full_dist[4] = full_dist.get(4, 0) * 1.25
+            full_dist[6] = full_dist.get(6, 0) * 1.30
+            full_dist[0] = full_dist.get(0, 0) * 0.85
+
+        # 2. Wickets-in-hand conservatism
+        if (10 - total_wkts) <= 3:
+            full_dist[6] = full_dist.get(6, 0) * 0.70
+            full_dist[4] = full_dist.get(4, 0) * 0.80
+            full_dist[0] = full_dist.get(0, 0) * 1.15
+
+        # 3. Death over boundary boost
+        if over_num >= 15:
+            full_dist[4] = full_dist.get(4, 0) * 1.15
+            full_dist[6] = full_dist.get(6, 0) * 1.20
+
+        # 4. Momentum (last 12 balls)
+        last12_run_sum = sum(r for r, _ in last12_deque) if last12_deque else 0
+        if last12_run_sum > 20:
+            full_dist[4] = full_dist.get(4, 0) * 1.12
+            full_dist[6] = full_dist.get(6, 0) * 1.15
+
+        # Renormalise after all modifiers
         s = sum(full_dist.values())
         if s > 0:
             full_dist = {k: v / s for k, v in full_dist.items()}
@@ -479,6 +578,7 @@ def _simulate_innings(batting_order: list[str], bowling_order: list[str],
             bw_phase_balls[phase_key] += 1
             b_dots[on_strike] = 0   # reset dot streak on dismissal
             on_strike = batting_order[bat_idx % len(batting_order)]; bat_idx += 1
+            last12_deque.append((0, True))
         else:
             keys  = list(full_dist.keys())
             probs = [full_dist[k] for k in keys]
@@ -495,6 +595,8 @@ def _simulate_innings(batting_order: list[str], bowling_order: list[str],
                 b_dots[on_strike] += 1
             else:
                 b_dots[on_strike] = 0
+
+            last12_deque.append((runs, False))
 
             ball_log.append({
                 "over": over_num + 1, "ball": b_in_over + 1,
@@ -798,6 +900,15 @@ def _run_sim(bat1: list[str], bowl1: list[str], bat2: list[str], bowl2: list[str
     dist     = {k: round(v / max(total_ev, 1), 5) for k, v in tallies.items()}
     a1, a2   = np.array(t1s), np.array(t2s)
 
+    # ── 2B: Simulation insights ───────────────────────────────────────────────
+    margin_arr   = a1 - a2
+    close_matches = int(np.sum(np.abs(margin_arr) <= 15))
+    close_match_pct = round(close_matches / n * 100, 1)
+
+    # ── 2C: Confidence level ──────────────────────────────────────────────────
+    gap = abs(t1w / n - 0.5) * 2
+    confidence_level = "High" if gap > 0.30 else ("Medium" if gap > 0.15 else "Low")
+
     return {
         "n_matches"                : n,
         "team1"                    : t1,
@@ -817,7 +928,81 @@ def _run_sim(bat1: list[str], bowl1: list[str], bat2: list[str], bowl2: list[str
         "outcome_raw_counts"       : tallies,
         "total_balls_simulated"    : total_balls,
         "representative_match"     : representative,
+        "confidence_level"         : confidence_level,
+        "simulation_insights"      : {
+            "avg_score_t1":     round(float(a1.mean()), 1),
+            "avg_score_t2":     round(float(a2.mean()), 1),
+            "winning_range_t1": [int(np.percentile(a1, 25)), int(np.percentile(a1, 75))],
+            "winning_range_t2": [int(np.percentile(a2, 25)), int(np.percentile(a2, 75))],
+            "close_match_pct":  close_match_pct,
+        },
     }
+
+def _build_explanation(t1: str, t2: str, t1_stats: dict, t2_stats: dict) -> list[dict]:
+    """Build ordered list of factors that explain the prediction result."""
+    factors = []
+    sr_diff = t1_stats["sr"] - t2_stats["sr"]
+    if abs(sr_diff) > 2:
+        factors.append({
+            "label":    f"{'Stronger' if sr_diff > 0 else 'Weaker'} batting SR",
+            "team":     t1 if sr_diff > 0 else t2,
+            "impact":   round(min(abs(sr_diff) * 0.4, 8), 1),
+            "positive": sr_diff > 0,
+        })
+    econ_diff = t2_stats["econ"] - t1_stats["econ"]
+    if abs(econ_diff) > 0.3:
+        factors.append({
+            "label":    "Better bowling economy",
+            "team":     t1 if econ_diff > 0 else t2,
+            "impact":   round(min(abs(econ_diff) * 2, 6), 1),
+            "positive": econ_diff > 0,
+        })
+    h2h_edge = t1_stats["h2h"] - 50
+    if abs(h2h_edge) > 5:
+        factors.append({
+            "label":    "H2H head-to-head record",
+            "team":     t1 if h2h_edge > 0 else t2,
+            "impact":   round(min(abs(h2h_edge) * 0.15, 5), 1),
+            "positive": h2h_edge > 0,
+        })
+    return factors[:4]
+
+
+def _get_key_matchups(batters_t1: list, bowlers_t2: list,
+                      batters_t2: list, bowlers_t1: list, n: int = 3) -> list[dict]:
+    """Top N most decisive batter-vs-bowler matchups across both teams."""
+    results = []
+    for batter in batters_t1[:6]:
+        for bowler in bowlers_t2[:3]:
+            m = matchup_lookup.get((batter, bowler))
+            if m and _safe_float(m.get("m_balls"), 0) >= 6:
+                sr    = _safe_float(m.get("m_sr"), 100)
+                balls = int(_safe_float(m.get("m_balls"), 0))
+                results.append({
+                    "batter":     batter,
+                    "bowler":     bowler,
+                    "sr":         round(sr, 1),
+                    "balls":      balls,
+                    "dismissals": int(balls * _safe_float(m.get("m_dismiss_prob"), 0)),
+                    "advantage":  ("batter" if sr > 130 else ("bowler" if sr < 100 else "neutral")),
+                })
+    for batter in batters_t2[:6]:
+        for bowler in bowlers_t1[:3]:
+            m = matchup_lookup.get((batter, bowler))
+            if m and _safe_float(m.get("m_balls"), 0) >= 6:
+                sr    = _safe_float(m.get("m_sr"), 100)
+                balls = int(_safe_float(m.get("m_balls"), 0))
+                results.append({
+                    "batter":     batter,
+                    "bowler":     bowler,
+                    "sr":         round(sr, 1),
+                    "balls":      balls,
+                    "dismissals": int(balls * _safe_float(m.get("m_dismiss_prob"), 0)),
+                    "advantage":  ("batter" if sr > 130 else ("bowler" if sr < 100 else "neutral")),
+                })
+    results.sort(key=lambda x: abs(x["sr"] - 115), reverse=True)
+    return results[: n * 2]
+
 
 # ── Prediction helper ─────────────────────────────────────────────────────────
 
@@ -856,6 +1041,16 @@ def _make_feature_row(t1: str, t2: str, t1h: int, t2h: int, t1_h2h: float,
         "team2_phase_death_rr":   ts(t2, "phase_death_rr") or 10.5,
         "team1_death_econ":       ts(t1, "death_econ") or 9.5,
         "team2_death_econ":       ts(t2, "death_econ") or 9.5,
+        # Upgrade features
+        "sr_diff":                ts(t1, "sr") - ts(t2, "sr"),
+        "econ_diff":              ts(t2, "econ") - ts(t1, "econ"),
+        "form_diff":              (ts(t1, "last5_wins") or 0.5) - (ts(t2, "last5_wins") or 0.5),
+        "team1_encoded":          _team_enc(t1),
+        "team2_encoded":          _team_enc(t2),
+        "team1_matchup_strength": _team_matchup_strength(t1, t2),
+        "team2_matchup_strength": _team_matchup_strength(t2, t1),
+        "team1_depth":            _batting_depth(t1),
+        "team2_depth":            _batting_depth(t2),
     }
 
 
@@ -953,6 +1148,21 @@ async def _predict_impl(data: MatchRequest):
         win_p  = avg_t1_prob if winner == t1 else (100 - avg_t1_prob)
         probs  = [1 - avg_t1_prob / 100, avg_t1_prob / 100]
 
+    t1_stats_dict = {
+        "sr":      round(ts(t1, "sr"), 1),
+        "bat_avg": round(ts(t1, "bat_avg"), 1),
+        "econ":    round(ts(t1, "econ"), 1),
+        "bowl_avg":round(ts(t1, "bowl_avg") or 28.0, 1),
+        "h2h":     round(t1_h2h * 100, 1),
+    }
+    t2_stats_dict = {
+        "sr":      round(ts(t2, "sr"), 1),
+        "bat_avg": round(ts(t2, "bat_avg"), 1),
+        "econ":    round(ts(t2, "econ"), 1),
+        "bowl_avg":round(ts(t2, "bowl_avg") or 28.0, 1),
+        "h2h":     round((1 - t1_h2h) * 100, 1),
+    }
+
     return {
         "winner"         : winner,
         "probability"    : round(win_p, 1),
@@ -960,20 +1170,9 @@ async def _predict_impl(data: MatchRequest):
         "toss_known"     : data.toss_known,
         "toss_scenarios" : toss_scenarios,
         "impact_players" : {t1: _get_impact_player(t1), t2: _get_impact_player(t2)},
-        "team1_stats"    : {
-            "sr":      round(ts(t1, "sr"), 1),
-            "bat_avg": round(ts(t1, "bat_avg"), 1),
-            "econ":    round(ts(t1, "econ"), 1),
-            "bowl_avg":round(ts(t1, "bowl_avg") or 28.0, 1),
-            "h2h":     round(t1_h2h * 100, 1),
-        },
-        "team2_stats"    : {
-            "sr":      round(ts(t2, "sr"), 1),
-            "bat_avg": round(ts(t2, "bat_avg"), 1),
-            "econ":    round(ts(t2, "econ"), 1),
-            "bowl_avg":round(ts(t2, "bowl_avg") or 28.0, 1),
-            "h2h":     round((1 - t1_h2h) * 100, 1),
-        },
+        "team1_stats"    : t1_stats_dict,
+        "team2_stats"    : t2_stats_dict,
+        "explanation"    : _build_explanation(t1, t2, t1_stats_dict, t2_stats_dict),
     }
 
 
@@ -1019,6 +1218,7 @@ async def simulate(data: SimulateRequest):
     result["playing11"]     = {t1: bat1, t2: bat2}
     result["impact_players"] = {t1: _get_impact_player(t1), t2: _get_impact_player(t2)}
     result["ideal_xi"]      = {t1: _ideal_xi(t1, data.style1), t2: _ideal_xi(t2, data.style2)}
+    result["key_matchups"]  = _get_key_matchups(bat1, bowl2, bat2, bowl1)
     return result
 
 

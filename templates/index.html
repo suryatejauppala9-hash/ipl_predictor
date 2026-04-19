@@ -5,22 +5,67 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>CricIQ — IPL Match Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+
+<nav class="mobile-nav" id="mobile-nav">
+  <button class="mob-nav-btn active" id="mob-btn-predict" onclick="showView('predict-view',null); setMobActive(this)">
+    <div class="mob-nav-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M7 10h6M10 7l3 3-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    Predict
+  </button>
+  <button class="mob-nav-btn" id="mob-btn-simulate" onclick="showView('simulate-view',null); setMobActive(this); setTimeout(()=>$id('simulate-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60)">
+    <div class="mob-nav-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="3" y="11" width="3.5" height="7" rx="1.5" fill="currentColor" opacity=".5"/>
+        <rect x="8.25" y="7" width="3.5" height="11" rx="1.5" fill="currentColor" opacity=".75"/>
+        <rect x="13.5" y="2" width="3.5" height="16" rx="1.5" fill="currentColor"/>
+      </svg>
+    </div>
+    Simulate
+  </button>
+  <button class="mob-nav-btn" id="mob-btn-idealxi" onclick="showView('ideal-xi-view',null); setMobActive(this); setTimeout(()=>$id('ideal-xi-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60)">
+    <div class="mob-nav-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="6.5" r="3" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M14 11l1.5 1.5L17 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    Ideal XI
+  </button>
+  <button class="mob-nav-btn" id="mob-btn-builder" onclick="showView('builder-view',null); setMobActive(this); setTimeout(()=>$id('builder-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60); loadBothPools()">
+    <div class="mob-nav-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="2" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.6"/>
+        <rect x="11" y="2" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.6"/>
+        <rect x="2" y="11" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M14.5 11v6M11.5 14h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    </div>
+    Build XI
+  </button>
+</nav>
 
 <!-- ── TOP BAR ────────────────────────────────────────────── -->
 <header class="topbar">
   <a class="brand" href="#">
     <div class="brand-mark">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M4 8 Q8 4 12 8 Q8 12 4 8Z" fill="currentColor" opacity="0.7"/>
+        <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M2 8 Q5 5.5 8 8 Q11 10.5 14 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+        <path d="M2 8 Q5 10.5 8 8 Q11 5.5 14 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
     <span class="brand-name">CricIQ</span>
-    <span class="brand-tag">ANALYTICS</span>
+    <span class="brand-tag">IPL 2025</span>
   </a>
 
   <nav class="main-nav">
@@ -35,6 +80,15 @@
       <span class="model-dot"></span>
       <span>XGBoost · ~73% acc.</span>
     </div>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" aria-label="Toggle theme">
+      <svg class="icon-moon" width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <path d="M7.5 1.5C4.2 1.5 1.5 4.2 1.5 7.5s2.7 6 6 6c2.2 0 4.1-1.2 5.2-3-.4.1-.8.1-1.2.1-3.3 0-6-2.7-6-6 0-1.2.4-2.4 1-3.3-.3 0-.6-.1-1-.1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      <svg class="icon-sun" width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <circle cx="7.5" cy="7.5" r="3" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M3.1 3.1l1 1M10.9 10.9l1 1M10.9 3.1l-1 1M3.1 10.9l1-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
     <button class="nav-squads-btn" onclick="openSquadModal()">Squads</button>
   </div>
 </header>
@@ -239,8 +293,8 @@
       <!-- Winner block -->
       <div class="winner-block">
         <div class="winner-super-label">PREDICTED WINNER</div>
-        <div class="winner-name-display" id="winner-name">—</div>
-        <div class="win-prob-display" id="win-prob-display">—<span class="win-prob-unit">%</span></div>
+        <div class="winner-name-display" id="winner-name" style="font-size:clamp(22px,4vw,36px)">—</div>
+        <div class="win-prob-display" id="win-prob-display" style="font-size:clamp(42px,7vw,64px)">—<span class="win-prob-unit">%</span></div>
         <div class="win-prob-label">Win Probability</div>
       </div>
 
@@ -311,6 +365,10 @@
           <span class="st-val" id="sv-t2-h2h">—</span>
         </div>
       </div>
+
+      <!-- Why This Result -->
+      <div class="section-label" style="margin-top:20px;display:none" id="why-label">Why This Result</div>
+      <div class="explanation-list" id="explanation-list"></div>
 
       <!-- Impact players -->
       <div class="impact-row" id="impact-row" style="display:none">
@@ -454,6 +512,18 @@
         <div class="mc-pill"><div class="mc-pill-val" id="mc-p90-t2">—</div><div class="mc-pill-lbl">T2 P90</div></div>
       </div>
 
+      <!-- 3D: Simulation Insights -->
+      <div class="sim-insights" id="sim-insights" style="display:none">
+        <div class="section-label">Simulation Insights</div>
+        <div class="si-grid">
+          <div class="si-card"><div class="si-val" id="si-avg-t1">—</div><div class="si-lbl" id="si-avg-t1-lbl">Avg Score</div></div>
+          <div class="si-card"><div class="si-val" id="si-range-t1">—</div><div class="si-lbl">Score Range (IQR)</div></div>
+          <div class="si-card"><div class="si-val" id="si-avg-t2">—</div><div class="si-lbl" id="si-avg-t2-lbl">Avg Score</div></div>
+          <div class="si-card"><div class="si-val" id="si-range-t2">—</div><div class="si-lbl">Score Range (IQR)</div></div>
+          <div class="si-card si-card-full"><div class="si-val" id="si-close">—</div><div class="si-lbl">Close Match Probability (≤15 run margin)</div></div>
+        </div>
+      </div>
+
       <div class="impact-row" id="sim-impact-row" style="display:none">
         <div class="impact-card">
           <div class="impact-badge">Impact Player</div>
@@ -479,6 +549,7 @@
         <button class="tab-btn" onclick="switchTab('inn2',this)">Innings 2</button>
         <button class="tab-btn" onclick="switchTab('scorecard',this)">Scorecard</button>
         <button class="tab-btn" onclick="switchTab('xi-used',this)">Playing XI</button>
+        <button class="tab-btn" onclick="switchTab('matchups',this)">Key Matchups</button>
       </div>
 
       <!-- Momentum -->
@@ -525,6 +596,11 @@
       <!-- Playing XI -->
       <div class="tab-panel" id="tab-xi-used">
         <div class="xi-grid" id="xi-grid"></div>
+      </div>
+
+      <!-- 3E: Key Matchups -->
+      <div class="tab-panel" id="tab-matchups">
+        <div id="matchup-cards" style="display:flex;flex-direction:column;gap:10px;padding:4px 0"></div>
       </div>
     </div>
   </div>
@@ -594,6 +670,151 @@
   </div>
 </section>
 
+<!-- ════════════════════════════════════════════════════════
+     APP SHOWCASE SECTION
+     ════════════════════════════════════════════════════════ -->
+<section class="app-section" id="app-section">
+
+  <!-- Hero -->
+  <div class="app-hero">
+    <div class="app-overline anim-reveal">
+      <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
+      IPL Intelligence Platform
+    </div>
+    <h2 class="app-hero-title anim-reveal" style="transition-delay:0.08s">
+      Predict. Simulate.<br><span class="gold">Dominate</span> the <span class="blue">IPL.</span>
+    </h2>
+    <p class="app-hero-sub anim-reveal" style="transition-delay:0.16s">
+      CricIQ brings XGBoost machine learning to cricket fans — trained on 900+ IPL matches for predictions that actually make sense.
+    </p>
+    <div class="app-stats-row anim-reveal" style="transition-delay:0.24s">
+      <div class="app-stat">
+        <div class="app-stat-val">~73%</div>
+        <div class="app-stat-lbl">Prediction Accuracy</div>
+      </div>
+      <div class="app-stat">
+        <div class="app-stat-val">900+</div>
+        <div class="app-stat-lbl">Matches in Training</div>
+      </div>
+      <div class="app-stat">
+        <div class="app-stat-val">6767</div>
+        <div class="app-stat-lbl">Simulations per Run</div>
+      </div>
+      <div class="app-stat">
+        <div class="app-stat-val">18</div>
+        <div class="app-stat-lbl">Engineered Features</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="app-features">
+    <h3 class="app-features-title anim-reveal">Everything You Need to Analyse a Match</h3>
+    <div class="features-grid">
+
+      <div class="feature-card anim-scale" style="transition-delay:0.05s">
+        <div class="fc-icon">🏏</div>
+        <div class="fc-title">Win Prediction</div>
+        <div class="fc-desc">Select any two IPL teams, configure toss and venue, and get real-time win probability powered by XGBoost — with toss-scenario averaging when the toss is unknown.</div>
+        <div class="fc-badge">
+          <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
+          XGBoost v3
+        </div>
+      </div>
+
+      <div class="feature-card anim-scale" style="transition-delay:0.1s">
+        <div class="fc-icon gold-icon">🎲</div>
+        <div class="fc-title">Monte Carlo Sim</div>
+        <div class="fc-desc">Run 6,767 full match simulations to get average scores, percentile ranges, ball-by-ball outcomes, win momentum graphs, and key batter–bowler matchups.</div>
+        <div class="fc-badge">
+          <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
+          6767 Matches
+        </div>
+      </div>
+
+      <div class="feature-card anim-scale" style="transition-delay:0.15s">
+        <div class="fc-icon">⭐</div>
+        <div class="fc-title">Ideal Playing XI</div>
+        <div class="fc-desc">Let the AI pick the optimal XI from each squad for three strategy modes — Balanced, Aggressive, or Bowling-heavy — with an impact player suggestion per team.</div>
+        <div class="fc-badge">
+          <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
+          AI Selected
+        </div>
+      </div>
+
+      <div class="feature-card anim-scale" style="transition-delay:0.2s">
+        <div class="fc-icon gold-icon">🛠️</div>
+        <div class="fc-title">XI Builder</div>
+        <div class="fc-desc">Hand-pick your own 11 players from each squad, then simulate the match with your custom lineup. T20 rules apply: 5 bowlers, max 4 overs each.</div>
+        <div class="fc-badge">
+          <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
+          Manual
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Tech strip -->
+  <div class="app-tech">
+    <div class="tech-inner">
+      <div class="tech-left anim-reveal-left">
+        <div class="tech-eyebrow">Under the Hood</div>
+        <div class="tech-title">Powered by XGBoost<br>Gradient Boosted Trees</div>
+        <div class="tech-desc">Each prediction processes 18 engineered features — team strike rates, batting averages, bowling economies, head-to-head history, venue status, and toss outcomes — for probabilistic match forecasting.</div>
+      </div>
+      <div class="tech-pills anim-reveal" style="transition-delay:0.15s">
+        <div class="tech-pill">
+          <div class="tp-val">XGBoost</div>
+          <div class="tp-lbl">ML Model</div>
+        </div>
+        <div class="tech-pill">
+          <div class="tp-val">2008–24</div>
+          <div class="tp-lbl">Training Period</div>
+        </div>
+        <div class="tech-pill">
+          <div class="tp-val">18</div>
+          <div class="tp-lbl">Features</div>
+        </div>
+        <div class="tech-pill">
+          <div class="tp-val">~73%</div>
+          <div class="tp-lbl">Accuracy</div>
+        </div>
+        <div class="tech-pill">
+          <div class="tp-val">10</div>
+          <div class="tp-lbl">IPL Teams</div>
+        </div>
+        <div class="tech-pill">
+          <div class="tp-val">Monte Carlo</div>
+          <div class="tp-lbl">Simulation</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="app-footer">
+    <div class="app-footer-brand">
+      <div class="app-footer-logo">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M2.5 9 Q6 6 9 9 Q12 12 15.5 9" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <path d="M2.5 9 Q6 12 9 9 Q12 6 15.5 9" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="app-footer-name">CricIQ</div>
+        <div class="app-footer-tagline">IPL Match Intelligence · 2025</div>
+      </div>
+    </div>
+    <div class="app-footer-right">
+      <div class="app-footer-copy">Predictions are probabilistic, not deterministic.</div>
+      <div class="app-footer-credit">Built with <span>XGBoost</span> · IPL data 2008–2024</div>
+    </div>
+  </div>
+
+</section>
+
 <!-- ── SQUAD MODAL ───────────────────────────────────────── -->
 <div id="squad-modal" style="display:none">
   <div class="squad-modal-inner">
@@ -641,6 +862,12 @@ console.log("NEW FILE LOADED");
 /* ── Helpers ──────────────────────────────────────────────── */
 const $id = id => document.getElementById(id);
 const txt = (id, v) => { const el = $id(id); if (el) el.textContent = v; };
+
+/* ── Mobile nav active state ──────────────────────────────── */
+function setMobActive(btn) {
+  document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
 
 /* ── Constants ────────────────────────────────────────────── */
 const TEAM_COLORS = {
@@ -948,6 +1175,18 @@ function safeNum(val, fallback, decimals = 1) {
   return isNaN(n) ? fallback.toFixed(decimals) : n.toFixed(decimals);
 }
 
+/* ── Animated counter for win probability ─────────────────── */
+function animateCounter(el, target, duration) {
+  if (!el) return;
+  let start = 0, step = target / 60;
+  const tick = () => {
+    start = Math.min(start + step, target);
+    el.textContent = start.toFixed(1);
+    if (start < target) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 /* ── renderPrediction: maps backend fields → UI ───────────── */
 function renderPrediction(data, t1, t2) {
   // Backend returns: winner, probability (winner's %), confidence (max prob%)
@@ -965,26 +1204,37 @@ function renderPrediction(data, t1, t2) {
   // Header
   txt('rmh-t1', t1); txt('rmh-t2', t2);
 
-  // Winner + winning probability
+  // Winner + winning probability — animated counter
   txt('winner-name', winner);
-  txt('win-prob-display', Math.round(winnerProb));
+  const probEl = $id('win-prob-display');
+  if (probEl) {
+    // Rebuild inner so the % unit span is preserved
+    probEl.innerHTML = `<span id="win-prob-num">0.0</span><span class="win-prob-unit">%</span>`;
+    animateCounter($id('win-prob-num'), winnerProb);
+  }
 
   // Highlight winner name colour
   const winEl = $id('winner-name');
   if (winEl) winEl.style.color = winner === t1 ? c1 : c2;
 
-  // Probability bar — animate
+  // Probability bar — start at 0, animate after 50ms
   const bar1 = $id('pf-t1'), bar2 = $id('pf-t2');
-  if (bar1) { bar1.style.width = '0%'; bar1.style.background = c1; bar1.style.transition = 'width 0.8s cubic-bezier(0.16,1,0.3,1)'; setTimeout(() => { bar1.style.width = p1 + '%'; }, 50); }
+  if (bar1) {
+    bar1.style.width = '0%';
+    bar1.style.background = c1;
+    bar1.style.transition = 'width 0.8s cubic-bezier(0.16,1,0.3,1)';
+    setTimeout(() => { bar1.style.width = p1 + '%'; }, 50);
+  }
   if (bar2) bar2.style.background = c2;
   txt('p-t1-lbl', t1); txt('p-t2-lbl', t2);
   txt('prob-t1-pct', p1 + '%'); txt('prob-t2-pct', p2 + '%');
 
-  // Confidence — backend sends confidence as a percentage already
-  const confPct = parseFloat(data.confidence) || winnerProb;
-  const conf = confLabel(confPct);
+  // 3C: Confidence chip — High / Medium / Low with colour coding
+  const gap = Math.abs(winnerProb - 50);
+  const confLabel3 = gap > 15 ? 'High' : gap > 7.5 ? 'Medium' : 'Low';
+  const confColor3 = gap > 15 ? 'var(--green,#4ade80)' : gap > 7.5 ? '#facc15' : '#f87171';
   const confEl = $id('conf-val');
-  if (confEl) { confEl.textContent = conf.label; confEl.className = 'mc-val ' + conf.cls; }
+  if (confEl) { confEl.textContent = confLabel3; confEl.style.color = confColor3; confEl.className = 'mc-val'; }
 
   // Venue chip
   const venue = $id('venue_status')?.value;
@@ -1001,6 +1251,26 @@ function renderPrediction(data, t1, t2) {
   renderStats(data, t1, t2);
   renderToss(data, tossOn);
   renderImpact(data, t1, t2);
+
+  // 3A: Why This Result explanation block
+  const whyLabel = $id('why-label');
+  const exList   = $id('explanation-list');
+  if (exList) {
+    exList.innerHTML = '';
+    if (data.explanation?.length) {
+      if (whyLabel) whyLabel.style.display = '';
+      data.explanation.forEach(f => {
+        const sign = f.positive ? '+' : '-';
+        const col  = f.positive ? 'var(--green,#4ade80)' : 'var(--red,#f87171)';
+        exList.innerHTML += `<div class="expl-row">
+          <span class="expl-label">${f.label}</span>
+          <span class="expl-impact" style="color:${col}">${sign}${f.impact}%</span>
+        </div>`;
+      });
+    } else {
+      if (whyLabel) whyLabel.style.display = 'none';
+    }
+  }
 }
 
 /* ── renderStats: team1_stats / team2_stats ───────────────── */
@@ -1259,6 +1529,53 @@ function renderSim(d, t1, t2) {
     renderDist(d.ball_outcome_distribution, d.total_balls_simulated || 0);
   }
   if (d.playing11) renderXI(d.playing11, t1, t2);
+
+  // 3D: Simulation Insights
+  const ins = d.simulation_insights;
+  if (ins) {
+    $id('sim-insights').style.display = '';
+    $id('si-avg-t1').textContent      = ins.avg_score_t1;
+    $id('si-avg-t1-lbl').textContent  = `${t1} Avg`;
+    $id('si-range-t1').textContent    = `${ins.winning_range_t1[0]}–${ins.winning_range_t1[1]}`;
+    $id('si-avg-t2').textContent      = ins.avg_score_t2;
+    $id('si-avg-t2-lbl').textContent  = `${t2} Avg`;
+    $id('si-range-t2').textContent    = `${ins.winning_range_t2[0]}–${ins.winning_range_t2[1]}`;
+    $id('si-close').textContent       = `${ins.close_match_pct}%`;
+  }
+
+  // 3C: Confidence chip for simulate uses d.confidence_level
+  if (d.confidence_level) {
+    const simConfEl = $id('conf-val');  // reuse only if in predict view; here we skip (separate view)
+    // no conf chip in simulate view currently; just log
+  }
+
+  // 3E: Key Matchups
+  const mc = $id('matchup-cards');
+  if (mc) {
+    mc.innerHTML = '';
+    (d.key_matchups || []).forEach(m => {
+      const adv = m.advantage === 'batter' ? '🏏 Batter edge'
+                : m.advantage === 'bowler' ? '⚡ Bowler edge' : '⚖️ Neutral';
+      const col = m.advantage === 'batter' ? '#4ade80'
+                : m.advantage === 'bowler' ? '#f87171' : '#94a3b8';
+      mc.innerHTML += `<div class="matchup-card">
+        <div class="mu-names">
+          <span class="mu-bat">${m.batter}</span>
+          <span class="mu-vs">vs</span>
+          <span class="mu-bowl">${m.bowler}</span>
+        </div>
+        <div class="mu-stats">
+          <span>SR ${m.sr}</span>
+          <span>${m.balls} balls</span>
+          <span>${m.dismissals} dismissal${m.dismissals !== 1 ? 's' : ''}</span>
+          <span style="color:${col}">${adv}</span>
+        </div>
+      </div>`;
+    });
+    if (!(d.key_matchups || []).length) {
+      mc.innerHTML = '<p style="color:var(--t2);font-size:13px;padding:10px">No matchup data available</p>';
+    }
+  }
 
   // Show result and scroll to it
   const simResult = $id('sim-result');
@@ -1834,8 +2151,33 @@ $id('squad-modal').addEventListener('click', function (e) {
   if (e.target === this) closeSquadModal();
 });
 
+/* ── Theme Toggle ─────────────────────────────────────────── */
+function toggleTheme() {
+  document.body.classList.toggle('light-mode');
+  try { localStorage.setItem('criciq_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark'); } catch {}
+}
+
+/* ── Scroll animations (Intersection Observer) ────────────── */
+function initScrollAnimations() {
+  const opts = { threshold: 0.12, rootMargin: '0px 0px -40px 0px' };
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('revealed');
+        obs.unobserve(entry.target);
+      }
+    });
+  }, opts);
+  document.querySelectorAll('.anim-reveal, .anim-reveal-left, .anim-scale').forEach(el => obs.observe(el));
+}
+
 /* ── Init ─────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
+  // Restore theme
+  try {
+    if (localStorage.getItem('criciq_theme') === 'light') document.body.classList.add('light-mode');
+  } catch {}
+
   updateColors();
   onTossToggle();
   renderHistory();
@@ -1844,6 +2186,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $id('team1')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); });
   $id('team2')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); });
+
+  // Init scroll animations
+  initScrollAnimations();
 });
 </script>
 </body>

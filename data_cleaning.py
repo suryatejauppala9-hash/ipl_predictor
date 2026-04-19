@@ -137,6 +137,11 @@ MATCH_FEATURES = [
     "team1_phase_mid_rr", "team2_phase_mid_rr",
     "team1_phase_death_rr", "team2_phase_death_rr",
     "team1_death_econ", "team2_death_econ",
+    # upgrade features
+    "sr_diff", "econ_diff", "form_diff",
+    "team1_encoded", "team2_encoded",
+    "team1_matchup_strength", "team2_matchup_strength",
+    "team1_depth", "team2_depth",
 ]
 
 BALL_FEATURES = [
@@ -158,6 +163,8 @@ BALL_FEATURES = [
     "runs_in_innings",
     "balls_remaining",
     "required_run_rate",   # 0 for 1st innings
+    # upgrade features — rolling window & pressure
+    "last12_runs", "last12_wickets", "pressure_index",
 ]
 
 TRAIN_SEASONS_END = 2022   # inclusive
@@ -366,7 +373,8 @@ def build_venue_chase_features(df: pd.DataFrame, matches_base: pd.DataFrame) -> 
 
 def build_match_features(df: pd.DataFrame,
                           match_bat: pd.DataFrame,
-                          match_bowl: pd.DataFrame) -> pd.DataFrame:
+                          match_bowl: pd.DataFrame,
+                          matchup_df: pd.DataFrame | None = None) -> pd.DataFrame:
     print("Building match-level feature set...")
 
     # Base: one row per match (innings 1 only for team assignment)
@@ -483,6 +491,20 @@ def build_match_features(df: pd.DataFrame,
     # Target
     matches["target"] = (matches["match_won_by"] == matches["team1"]).astype(int)
 
+    # ── Upgrade 1A: Difference features ──────────────────────────────────────
+    matches["sr_diff"]   = matches["team1_sr"]         - matches["team2_sr"]
+    matches["econ_diff"] = matches["team2_econ"]       - matches["team1_econ"]
+    matches["form_diff"] = matches["team1_last5_wins"] - matches["team2_last5_wins"]
+
+    # ── Upgrade 1B: Team identity encoding ───────────────────────────────────
+    all_team_names = list(set(matches["team1"].tolist() + matches["team2"].tolist()))
+    team_label_enc = LabelEncoder()
+    team_label_enc.fit(all_team_names)
+    matches["team1_encoded"] = team_label_enc.transform(matches["team1"])
+    matches["team2_encoded"] = team_label_enc.transform(matches["team2"])
+    joblib.dump(team_label_enc, "team_encoder.joblib")
+    print("  → team_encoder.joblib saved")
+
     # Fill NaN in new features with neutral values
     for col in MATCH_FEATURES:
         if col in matches.columns:
@@ -490,6 +512,74 @@ def build_match_features(df: pd.DataFrame,
             matches[col] = matches[col].fillna(fill)
 
     matches = matches.dropna(subset=[f for f in MATCH_FEATURES if f in matches.columns])
+    avail_features = [f for f in MATCH_FEATURES if f in matches.columns]
+
+    # ── Upgrade 1C: Matchup strength per match ────────────────────────────────
+    if matchup_df is not None and not matchup_df.empty:
+        player_stats_df = pd.read_csv("player_stats.csv") if Path("player_stats.csv").exists() else pd.DataFrame()
+
+        def _top_bowlers(team_name, n=5):
+            if player_stats_df.empty or "bowling_team" not in player_stats_df.columns:
+                return []
+            sub = player_stats_df[player_stats_df["bowling_team"] == team_name]
+            sub = sub.sort_values("bowl_wkts", ascending=False)
+            return sub["bowler"].dropna().tolist()[:n]
+
+        def _batters_for_team(team_name, n=8):
+            if player_stats_df.empty or "batting_team" not in player_stats_df.columns:
+                return []
+            sub = player_stats_df[player_stats_df["batting_team"] == team_name]
+            sub = sub.sort_values("bat_runs", ascending=False)
+            return sub["batter"].dropna().tolist()[:n]
+
+        t1_ms, t2_ms = [], []
+        for _, row in matches.iterrows():
+            t1_bat  = _batters_for_team(row["team1"])
+            t2_bowl = _top_bowlers(row["team2"])
+            t2_bat  = _batters_for_team(row["team2"])
+            t1_bowl = _top_bowlers(row["team1"])
+            t1_ms.append(compute_matchup_strength(t1_bat, t2_bowl, matchup_df))
+            t2_ms.append(compute_matchup_strength(t2_bat, t1_bowl, matchup_df))
+        matches["team1_matchup_strength"] = t1_ms
+        matches["team2_matchup_strength"] = t2_ms
+    else:
+        matches["team1_matchup_strength"] = 100.0
+        matches["team2_matchup_strength"] = 100.0
+
+    # ── Upgrade 1D: Batting depth (avg SR of positions 5–8) ──────────────────
+    # Compute per match from ball-by-ball data using batting position order
+    depth_data = (
+        df.groupby(["match_id", "innings", "batting_team"])
+        .apply(lambda g: (
+            g.groupby("batter")["runs_total"].sum()
+             .reset_index()
+             .assign(rank=lambda x: x["runs_total"].rank(method="first", ascending=False))
+        ))
+        .reset_index(drop=True)
+    ) if not df.empty else pd.DataFrame()
+
+    def _match_depth(match_id, team):
+        if df.empty:
+            return 130.0
+        sub = df[(df["match_id"] == match_id) & (df["batting_team"] == team)]
+        if sub.empty:
+            return 130.0
+        batter_order = sub.groupby("batter").agg(
+            first_ball=("ball", "min"), runs=("runs_total", "sum"), balls=("ball", "count")
+        ).sort_values("first_ball").reset_index()
+        depth = batter_order.iloc[4:8]  # positions 5–8 (0-indexed 4–7)
+        if depth.empty:
+            return 130.0
+        srs = _safe_div(depth["runs"], depth["balls"].replace(0, 1)) * 100
+        return float(srs.mean()) if len(srs) else 130.0
+
+    t1_depth, t2_depth = [], []
+    for _, row in matches.iterrows():
+        t1_depth.append(_match_depth(row["match_id"], row["team1"]))
+        t2_depth.append(_match_depth(row["match_id"], row["team2"]))
+    matches["team1_depth"] = t1_depth
+    matches["team2_depth"] = t2_depth
+
     avail_features = [f for f in MATCH_FEATURES if f in matches.columns]
     matches[avail_features + ["target", "season", "match_id"]].to_csv("ml_ready_data.csv", index=False)
     print(f"  → ml_ready_data.csv saved ({len(matches)} matches, {len(avail_features)} features)")
@@ -596,6 +686,23 @@ def build_matchup_stats(df: pd.DataFrame) -> pd.DataFrame:
     matchup.to_csv("matchup_stats.csv", index=False)
     print("  → matchup_stats.csv saved")
     return matchup
+
+
+def compute_matchup_strength(team_batters: list, opponent_bowlers: list,
+                              matchup_df: pd.DataFrame, default: float = 100.0) -> float:
+    """Mean SR for team's batters vs opponent's top bowlers from matchup_df."""
+    srs = []
+    mu_index = matchup_df.set_index(["batter", "bowler"]) if not matchup_df.empty else None
+    for batter in team_batters:
+        for bowler in opponent_bowlers:
+            try:
+                row = mu_index.loc[(batter, bowler)]
+                sr  = float(row["m_sr"])
+                if not (np.isnan(sr) or np.isinf(sr)):
+                    srs.append(sr)
+            except (KeyError, TypeError):
+                pass
+    return float(np.mean(srs)) if srs else default
 
 
 # ── 7. Ball-level ML dataset (LEAKAGE-FREE) ───────────────────────────────────
@@ -715,6 +822,23 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
     # Target: runs outcome (clipped; wickets NOT included — post-delivery info)
     df["ball_outcome"] = df["runs_total"].clip(upper=6)
     df.loc[df["ball_outcome"] == 5, "ball_outcome"] = 4
+
+    # ── Upgrade 1E: Rolling window (last 12 balls) & pressure index ───────────
+    df["last12_runs"] = df.groupby(["match_id", "innings"])["runs_total"].transform(
+        lambda x: x.shift(1).rolling(12, min_periods=1).sum()
+    )
+    df["last12_wickets"] = df.groupby(["match_id", "innings"])["is_wicket"].transform(
+        lambda x: x.shift(1).rolling(12, min_periods=1).sum()
+    )
+
+    # current_rr = runs scored / overs bowled so far
+    df["current_rr"] = _safe_div(df["runs_in_innings"], (df["ball_seq"] / 6).replace(0, 0.01), 0.0)
+    df["pressure_index"] = np.where(
+        (df["innings"] == 2) & (df["current_rr"] > 0),
+        df["required_run_rate"] / df["current_rr"].clip(lower=0.5),
+        1.0
+    )
+    df["pressure_index"] = df["pressure_index"].fillna(1.0).clip(0, 5)
 
     avail_ball_features = [f for f in BALL_FEATURES if f in df.columns]
     ball_df = df[avail_ball_features + ["ball_outcome", "season"]].dropna()
@@ -909,7 +1033,7 @@ def clean_and_prepare_data(csv_path: str = "ipl_data.csv") -> None:
     matchup_df = build_matchup_stats(df)
 
     # ── Step 5: Match-level features ──────────────────────────────
-    matches_df, match_feats = build_match_features(df, match_bat, match_bowl)
+    matches_df, match_feats = build_match_features(df, match_bat, match_bowl, matchup_df)
 
     # ── Step 6: Ball-level features ───────────────────────────────
     ball_df, ball_feats = build_ball_features(df, matchup_df)
