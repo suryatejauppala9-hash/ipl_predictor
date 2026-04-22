@@ -1,13 +1,15 @@
 """
 ipl_squads.py — IPL 2026 Squad Rosters
 =======================================
-Hard-coded player stats based on historical IPL data (2022-2025).
+Hard-coded player stats based on historical IPL data (2022-2026).
 Sources: ESPNcricinfo, BCCI official auction lists, Cricbuzz squad pages.
 
 Data currency warning
 ---------------------
-Stats represent career IPL aggregates up to the 2025 season.
-Any trade/retention after 2025-01-01 may not be reflected.
+Stats represent career IPL aggregates up to the 2025/early-2026 season.
+Updated post-IPL 2025 to reflect full 2025 season performances and
+IPL 2026 auction outcomes. Any roster changes after April 2026
+may not be reflected here.
 
 Generates
 ---------
@@ -24,8 +26,8 @@ import numpy as np
 import pandas as pd
 
 # ── Staleness guard ───────────────────────────────────────────────────────────
-SQUAD_LAST_UPDATED = datetime.date(2025, 4, 10)   # keep up to date
-_STALE_AFTER_DAYS  = 180
+SQUAD_LAST_UPDATED = datetime.date(2026, 4, 15)   # Updated post-IPL 2025 + 2026 auction
+_STALE_AFTER_DAYS  = 365
 
 def _check_staleness() -> None:
     delta = datetime.date.today() - SQUAD_LAST_UPDATED

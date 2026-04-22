@@ -10,10 +10,12 @@ Changes from v6:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import math
 import os
 import random
+import threading
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -23,7 +25,7 @@ import numpy as np
 import pandas as pd
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -33,11 +35,16 @@ from xgboost import XGBClassifier
 
 # ── Auto-generate squad CSVs if missing ──────────────────────────────────────
 def _ensure_squad_csvs() -> None:
-    if not os.path.exists("player_stats.csv") or not os.path.exists("matchup_stats.csv"):
-        print("Generating IPL 2026 squad CSVs from hard-coded squads...")
-        import ipl_squads
-        ipl_squads.generate_player_stats()
-        pdf = pd.read_csv("player_stats.csv")
+    import ipl_squads
+    squad_mtime = os.path.getmtime(ipl_squads.__file__)
+    csv_mtime = (min(os.path.getmtime("player_stats.csv"),
+                     os.path.getmtime("matchup_stats.csv"))
+                 if os.path.exists("player_stats.csv") and os.path.exists("matchup_stats.csv")
+                 else 0)
+
+    if csv_mtime < squad_mtime:
+        print("Squad file updated — regenerating CSVs...")
+        pdf = ipl_squads.generate_player_stats()
         ipl_squads.generate_matchup_stats(pdf)
 
 _ensure_squad_csvs()
@@ -95,8 +102,8 @@ BALL_FEATURES = [
     "last12_runs", "last12_wickets", "pressure_index",
 ]
 
-TRAIN_SEASONS_END = 2022
-VAL_SEASON        = 2023
+TRAIN_SEASONS_END = 2023
+VAL_SEASON        = 2025
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title="IPL Intelligence", version="7.0")
@@ -1200,26 +1207,187 @@ async def predict_get(
     return await _predict_impl(data)
 
 
-@app.post("/simulate")
-async def simulate(data: SimulateRequest):
-    global _PRED_CACHE
-    _PRED_CACHE = {}
-    t1, t2 = data.team1, data.team2
-    if t1 == t2:
-        return JSONResponse({"error": "Teams must be different"}, status_code=400)
-    n    = max(1, min(data.n_matches, N_MATCHES))
-    bat1, bowl1 = _best_xi_names(t1, data.style1)
-    bat2, bowl2 = _best_xi_names(t2, data.style2)
-    tw   = 1 if data.toss_winner == t1 else 0
-    td   = 1 if data.toss_decision == "bat" else 0
-    result = _run_sim(bat1, bowl1, bat2, bowl2, n, t1, t2,
-                      toss_known=data.toss_known, toss_winner_is_t1=tw, toss_bat=td,
-                      style1=data.style1, style2=data.style2)
-    result["playing11"]     = {t1: bat1, t2: bat2}
-    result["impact_players"] = {t1: _get_impact_player(t1), t2: _get_impact_player(t2)}
-    result["ideal_xi"]      = {t1: _ideal_xi(t1, data.style1), t2: _ideal_xi(t2, data.style2)}
-    result["key_matchups"]  = _get_key_matchups(bat1, bowl2, bat2, bowl1)
-    return result
+# ── SSE streaming generator (no route decorator — called by /simulate-stream) ──
+async def _simulate_stream_gen(payload: dict):
+    """
+    Async generator that runs the full simulation in a background thread
+    and streams SSE progress events + final result to the client.
+    """
+    t1            = payload.get("team1", "")
+    t2            = payload.get("team2", "")
+    n_matches     = int(payload.get("n_matches", N_MATCHES))
+    style1        = payload.get("style1", "balanced")
+    style2        = payload.get("style2", "balanced")
+    toss_known    = bool(payload.get("toss_known", True))
+    toss_winner   = payload.get("toss_winner", "")
+    toss_decision = payload.get("toss_decision", "bat")
+
+    progress_q: list = []   # thread-safe for simple appends (GIL)
+    result_box: list = [None]
+    error_box:  list = [None]
+    done_event        = threading.Event()
+
+    def run() -> None:
+        global _PRED_CACHE
+        try:
+            # ── Reset prediction cache for fresh simulation ────────────
+            _PRED_CACHE = {}
+
+            # ── Resolve lineups ────────────────────────────────────────
+            bat1, bowl1 = _best_xi_names(t1, style1)
+            bat2, bowl2 = _best_xi_names(t2, style2)
+            tw = 1 if toss_winner == t1 else 0
+            td = 1 if toss_decision == "bat" else 0
+
+            # ── Simulation loop (mirrors _run_sim, adds progress emits) ─
+            t1s: list[int] = []
+            t2s: list[int] = []
+            t1w       = 0
+            tallies   = {str(k): 0 for k in BALL_OUTCOMES}
+            tallies["W"] = 0
+            total_balls  = 0
+            representative: dict | None = None
+
+            for i in range(n_matches):
+                if not toss_known:
+                    sim_toss_t1 = random.randint(0, 1)
+                    sim_bat     = random.randint(0, 1)
+                else:
+                    sim_toss_t1 = tw
+                    sim_bat     = td
+
+                t1_bats_first = (
+                    (sim_toss_t1 == 1 and sim_bat == 1) or
+                    (sim_toss_t1 == 0 and sim_bat == 0)
+                )
+
+                if t1_bats_first:
+                    inn1 = _simulate_innings(bat1, bowl2, innings=1)
+                    inn2 = _simulate_innings(bat2, bowl1, innings=2, target=inn1["total"] + 1)
+                    t1_score, t2_score = inn1["total"], inn2["total"]
+                else:
+                    tmp1 = _simulate_innings(bat2, bowl1, innings=1)
+                    tmp2 = _simulate_innings(bat1, bowl2, innings=2, target=tmp1["total"] + 1)
+                    inn1, inn2   = tmp2, tmp1
+                    t1_score, t2_score = tmp2["total"], tmp1["total"]
+
+                for e in inn1["ball_log"]:
+                    k = "W" if e["wicket"] else str(e["runs"])
+                    tallies[k] = tallies.get(k, 0) + 1
+                    total_balls += 1
+
+                t1s.append(t1_score)
+                t2s.append(t2_score)
+                if t1_score > t2_score:
+                    t1w += 1
+
+                if i == 0:
+                    momentum = _build_momentum_graph(inn1, inn2, t1, t2)
+                    representative = {
+                        "innings1": {
+                            "team": t1, "score": inn1["total"],
+                            "wickets": inn1["wickets"],
+                            "ball_log": inn1["ball_log"],
+                            "scorecard": inn1["scorecard"],
+                            "over_snapshots": inn1["over_snapshots"],
+                        },
+                        "innings2": {
+                            "team": t2, "score": inn2["total"],
+                            "wickets": inn2["wickets"],
+                            "ball_log": inn2["ball_log"],
+                            "scorecard": inn2["scorecard"],
+                            "over_snapshots": inn2["over_snapshots"],
+                        },
+                        "momentum": momentum,
+                    }
+
+                # Emit progress every 50 matches and on the last one
+                if i % 50 == 0 or i == n_matches - 1:
+                    progress_q.append({"type": "progress", "count": i + 1, "total": n_matches})
+
+            # ── Aggregate ──────────────────────────────────────────────
+            total_ev = sum(tallies.values())
+            dist     = {k: round(v / max(total_ev, 1), 5) for k, v in tallies.items()}
+            a1, a2   = np.array(t1s), np.array(t2s)
+
+            margin_arr      = a1 - a2
+            close_matches   = int(np.sum(np.abs(margin_arr) <= 15))
+            close_match_pct = round(close_matches / n_matches * 100, 1)
+            gap             = abs(t1w / n_matches - 0.5) * 2
+            confidence_level = "High" if gap > 0.30 else ("Medium" if gap > 0.15 else "Low")
+
+            result_box[0] = {
+                "n_matches"                : n_matches,
+                "team1"                    : t1,
+                "team2"                    : t2,
+                "toss_known"               : toss_known,
+                "win_probability"          : {
+                    t1: round(t1w / n_matches * 100, 2),
+                    t2: round((n_matches - t1w) / n_matches * 100, 2),
+                },
+                "predicted_scores"         : {
+                    t1: {
+                        "mean": round(float(a1.mean()), 1), "std": round(float(a1.std()), 1),
+                        "min": int(a1.min()), "max": int(a1.max()),
+                        "p10": int(np.percentile(a1, 10)), "p90": int(np.percentile(a1, 90)),
+                    },
+                    t2: {
+                        "mean": round(float(a2.mean()), 1), "std": round(float(a2.std()), 1),
+                        "min": int(a2.min()), "max": int(a2.max()),
+                        "p10": int(np.percentile(a2, 10)), "p90": int(np.percentile(a2, 90)),
+                    },
+                },
+                "ball_outcome_distribution": dist,
+                "outcome_raw_counts"       : tallies,
+                "total_balls_simulated"    : total_balls,
+                "representative_match"     : representative,
+                "confidence_level"         : confidence_level,
+                "simulation_insights"      : {
+                    "avg_score_t1"     : round(float(a1.mean()), 1),
+                    "avg_score_t2"     : round(float(a2.mean()), 1),
+                    "winning_range_t1" : [int(np.percentile(a1, 25)), int(np.percentile(a1, 75))],
+                    "winning_range_t2" : [int(np.percentile(a2, 25)), int(np.percentile(a2, 75))],
+                    "close_match_pct"  : close_match_pct,
+                },
+                "playing11"     : {t1: bat1, t2: bat2},
+                "impact_players": {t1: _get_impact_player(t1), t2: _get_impact_player(t2)},
+                "key_matchups"  : _get_key_matchups(bat1, bowl2, bat2, bowl1),
+            }
+        except Exception as exc:
+            error_box[0] = str(exc)
+        finally:
+            done_event.set()   # always unblock the generator, even on error
+
+    threading.Thread(target=run, daemon=True).start()
+
+    # Stream progress events as they arrive from the worker thread
+    sent = 0
+    while not done_event.is_set() or sent < len(progress_q):
+        while sent < len(progress_q):
+            yield f"data: {json.dumps(progress_q[sent])}\n\n"
+            sent += 1
+        await asyncio.sleep(0.05)
+
+    # Flush any final progress events that landed after done_event was set
+    while sent < len(progress_q):
+        yield f"data: {json.dumps(progress_q[sent])}\n\n"
+        sent += 1
+
+    # Send result or error as the final event
+    if error_box[0]:
+        yield f"data: {json.dumps({'type': 'error', 'message': error_box[0]})}\n\n"
+    else:
+        yield f"data: {json.dumps({'type': 'result', 'payload': result_box[0]})}\n\n"
+
+
+@app.post("/simulate-stream")
+async def simulate_stream_endpoint(request: Request):
+    body = await request.json()
+    return StreamingResponse(
+        _simulate_stream_gen(body),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/simulate-custom")
@@ -1241,6 +1409,428 @@ async def simulate_custom(data: CustomSimRequest):
                       toss_known=data.toss_known, toss_winner_is_t1=tw, toss_bat=td)
     result["playing11"]     = {t1: bat1, t2: bat2}
     result["impact_players"] = {t1: _get_impact_player(t1), t2: _get_impact_player(t2)}
+    return result
+
+
+# ── Fantasy XI (Dream11-style scoring) ────────────────────────────────────────
+#
+# Official Dream11 T20 scoring (used verbatim):
+#   Batting  : +1/run, +1/boundary, +2/six, +4 at 25, +8 at 50, +12 at 75, +16 at 100
+#              Duck (non-tail) = -2; SR bonus/penalty when ≥10 balls faced
+#   Bowling  : +25/wkt, +8 bowled/LBW bonus, +4/8/16 for 3/4/5-wkt hauls
+#              Economy bonus/penalty per 2-over minimum threshold
+#   Fielding : +8/catch, +4 bonus for 3 catches, +12/stumping, +12/+6 run-outs
+#   C = 2×, VC = 1.5× points multiplier
+
+_DREAM11_ECON_BONUS = {   # economy → bonus pts (min 2 overs)
+    (0, 5):   6,
+    (5, 6):   4,
+    (6, 7):   2,
+    (10, 11): -2,
+    (11, 12): -4,
+    (12, 99): -6,
+}
+_DREAM11_SR_BONUS = {     # strike rate → bonus pts (min 10 balls)
+    (170, 999): 6,
+    (150, 170): 4,
+    (130, 150): 2,
+    (80,  90): -2,
+    (70,  80): -4,
+    (0,   70): -6,
+}
+
+def _sr_bonus(sr: float, balls: float) -> float:
+    if balls < 10: return 0.0
+    for (lo, hi), pts in _DREAM11_SR_BONUS.items():
+        if lo <= sr < hi:
+            return float(pts)
+    return 0.0
+
+def _econ_bonus(econ: float, overs: float) -> float:
+    if overs < 2: return 0.0
+    for (lo, hi), pts in _DREAM11_ECON_BONUS.items():
+        if lo <= econ < hi:
+            return float(pts)
+    return 0.0
+
+
+def _project_fantasy_pts(name: str) -> dict:
+    """
+    Project expected Dream11 fantasy points for a single player.
+    Based on career stats — projecting a 'typical T20 match' contribution.
+    """
+    p = player_lookup.get(name, {})
+    if not p:
+        return {"total": 0.0, "bat_pts": 0.0, "bowl_pts": 0.0, "field_pts": 0.0,
+                "exp_runs": 0.0, "exp_balls_faced": 0.0, "exp_wkts": 0.0, "exp_overs": 0.0}
+
+    role          = str(p.get("role", "All-rounder"))
+    bat_sr        = _safe_float(p.get("bat_sr"), 0)
+    bat_avg       = _safe_float(p.get("bat_avg"), 0)
+    bat_runs_tot  = _safe_float(p.get("bat_runs"), 0)
+    boundary_pct  = _safe_float(p.get("boundary_pct"), 15.0) / 100.0
+    bowl_econ     = _safe_float(p.get("bowl_econ"), 0)
+    bowl_wkts     = _safe_float(p.get("bowl_wkts"), 0)
+    wicket_rate   = _safe_float(p.get("wicket_rate"), 0)
+
+    is_wk  = "Wicketkeeper" in role
+    is_bat  = role == "Batter" or is_wk
+    is_all  = "All-rounder" in role
+    is_bowl = "Bowler" in role
+
+    # ── Expected balls faced (based on position/role) ──────────────────────────
+    if is_wk or (is_bat and bat_runs_tot >= 2500):
+        exp_balls = 26.0    # top-order / established WK
+    elif is_bat and bat_runs_tot >= 1200:
+        exp_balls = 20.0    # settled middle-order bat
+    elif is_bat:
+        exp_balls = 14.0    # lower-middle bat
+    elif is_all and bat_avg >= 26:
+        exp_balls = 14.0    # batting all-rounder
+    elif is_all:
+        exp_balls = 9.0     # bowling all-rounder
+    else:
+        exp_balls = 5.0     # pure bowler / tail
+
+    # ── Batting projections ────────────────────────────────────────────────────
+    exp_runs  = (bat_sr / 100.0) * exp_balls if bat_sr > 0 else 0.0
+    # ~70% of boundary_pct deliveries are 4s, 30% are 6s
+    exp_fours = exp_balls * boundary_pct * 0.70
+    exp_sixes = exp_balls * boundary_pct * 0.30
+
+    bat_pts  = exp_runs * 1.0            # 1 pt per run
+    bat_pts += exp_fours * 1.0           # boundary bonus
+    bat_pts += exp_sixes * 2.0           # six bonus
+
+    # Milestone bonuses — probability-weighted
+    if exp_runs >= 25:
+        bat_pts += 4.0  * min(1.0, exp_runs / 35.0)
+    if exp_runs >= 50:
+        bat_pts += 8.0  * min(0.7, (exp_runs - 15) / 55.0)
+    if exp_runs >= 75:
+        bat_pts += 12.0 * min(0.35, (exp_runs - 45) / 75.0)
+    if exp_runs >= 100:
+        bat_pts += 16.0 * min(0.15, (exp_runs - 80) / 100.0)
+
+    # Strike-rate bonus / penalty
+    bat_pts += _sr_bonus(bat_sr, exp_balls)
+
+    # Duck penalty (non-tail-enders only); ~5-15% chance based on avg
+    if (is_bat or (is_all and bat_avg >= 18)):
+        duck_prob = max(0.03, 0.15 - bat_avg * 0.0025)
+        bat_pts -= 2.0 * duck_prob
+
+    # ── Bowling projections ────────────────────────────────────────────────────
+    bowl_pts  = 0.0
+    exp_wkts  = 0.0
+    exp_overs = 0.0
+
+    is_active_bowler = bowl_wkts > 5 and bowl_econ > 0
+    if is_active_bowler:
+        exp_overs       = 3.5 if is_all else 3.9   # ~4 overs for specialists
+        exp_balls_bowl  = exp_overs * 6.0
+        exp_wkts        = exp_balls_bowl * wicket_rate
+
+        bowl_pts += exp_wkts * 25.0                          # wicket points
+        bowl_pts += exp_wkts * 0.35 * 8.0                   # LBW/Bowled bonus (~35%)
+
+        # Wicket-haul bonuses (probability-weighted)
+        if exp_wkts >= 1.5:
+            bowl_pts += 4.0  * min(0.95, (exp_wkts - 0.5) / 2.5)   # 3-wkt haul
+        if exp_wkts >= 2.5:
+            bowl_pts += 8.0  * min(0.55, (exp_wkts - 1.5) / 3.5)   # 4-wkt haul
+        if exp_wkts >= 3.5:
+            bowl_pts += 16.0 * min(0.25, (exp_wkts - 2.5) / 4.5)   # 5-wkt haul
+
+        # Economy bonus/penalty
+        bowl_pts += _econ_bonus(bowl_econ, exp_overs)
+
+        # Maiden bonus (~4% maiden rate for economy < 7.5 bowlers)
+        maiden_rate = max(0.02, 0.08 - bowl_econ * 0.005)
+        bowl_pts += exp_overs * maiden_rate * 12.0
+
+    # ── Fielding projections ───────────────────────────────────────────────────
+    if is_wk:
+        field_pts = 18.0    # WK: expected catches + stumpings behind stumps
+    elif is_bowl:
+        field_pts = 6.0     # Bowlers often involved in their own-bowling catches
+    else:
+        field_pts = 5.0     # Batters / All-rounders: 1 catch ~8 pts * ~50% chance + run-outs
+
+    total = bat_pts + bowl_pts + field_pts
+
+    return {
+        "total":           round(total, 1),
+        "bat_pts":         round(bat_pts, 1),
+        "bowl_pts":        round(bowl_pts, 1),
+        "field_pts":       round(field_pts, 1),
+        "exp_runs":        round(exp_runs, 1),
+        "exp_balls_faced": int(exp_balls),
+        "exp_wkts":        round(exp_wkts, 2),
+        "exp_overs":       round(exp_overs, 1),
+    }
+
+
+def _fantasy_reason(name: str, proj: dict) -> str:
+    """Generate a concise natural-language justification for the Fantasy XI pick."""
+    p = player_lookup.get(name, {})
+    if not p:
+        return "Included for squad balance."
+
+    role         = str(p.get("role", "All-rounder"))
+    bat_sr       = _safe_float(p.get("bat_sr"), 0)
+    bat_avg      = _safe_float(p.get("bat_avg"), 0)
+    bat_runs     = _safe_float(p.get("bat_runs"), 0)
+    bowl_econ    = _safe_float(p.get("bowl_econ"), 0)
+    bowl_wkts    = _safe_float(p.get("bowl_wkts"), 0)
+    exp_runs     = proj.get("exp_runs", 0)
+    exp_wkts     = proj.get("exp_wkts", 0)
+
+    parts: list[str] = []
+
+    # Batting highlights
+    if bat_runs >= 6000:
+        parts.append(f"legendary IPL batter with {int(bat_runs):,} career runs")
+    elif bat_runs >= 3000:
+        parts.append(f"elite run-machine with {int(bat_runs):,} IPL runs")
+    elif bat_runs >= 1500:
+        parts.append(f"proven scorer with {int(bat_runs):,} IPL runs")
+
+    if bat_sr >= 170:
+        parts.append(f"brutal SR {bat_sr:.0f} earns massive bonus points")
+    elif bat_sr >= 155:
+        parts.append(f"explosive SR {bat_sr:.0f} maximises boundary bonuses")
+    elif bat_sr >= 140:
+        parts.append(f"outstanding SR {bat_sr:.0f}")
+
+    if bat_avg >= 44:
+        parts.append(f"exceptional consistency at avg {bat_avg:.0f}")
+    elif bat_avg >= 35:
+        parts.append(f"reliable avg {bat_avg:.0f} keeps milestone bonuses flowing")
+
+    # Bowling highlights
+    if bowl_wkts >= 150:
+        parts.append(f"all-time wicket-taker ({int(bowl_wkts)} IPL wickets)")
+    elif bowl_wkts >= 80:
+        parts.append(f"proven wicket-taker with {int(bowl_wkts)} IPL wickets")
+    elif bowl_wkts >= 40:
+        parts.append(f"regular wicket-contributor ({int(bowl_wkts)} wkts)")
+    elif bowl_wkts >= 15:
+        parts.append(f"takes wickets at useful intervals ({int(bowl_wkts)} wkts)")
+
+    if bowl_econ > 0 and bowl_econ < 6.5:
+        parts.append(f"economy {bowl_econ:.1f} earns maximum economy bonus (+6 pts)")
+    elif bowl_econ > 0 and bowl_econ < 7.5:
+        parts.append(f"tight economy {bowl_econ:.1f} earns economy bonus points")
+
+    # All-rounder dual threat
+    if "All-rounder" in role and exp_runs >= 10 and exp_wkts >= 0.5:
+        parts.append(
+            f"dual-threat: projecting ~{exp_runs:.0f} runs + ~{exp_wkts:.1f} wkts"
+        )
+
+    # Wicketkeeper
+    if "Wicketkeeper" in role:
+        parts.append("glove-work adds significant fielding bonus (+18 pts projected)")
+
+    if not parts:
+        parts.append("solid squad balance and consistent contribution")
+
+    return "Picked for " + "; ".join(parts[:3]) + "."
+
+
+def _select_fantasy_xi(t1: str, t2: str) -> dict:
+    """
+    Select the optimal Fantasy XI from both squads under Dream11 T20 rules:
+
+    Constraints:
+      • 11 players total
+      • 1–4 Wicketkeepers
+      • 3–6 Batters
+      • 1–4 All-rounders
+      • 3–6 Bowlers
+      • Maximum 7 players from any one team (minimum 4 from each)
+    Captain gets ×2, Vice-Captain gets ×1.5 on their points.
+    """
+    MIN_CAT = {"wk": 1, "bat": 3, "all": 1, "bowl": 3}
+    MAX_CAT = {"wk": 4, "bat": 6, "all": 4, "bowl": 6}
+    MAX_TEAM = 7
+
+    candidates: list[dict] = []
+    for team in [t1, t2]:
+        for name in team_roster.get(team, []):
+            p = player_lookup.get(name, {})
+            if not p:
+                continue
+            proj = _project_fantasy_pts(name)
+            role = str(p.get("role", "All-rounder"))
+            if "Wicketkeeper" in role:
+                cat = "wk"
+            elif "All-rounder" in role:
+                cat = "all"
+            elif "Bowler" in role:
+                cat = "bowl"
+            else:
+                cat = "bat"
+            candidates.append({
+                "name":           name,
+                "team":           team,
+                "role":           role,
+                "cat":            cat,
+                "pts":            proj["total"],
+                "bat_pts":        proj["bat_pts"],
+                "bowl_pts":       proj["bowl_pts"],
+                "field_pts":      proj["field_pts"],
+                "exp_runs":       proj["exp_runs"],
+                "exp_balls_faced":proj["exp_balls_faced"],
+                "exp_wkts":       proj["exp_wkts"],
+                "exp_overs":      proj["exp_overs"],
+                "bat_sr":         _safe_float(p.get("bat_sr"), 0),
+                "bat_avg":        _safe_float(p.get("bat_avg"), 0),
+                "bat_runs":       int(_safe_float(p.get("bat_runs"), 0)),
+                "bowl_econ":      _safe_float(p.get("bowl_econ"), 0),
+                "bowl_wkts":      int(_safe_float(p.get("bowl_wkts"), 0)),
+                "is_captain":     False,
+                "is_vc":          False,
+            })
+
+    candidates.sort(key=lambda x: -x["pts"])
+
+    selected: list[dict] = []
+    counts   = {k: 0 for k in MIN_CAT}
+    t_counts = {t1: 0, t2: 0}
+
+    def _can_add(pl: dict) -> bool:
+        return (
+            pl not in selected
+            and counts[pl["cat"]] < MAX_CAT[pl["cat"]]
+            and t_counts[pl["team"]] < MAX_TEAM
+            and len(selected) < 11
+        )
+
+    # Phase 1 – satisfy category minimums (greedy, best first)
+    for cat in ["wk", "bat", "all", "bowl"]:
+        need = MIN_CAT[cat]
+        for pl in candidates:
+            if counts[cat] >= need:
+                break
+            if pl["cat"] == cat and _can_add(pl):
+                selected.append(pl)
+                counts[cat]         += 1
+                t_counts[pl["team"]] += 1
+
+    # Phase 2 – fill remaining 11 slots with highest scorers
+    for pl in candidates:
+        if len(selected) >= 11:
+            break
+        if _can_add(pl):
+            selected.append(pl)
+            counts[pl["cat"]]    += 1
+            t_counts[pl["team"]] += 1
+
+    # After Phase 2, enforce MIN_TEAM = 4 by swapping if needed
+    MIN_TEAM = 4
+    for team in [t1, t2]:
+        while t_counts[team] < MIN_TEAM and len(selected) > 0:
+            # Find a swap: remove lowest-pts player from over-represented team,
+            # add highest-pts unused player from under-represented team
+            other = t2 if team == t1 else t1
+            swap_out = next((p for p in reversed(selected) if p["team"] == other), None)
+            swap_in  = next((p for p in candidates
+                            if p["team"] == team and p not in selected
+                            and counts[p["cat"]] < MAX_CAT[p["cat"]]), None)
+            if swap_out and swap_in:
+                selected.remove(swap_out)
+                counts[swap_out["cat"]]    -= 1
+                t_counts[swap_out["team"]] -= 1
+                selected.append(swap_in)
+                counts[swap_in["cat"]]    += 1
+                t_counts[swap_in["team"]] += 1
+            else:
+                break
+    # Sort final XI by expected pts (descending)
+    selected.sort(key=lambda x: -x["pts"])
+
+    # Assign Captain (×2) and Vice-Captain (×1.5)
+    if selected:
+        selected[0]["is_captain"] = True
+    if len(selected) > 1:
+        selected[1]["is_vc"] = True
+
+    # Add human-readable reason for each pick
+    for pl in selected:
+        proj_dict = {
+            "exp_runs":  pl["exp_runs"],
+            "exp_wkts":  pl["exp_wkts"],
+        }
+        pl["reason"] = _fantasy_reason(pl["name"], proj_dict)
+
+    total_base = sum(p["pts"] for p in selected)
+    total_with_mult = sum(
+        p["pts"] * (2.0 if p["is_captain"] else 1.5 if p["is_vc"] else 1.0)
+        for p in selected
+    )
+
+    return {
+        "players":              selected,
+        "total_expected_pts":   round(total_base, 1),
+        "total_with_multipliers": round(total_with_mult, 1),
+        "team_counts":          dict(t_counts),
+        "role_counts":          dict(counts),
+        "scoring_rules": {
+            "batting": {
+                "run": "+1 pt/run",
+                "boundary_bonus": "+1 pt per 4",
+                "six_bonus": "+2 pts per 6",
+                "milestone_25": "+4 pts at 25 runs",
+                "milestone_50": "+8 pts at 50 runs",
+                "milestone_75": "+12 pts at 75 runs",
+                "milestone_100": "+16 pts at 100 runs",
+                "duck": "−2 pts (non-tail)",
+                "sr_bonus": "+2/+4/+6 for SR 130+/150+/170+ (min 10 balls)",
+                "sr_penalty": "−2/−4/−6 for SR <90/<80/<70 (min 10 balls)",
+            },
+            "bowling": {
+                "wicket": "+25 pts/wicket",
+                "bowled_lbw_bonus": "+8 pts for bowled or LBW",
+                "haul_3": "+4 pts bonus for 3-wicket haul",
+                "haul_4": "+8 pts bonus for 4-wicket haul",
+                "haul_5": "+16 pts bonus for 5-wicket haul",
+                "maiden": "+12 pts/maiden over",
+                "econ_bonus": "+2/+4/+6 for econ <7/<6/<5 (min 2 overs)",
+                "econ_penalty": "−2/−4/−6 for econ 10+/11+/12+ (min 2 overs)",
+            },
+            "fielding": {
+                "catch": "+8 pts/catch",
+                "catch_bonus": "+4 pts for 3+ catches",
+                "stumping": "+12 pts/stumping",
+                "run_out_direct": "+12 pts",
+                "run_out_indirect": "+6 pts",
+            },
+            "multipliers": {
+                "captain": "×2.0 all points",
+                "vice_captain": "×1.5 all points",
+            },
+            "team_constraints": {
+                "max_from_one_team": 7,
+                "min_from_each_team": 4,
+                "wicketkeepers": "1–4",
+                "batters": "3–6",
+                "all_rounders": "1–4",
+                "bowlers": "3–6",
+            },
+        },
+    }
+
+
+@app.get("/fantasy-xi")
+async def fantasy_xi_endpoint(team1: str, team2: str):
+    if team1 == team2:
+        return JSONResponse({"error": "Teams must be different"}, status_code=400)
+    if team1 not in team_roster or team2 not in team_roster:
+        missing = team1 if team1 not in team_roster else team2
+        return JSONResponse({"error": f"No squad data for '{missing}'"}, status_code=400)
+    result = _select_fantasy_xi(team1, team2)
     return result
 
 

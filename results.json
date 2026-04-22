@@ -32,10 +32,10 @@
       "team1_depth",
       "team2_depth"
     ],
-    "accuracy": 0.6621,
-    "roc_auc": 0.7428,
-    "log_loss": 0.5911,
-    "brier_score": 0.2056
+    "accuracy": 0.6622,
+    "roc_auc": 0.7409,
+    "log_loss": 0.5877,
+    "brier_score": 0.2046
   },
   "ball_model": {
     "features": [
@@ -73,8 +73,8 @@
       4,
       6
     ],
-    "accuracy": 0.4574,
-    "log_loss": 1.2469,
-    "roc_auc": 0.6613
+    "accuracy": 0.4636,
+    "log_loss": 1.2419,
+    "roc_auc": 0.6702
   }
 }
