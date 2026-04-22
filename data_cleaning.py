@@ -167,9 +167,9 @@ BALL_FEATURES = [
     "last12_runs", "last12_wickets", "pressure_index",
 ]
 
-TRAIN_SEASONS_END = 2022   # inclusive
-VAL_SEASON        = 2023
-TEST_SEASON_START = 2024
+TRAIN_SEASONS_END = 2023   # inclusive — train on 2008-2023
+VAL_SEASON        = 2024
+TEST_SEASON_START = 2025
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

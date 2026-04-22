@@ -41,6 +41,14 @@
     </div>
     Ideal XI
   </button>
+  <button class="mob-nav-btn" id="mob-btn-fantasyxi" onclick="showView('fantasy-xi-view',null); setMobActive(this); setTimeout(()=>$id('fantasy-xi-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60)">
+    <div class="mob-nav-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <polygon points="10,2 12.5,7.5 18.5,7.5 13.5,11.5 15.5,17 10,13.5 4.5,17 6.5,11.5 1.5,7.5 7.5,7.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    Fantasy XI
+  </button>
   <button class="mob-nav-btn" id="mob-btn-builder" onclick="showView('builder-view',null); setMobActive(this); setTimeout(()=>$id('builder-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60); loadBothPools()">
     <div class="mob-nav-icon">
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -65,13 +73,16 @@
       </svg>
     </div>
     <span class="brand-name">CricIQ</span>
-    <span class="brand-tag">IPL 2025</span>
+    <span class="brand-tag">IPL 2026</span>
   </a>
 
   <nav class="main-nav">
     <button class="nav-item active" onclick="showView('predict-view',this)">Predict</button>
     <button class="nav-item" onclick="showView('simulate-view',this)">Simulate</button>
     <button class="nav-item" onclick="showView('ideal-xi-view',this); setTimeout(()=>$id('ideal-xi-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60)">Ideal XI</button>
+    <button class="nav-item" onclick="showView('fantasy-xi-view',this); setTimeout(()=>$id('fantasy-xi-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60)">
+      <span style="color:var(--gold,#f59e0b)">★</span> Fantasy XI
+    </button>
     <button class="nav-item" onclick="showView('builder-view',this); setTimeout(()=>$id('builder-view')?.scrollIntoView({behavior:'smooth',block:'start'}),60); loadBothPools()">Build XI</button>
   </nav>
 
@@ -243,8 +254,8 @@
 
     <!-- Model info footer -->
     <div class="model-info">
-      <div class="mi-row"><span class="mi-key">Model</span><span class="mi-val">XGBoost v3</span></div>
-      <div class="mi-row"><span class="mi-key">Training data</span><span class="mi-val">IPL 2008–2024</span></div>
+      <div class="mi-row"><span class="mi-key">Model</span><span class="mi-val">XGBoost v4</span></div>
+      <div class="mi-row"><span class="mi-key">Training data</span><span class="mi-val">IPL 2008–2025</span></div>
       <div class="mi-row"><span class="mi-key">Accuracy</span><span class="mi-val text-good">~73%</span></div>
     </div>
   </aside>
@@ -448,7 +459,7 @@
   <div class="panel panel-center">
     <div class="panel-header">
       <span class="panel-label">Monte Carlo Simulation</span>
-      <span class="model-dot">6767 Matches</span>
+      <span class="model-dot">500 Matches</span>
     </div>
 
     <div style="margin-bottom:14px">
@@ -478,7 +489,12 @@
       </div>
       <div class="loading-counter" id="sim-counter">0</div>
       <div class="loading-label">matches simulated</div>
-      <div class="loading-desc">Running 6767 matches…</div>
+      <div class="loading-desc">Running 500 matches…</div>
+      <div class="sim-time-row">
+        <span class="sim-elapsed-lbl" id="sim-elapsed">0.0s</span>
+        <span class="sim-time-sep">·</span>
+        <span class="sim-eta-lbl" id="sim-eta">Estimating…</span>
+      </div>
       <div class="prog-wrap">
         <div class="prog-track"><div class="prog-fill" id="sim-bar" style="width:0%"></div></div>
         <div class="prog-phases"><span>Start</span><span>PP</span><span>Middle</span><span>Death</span><span>Done</span></div>
@@ -633,9 +649,144 @@
 </section>
 
 <!-- ════════════════════════════════════════════════════════
+     VIEW: FANTASY XI (Dream11-style)
+     ════════════════════════════════════════════════════════ -->
+<section id="fantasy-xi-view" class="view-section hidden">
+  <div class="panel panel-center fxi-panel">
+
+    <div class="panel-header">
+      <span class="panel-label">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="margin-right:6px;vertical-align:middle"><polygon points="10,1 12.9,7 19.5,7 14.5,11.5 16.5,18 10,14.5 3.5,18 5.5,11.5 0.5,7 7.1,7" stroke="currentColor" stroke-width="1.5" fill="var(--gold,#f59e0b)" stroke-linejoin="round"/></svg>
+        Dream11 Fantasy XI
+      </span>
+      <span class="model-dot" style="background:var(--gold,#f59e0b);color:#000;font-weight:700;font-size:10px">Dream11</span>
+    </div>
+
+    <p class="fxi-intro">
+      Optimal 11 players from both selected squads — scored on official Dream11 T20 rules.
+      Captain gets <strong>×2</strong>, Vice-Captain gets <strong>×1.5</strong>. Max 7 from any one team.
+    </p>
+
+    <div class="fxi-teams-row" id="fxi-teams-row">
+      <div class="fxi-team-chip" id="fxi-chip-t1">—</div>
+      <div class="fxi-vs-text">vs</div>
+      <div class="fxi-team-chip" id="fxi-chip-t2">—</div>
+    </div>
+
+    <button class="btn-predict fxi-gen-btn" id="fantasy-gen-btn" onclick="loadFantasyXI()">
+      <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style="margin-right:7px;vertical-align:middle"><polygon points="10,1 12.9,7 19.5,7 14.5,11.5 16.5,18 10,14.5 3.5,18 5.5,11.5 0.5,7 7.1,7" stroke="currentColor" stroke-width="1.5" fill="currentColor" stroke-linejoin="round"/></svg>
+      Generate Fantasy XI
+    </button>
+
+    <div class="fxi-loading" id="fxi-loading" style="display:none">
+      <div class="loading-spinner">
+        <svg width="36" height="36" viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="20" r="17" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+          <path d="M20 3 A17 17 0 0 1 37 20" stroke="var(--gold,#f59e0b)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="loading-label">Crunching Dream11 projections…</div>
+    </div>
+
+    <div id="fxi-result" style="display:none">
+
+      <!-- Summary -->
+      <div class="fxi-summary">
+        <div class="fxi-summary-stat">
+          <div class="fxi-summary-val" id="fxi-total-pts">—</div>
+          <div class="fxi-summary-lbl">Base Exp. Pts</div>
+        </div>
+        <div class="fxi-summary-divider"></div>
+        <div class="fxi-summary-stat">
+          <div class="fxi-summary-val" style="color:var(--gold,#f59e0b)" id="fxi-mult-pts">—</div>
+          <div class="fxi-summary-lbl">With C &amp; VC Boost</div>
+        </div>
+        <div class="fxi-summary-divider"></div>
+        <div class="fxi-summary-stat">
+          <div class="fxi-summary-val fxi-cvc-name" id="fxi-captain-name">—</div>
+          <div class="fxi-summary-lbl">Captain (×2)</div>
+        </div>
+        <div class="fxi-summary-divider"></div>
+        <div class="fxi-summary-stat">
+          <div class="fxi-summary-val fxi-cvc-name" id="fxi-vc-name">—</div>
+          <div class="fxi-summary-lbl">Vice-Captain (×1.5)</div>
+        </div>
+      </div>
+
+      <!-- Team distribution -->
+      <div class="fxi-dist-row" id="fxi-dist-row"></div>
+
+      <!-- Scoring rules collapsible -->
+      <details class="fxi-scoring-ref">
+        <summary class="fxi-scoring-summary">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M6 5v3M6 3.5v.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          Dream11 Scoring System Reference
+        </summary>
+        <div class="fxi-rules-grid">
+          <div class="fxi-rules-col">
+            <div class="fxi-rules-heading">🏏 Batting</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+1</span><span>per run scored</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+1</span><span>per boundary (4)</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+2</span><span>per six</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>25-run milestone</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>50-run milestone</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>75-run milestone</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+16</span><span>100-run milestone</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">−2</span><span>duck (non-tail)</span></div>
+            <div class="fxi-rules-sub">Strike Rate (min 10 balls):</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+6</span><span>SR ≥ 170</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>SR 150–169</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+2</span><span>SR 130–149</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">−2</span><span>SR 80–89</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">−4</span><span>SR 70–79</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">−6</span><span>SR &lt; 70</span></div>
+          </div>
+          <div class="fxi-rules-col">
+            <div class="fxi-rules-heading">🎯 Bowling</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+25</span><span>per wicket</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>bowled / LBW bonus</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>3-wkt haul bonus</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>4-wkt haul bonus</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+16</span><span>5-wkt haul bonus</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>maiden over</span></div>
+            <div class="fxi-rules-sub">Economy Rate (min 2 overs):</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+6</span><span>Econ &lt; 5</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>Econ 5–5.99</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+2</span><span>Econ 6–6.99</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">−2</span><span>Econ 10–10.99</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">−4</span><span>Econ 11–11.99</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">−6</span><span>Econ ≥ 12</span></div>
+          </div>
+          <div class="fxi-rules-col">
+            <div class="fxi-rules-heading">🤲 Fielding</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>catch</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>3-catch bonus</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>stumping</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>direct run-out</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+6</span><span>indirect run-out</span></div>
+            <div class="fxi-rules-heading" style="margin-top:14px">⚡ Multipliers</div>
+            <div class="fxi-rule-row fxi-big-mult"><span class="fxi-rule-pts fxi-pos fxi-mult-badge">×2</span><span>Captain</span></div>
+            <div class="fxi-rule-row fxi-big-mult"><span class="fxi-rule-pts fxi-pos fxi-mult-badge">×1.5</span><span>Vice-Captain</span></div>
+            <div class="fxi-rules-heading" style="margin-top:14px">📋 Team Rules</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-icon">🧤</span><span>1–4 Wicketkeepers</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-icon">🏏</span><span>3–6 Batters</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-icon">⚡</span><span>1–4 All-rounders</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-icon">🎯</span><span>3–6 Bowlers</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-icon">🔒</span><span>Max 7 from one team</span></div>
+          </div>
+        </div>
+      </details>
+
+      <div class="fxi-cards-label">Your Optimal Dream11 Squad</div>
+      <div class="fxi-cards-grid" id="fxi-player-grid"></div>
+
+    </div><!-- /fxi-result -->
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════
      VIEW: BUILDER
      ════════════════════════════════════════════════════════ -->
-<section id="builder-view" class="view-section hidden">
   <div class="panel panel-center">
     <div class="panel-header">
       <span class="panel-label">Build Your XI</span>
@@ -697,7 +848,7 @@
         <div class="app-stat-lbl">Matches in Training</div>
       </div>
       <div class="app-stat">
-        <div class="app-stat-val">6767</div>
+        <div class="app-stat-val">500</div>
         <div class="app-stat-lbl">Simulations per Run</div>
       </div>
       <div class="app-stat">
@@ -728,7 +879,7 @@
         <div class="fc-desc">Run 6,767 full match simulations to get average scores, percentile ranges, ball-by-ball outcomes, win momentum graphs, and key batter–bowler matchups.</div>
         <div class="fc-badge">
           <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
-          6767 Matches
+          500 Matches
         </div>
       </div>
 
@@ -1341,19 +1492,34 @@ function renderResult(data, t1, t2) {
 /* ── Animation helpers ────────────────────────────────────── */
 function clearAnimTimers() { animTimers.forEach(clearInterval); animTimers = []; }
 
-function runCounter(counterId, factId, barId, total) {
+function runCounter(counterId, factId, barId, total, expectedMs) {
   clearAnimTimers();
+  const start = Date.now();
   let count = 0;
-  const step = Math.max(1, Math.floor(total / 100));
+
   const iv = setInterval(() => {
-    const progress = count / total;
-    const speed = 0.5 + Math.sin(progress * Math.PI) * 2.0;
-    count = Math.min(count + Math.ceil(speed * step), total);
+    const elapsed   = Date.now() - start;
+    const elapsedS  = (elapsed / 1000).toFixed(1);
+    const progress  = Math.min(elapsed / expectedMs, 0.97); // cap at 97% until server responds
+    const remaining = Math.max(0, expectedMs - elapsed);
+
+    // Sync match counter to time-based progress (not fixed step)
+    count = Math.min(Math.floor(progress * total), total);
     if (counterId) txt(counterId, count.toLocaleString());
-    if (barId) { const b = $id(barId); if (b) b.style.width = (count / total * 100) + '%'; }
-    if (Math.random() < 0.07) txt(factId, FACTS[Math.floor(Math.random() * FACTS.length)]);
-    if (count >= total) clearInterval(iv);
-  }, 55);
+
+    // Drive progress bar from real elapsed time
+    if (barId) { const b = $id(barId); if (b) b.style.width = (progress * 100) + '%'; }
+
+    // Update elapsed + ETA
+    txt('sim-elapsed', elapsedS + 's elapsed');
+    if (remaining > 300)
+      txt('sim-eta', '~' + (remaining / 1000).toFixed(1) + 's remaining');
+    else if (elapsed < expectedMs)
+      txt('sim-eta', 'Almost done…');
+
+    // Rotate facts
+    if (Math.random() < 0.04) txt(factId, FACTS[Math.floor(Math.random() * FACTS.length)]);
+  }, 80);
   animTimers.push(iv);
 }
 
@@ -1381,37 +1547,119 @@ async function runSimulate() {
   if (t1 === t2) { alert('Select two different teams'); return; }
   const tossKnown = $id('toss-toggle').checked;
 
-  const simResult = $id('sim-result');
-  if (simResult) simResult.style.display = 'none';
+  $id('sim-result').style.display = 'none';
   setBtn('simulate-btn', true);
   showAnim('sim-anim');
-  runCounter('sim-counter', 'sim-fact', 'sim-bar', 6767);
+  txt('sim-counter', '0');
+  txt('sim-eta',     'Starting…');
+  txt('sim-elapsed', '0.0s');
+  const bar = $id('sim-bar'); if (bar) bar.style.width = '0%';
 
-  // Scroll to simulate view
+  const simStart = Date.now();
+
+  // Live elapsed clock — runs independently of server
+  const clockIv = setInterval(() => {
+    txt('sim-elapsed', ((Date.now() - simStart) / 1000).toFixed(1) + 's elapsed');
+  }, 100);
+
   setTimeout(() => $id('simulate-view')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
 
   try {
-    const d = await api('/simulate', {
-      team1: t1, team2: t2,
-      toss_known: tossKnown,
-      toss_winner:   tossKnown ? ($id('toss_winner')?.value || '') : '',
-      toss_decision: tossKnown ? ($id('toss_decision')?.value || 'bat') : 'bat',
-      style1: simStyle, style2: simStyle,
-      n_matches: 6767,
+    const response = await fetch('/simulate-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team1: t1, team2: t2,
+        toss_known: tossKnown,
+        toss_winner:   tossKnown ? ($id('toss_winner')?.value  || '') : '',
+        toss_decision: tossKnown ? ($id('toss_decision')?.value || 'bat') : 'bat',
+        style1: simStyle, style2: simStyle,
+        n_matches: 500,
+      })
     });
-    console.log('SIM RESPONSE:', d);  // DEBUG
-    hideAnim('sim-anim');
-    renderSim(d, t1, t2);
+
+    const reader  = response.body.getReader();
+    const decoder = new TextDecoder();
+    let   buffer  = '';
+
+    // Helper: parse and act on a single SSE line
+    const handleLine = async (line) => {
+      if (!line.startsWith('data: ')) return false; // false = not done
+      let msg;
+      try { msg = JSON.parse(line.slice(6)); } catch { return false; }
+
+      if (msg.type === 'progress') {
+        const { count, total } = msg;
+        const pct      = (count / total * 100).toFixed(1);
+        const elapsed  = Date.now() - simStart;
+        const rate     = count / elapsed;
+        const remaining = Math.max(0, (total - count) / rate);
+
+        txt('sim-counter', count.toLocaleString());
+        if (bar) bar.style.width = pct + '%';
+        txt('sim-eta', remaining > 500
+          ? '~' + (remaining / 1000).toFixed(1) + 's remaining'
+          : 'Almost done…');
+
+        if (Math.random() < 0.15)
+          txt('sim-fact', FACTS[Math.floor(Math.random() * FACTS.length)]);
+
+      } else if (msg.type === 'error') {
+        throw new Error(msg.message || 'Server-side simulation error');
+
+      } else if (msg.type === 'result') {
+        const duration = Date.now() - simStart;
+        clearInterval(clockIv);
+
+        if (bar) bar.style.width = '100%';
+        txt('sim-counter', (500).toLocaleString());
+        txt('sim-elapsed', (duration / 1000).toFixed(1) + 's');
+        txt('sim-eta', 'Done ✓');
+
+        await new Promise(r => setTimeout(r, 300));
+        hideAnim('sim-anim');
+        if (!msg.payload) throw new Error('Empty result payload from server');
+        renderSim(msg.payload, t1, t2);
+        return true; // signal that we're done
+      }
+      return false;
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      // Fix bug 6: flush remaining buffer BEFORE breaking on done
+      if (done) {
+        if (buffer.trim()) {
+          await handleLine(buffer.trim());
+        }
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // keep incomplete last line
+
+      for (const line of lines) {
+        const finished = await handleLine(line);
+        if (finished) return; // result received — exit early
+      }
+    }
+
   } catch (e) {
     console.error('SIM ERROR:', e);
+    clearInterval(clockIv);
     hideAnim('sim-anim');
+    // Fix bug 8: clear previous error divs before appending a new one
+    const simResultEl = $id('sim-result');
+    if (simResultEl) simResultEl.innerHTML = '';
     const errDiv = document.createElement('div');
     errDiv.style.cssText = 'color:var(--red);font-size:13px;padding:16px;text-align:center';
     errDiv.textContent = 'Simulation error: ' + e.message;
-    $id('sim-result').appendChild(errDiv);
-    $id('sim-result').style.display = 'block';
+    if (simResultEl) simResultEl.appendChild(errDiv);
+    if (simResultEl) simResultEl.style.display = 'block';
   } finally {
-    clearAnimTimers();
+    clearInterval(clockIv);
     setBtn('simulate-btn', false);
   }
 }
@@ -1427,8 +1675,19 @@ async function runCustomSimulate() {
   $id('sim-result').style.display = 'none';
   setBtn('simulate-btn', true);
   showAnim('sim-anim');
-  runCounter('sim-counter', 'sim-fact', 'sim-bar', 6767);
+  txt('sim-counter', '0');
+  txt('sim-eta',     'Starting…');
+  txt('sim-elapsed', '0.0s');
+  const bar = $id('sim-bar'); if (bar) bar.style.width = '0%';
   const tossKnown = $id('toss-toggle').checked;
+
+  const simStart  = Date.now();
+  // Fix bug 5: pass a sensible expectedMs so the counter actually animates
+  runCounter('sim-counter', 'sim-fact', 'sim-bar', 500, 6500);
+
+  const clockIv = setInterval(() => {
+    txt('sim-elapsed', ((Date.now() - simStart) / 1000).toFixed(1) + 's elapsed');
+  }, 100);
 
   try {
     const d = await api('/simulate-custom', {
@@ -1440,15 +1699,24 @@ async function runCustomSimulate() {
       toss_known: tossKnown,
       toss_winner:   tossKnown ? $id('toss_winner').value : '',
       toss_decision: tossKnown ? $id('toss_decision').value : 'bat',
-      n_matches: 6767,
+      n_matches: 500,
     });
+    const duration = Date.now() - simStart;
+    clearInterval(clockIv);
+    clearAnimTimers();
+    if (bar) bar.style.width = '100%';
+    txt('sim-counter', (500).toLocaleString());
+    txt('sim-elapsed', (duration / 1000).toFixed(1) + 's');
+    txt('sim-eta', 'Done ✓');
+    await new Promise(r => setTimeout(r, 300));
     hideAnim('sim-anim');
     renderSim(d, t1, t2);
   } catch (e) {
+    clearInterval(clockIv);
+    clearAnimTimers();
     hideAnim('sim-anim');
     alert('Error: ' + e.message);
   } finally {
-    clearAnimTimers();
     setBtn('simulate-btn', false);
   }
 }
@@ -2141,6 +2409,190 @@ function renderScorecard(match, t1, t2) {
   wrap.innerHTML = html || '<p style="color:var(--t2);padding:12px">No scorecard data</p>';
 }
 
+/* ═══════════════════════════════════════════════════════════
+   FANTASY XI — Dream11 Logic
+   ═══════════════════════════════════════════════════════════ */
+
+/* Update team chips when teams change */
+function fxiUpdateChips() {
+  const t1 = $id('team1')?.value || '—';
+  const t2 = $id('team2')?.value || '—';
+  const c1 = $id('fxi-chip-t1');
+  const c2 = $id('fxi-chip-t2');
+  if (c1) { c1.textContent = t1; c1.style.borderColor = clr(t1); c1.style.color = clr(t1); }
+  if (c2) { c2.textContent = t2; c2.style.borderColor = clr(t2); c2.style.color = clr(t2); }
+}
+
+async function loadFantasyXI() {
+  const t1 = $id('team1')?.value;
+  const t2 = $id('team2')?.value;
+  if (!t1 || !t2 || t1 === t2) {
+    const errEl = $id('error-msg');
+    if (errEl) { errEl.style.display = 'flex'; txt('error-text', 'Please select two different teams first'); }
+    return;
+  }
+
+  const loadEl  = $id('fxi-loading');
+  const resultEl = $id('fxi-result');
+  const btn     = $id('fantasy-gen-btn');
+
+  if (loadEl)   loadEl.style.display  = 'flex';
+  if (resultEl) resultEl.style.display = 'none';
+  if (btn)      btn.disabled = true;
+
+  fxiUpdateChips();
+
+  try {
+    const res  = await fetch(`/fantasy-xi?team1=${encodeURIComponent(t1)}&team2=${encodeURIComponent(t2)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderFantasyXI(data, t1, t2);
+    if (loadEl)   loadEl.style.display  = 'none';
+    if (resultEl) { resultEl.style.display = 'block'; resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  } catch(e) {
+    if (loadEl) loadEl.style.display = 'none';
+    const errEl = $id('error-msg');
+    if (errEl) { errEl.style.display = 'flex'; txt('error-text', 'Fantasy XI error: ' + (e.message || 'Unknown')); }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function renderFantasyXI(data, t1, t2) {
+  const players = data.players || [];
+  const captain = players.find(p => p.is_captain);
+  const vc      = players.find(p => p.is_vc);
+
+  /* ── Summary bar ─────────────────────────────────────────── */
+  txt('fxi-total-pts', data.total_expected_pts ?? '—');
+  txt('fxi-mult-pts',  data.total_with_multipliers ?? '—');
+  txt('fxi-captain-name', captain?.name ?? '—');
+  txt('fxi-vc-name',      vc?.name ?? '—');
+
+  /* ── Team distribution ───────────────────────────────────── */
+  const distRow = $id('fxi-dist-row');
+  if (distRow && data.team_counts) {
+    const t1c = data.team_counts[t1] || 0;
+    const t2c = data.team_counts[t2] || 0;
+    distRow.innerHTML = `
+      <div class="fxi-dist-chip" style="border-color:${clr(t1)}40;color:${clr(t1)}">
+        <span class="fxi-dist-dot" style="background:${clr(t1)}"></span>
+        ${t1}: <strong>${t1c}</strong>
+      </div>
+      <div class="fxi-dist-sep">+</div>
+      <div class="fxi-dist-chip" style="border-color:${clr(t2)}40;color:${clr(t2)}">
+        <span class="fxi-dist-dot" style="background:${clr(t2)}"></span>
+        ${t2}: <strong>${t2c}</strong>
+      </div>
+      <div class="fxi-dist-sep">= 11 players</div>
+    `;
+  }
+
+  /* ── Player cards ────────────────────────────────────────── */
+  const grid = $id('fxi-player-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const ROLE_ICON = {
+    'Wicketkeeper': '🧤',
+    'Batter':       '🏏',
+    'All-rounder':  '⚡',
+    'Bowler':       '🎯',
+  };
+
+  players.forEach((p, idx) => {
+    const isC  = p.is_captain;
+    const isVC = p.is_vc;
+    const tc   = p.team === t1 ? clr(t1) : clr(t2);
+    const mult = isC ? 2.0 : isVC ? 1.5 : 1.0;
+    const effPts = (p.pts * mult).toFixed(1);
+    const roleIcon = ROLE_ICON[p.role] || '🏏';
+
+    /* Team abbreviation: first letter of each word, max 3 chars */
+    const abbr = p.team.split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
+
+    /* Points bar widths (normalised so highest scorer = 100%) */
+    const maxPts = players[0]?.pts || 1;
+    const batW   = Math.max(4, Math.min(100, (p.bat_pts  / maxPts) * 100));
+    const bowlW  = Math.max(4, Math.min(100, (p.bowl_pts / maxPts) * 100));
+    const fieldW = Math.max(4, Math.min(100, (p.field_pts/ maxPts) * 100));
+
+    /* Projection text */
+    const batProjTxt  = p.exp_runs > 0
+      ? `Est. ~${p.exp_runs.toFixed(0)} runs off ${p.exp_balls_faced} balls`
+      : 'Minimal batting contribution expected';
+    const bowlProjTxt = p.exp_wkts > 0
+      ? `Est. ~${p.exp_wkts.toFixed(1)} wkts in ${p.exp_overs} overs`
+      : 'Not a primary bowler';
+
+    /* Card class */
+    const cardCls = isC ? 'fxi-card fxi-card--captain' : isVC ? 'fxi-card fxi-card--vc' : 'fxi-card';
+
+    const card = document.createElement('div');
+    card.className = cardCls;
+    card.style.setProperty('--tc', tc);
+    card.style.animationDelay = (idx * 0.045) + 's';
+
+    card.innerHTML = `
+      <div class="fxi-card-top">
+        <div class="fxi-card-badge-wrap">
+          ${isC  ? '<span class="fxi-badge fxi-badge--c">C</span>'  : ''}
+          ${isVC ? '<span class="fxi-badge fxi-badge--vc">VC</span>' : ''}
+          ${!isC && !isVC ? `<span class="fxi-badge fxi-badge--rank">${idx + 1}</span>` : ''}
+        </div>
+        <div class="fxi-card-info">
+          <div class="fxi-card-name">${p.name}</div>
+          <div class="fxi-card-meta">
+            <span class="fxi-role-tag">${roleIcon} ${p.role}</span>
+            <span class="fxi-team-tag" style="color:${tc};border-color:${tc}40">${abbr}</span>
+          </div>
+        </div>
+        <div class="fxi-card-pts">
+          <div class="fxi-pts-base">${p.pts}</div>
+          <div class="fxi-pts-lbl">base pts</div>
+          ${mult > 1 ? `<div class="fxi-pts-boosted" style="color:${isC ? 'var(--gold,#f59e0b)' : 'var(--accent)'}">${effPts} pts <span class="fxi-mult-label">${isC ? '×2 C' : '×1.5 VC'}</span></div>` : ''}
+        </div>
+      </div>
+
+      <div class="fxi-card-breakdown">
+        <div class="fxi-bd-row">
+          <span class="fxi-bd-icon">🏏</span>
+          <span class="fxi-bd-label">Batting</span>
+          <div class="fxi-bd-bar"><div class="fxi-bd-fill fxi-bd-fill--bat" style="width:${batW}%"></div></div>
+          <span class="fxi-bd-val">${p.bat_pts} pts</span>
+        </div>
+        <div class="fxi-bd-row">
+          <span class="fxi-bd-icon">🎯</span>
+          <span class="fxi-bd-label">Bowling</span>
+          <div class="fxi-bd-bar"><div class="fxi-bd-fill fxi-bd-fill--bowl" style="width:${bowlW}%"></div></div>
+          <span class="fxi-bd-val">${p.bowl_pts} pts</span>
+        </div>
+        <div class="fxi-bd-row">
+          <span class="fxi-bd-icon">🤲</span>
+          <span class="fxi-bd-label">Fielding</span>
+          <div class="fxi-bd-bar"><div class="fxi-bd-fill fxi-bd-fill--field" style="width:${fieldW}%"></div></div>
+          <span class="fxi-bd-val">${p.field_pts} pts</span>
+        </div>
+      </div>
+
+      <div class="fxi-card-projection">
+        <div class="fxi-proj-row">
+          <span class="fxi-proj-icon">📊</span>
+          <span>${batProjTxt}</span>
+        </div>
+        ${p.exp_wkts > 0 ? `<div class="fxi-proj-row"><span class="fxi-proj-icon">🎳</span><span>${bowlProjTxt}</span></div>` : ''}
+        ${p.bat_sr > 0 ? `<div class="fxi-proj-stats">SR: <strong>${p.bat_sr.toFixed(0)}</strong>${p.bat_avg > 0 ? ` · Avg: <strong>${p.bat_avg.toFixed(0)}</strong>` : ''}${p.bowl_econ > 0 ? ` · Econ: <strong>${p.bowl_econ.toFixed(1)}</strong>` : ''}${p.bowl_wkts > 0 ? ` · IPL wkts: <strong>${p.bowl_wkts}</strong>` : ''}</div>` : ''}
+      </div>
+
+      <div class="fxi-card-reason">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="flex-shrink:0;margin-top:1px"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1"/><path d="M5.5 4.5v3M5.5 3v.3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
+        <span>${p.reason}</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
 /* ── Keyboard shortcut ────────────────────────────────────── */
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !$id('predict-btn')?.disabled) runPredict();
@@ -2181,11 +2633,12 @@ document.addEventListener('DOMContentLoaded', () => {
   updateColors();
   onTossToggle();
   renderHistory();
+  fxiUpdateChips();
   $id('team1')?.addEventListener('change', updateColors);
   $id('team2')?.addEventListener('change', updateColors);
 
-  $id('team1')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); });
-  $id('team2')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); });
+  $id('team1')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); fxiUpdateChips(); });
+  $id('team2')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); fxiUpdateChips(); });
 
   // Init scroll animations
   initScrollAnimations();
