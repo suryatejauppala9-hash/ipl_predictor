@@ -116,12 +116,20 @@ Features used at prediction time:
 | `toss_winner_is_team1` | Toss outcome (or averaged across 4 scenarios) |
 | `toss_decision_bat` | Bat/bowl decision |
 | `team1_h2h_win_pct` | Historical head-to-head win % |
+| `team1_last5_wins` / `team2_last5_wins` | Rolling 5-match win rate (form) |
+| `team1_venue_winrate` / `team2_venue_winrate` | Historical win rate at the venue |
+| `team1_chase_winrate` / `team2_chase_winrate` | Historical chase/defend win rate |
+| `team1_phase_pp_rr` etc. | Phase-specific run rates (powerplay, middle, death) |
+| `sr_diff`, `econ_diff`, `form_diff` | Deltas for strike rate, economy, and recent form |
+| `team1_encoded` / `team2_encoded` | Team identity encoding |
+| `team1_matchup_strength` / `team2_matchup_strength`| Aggregate batter vs top bowler historical SR |
+| `team1_depth` / `team2_depth` | Batting depth (average SR of positions 5–8) |
 
 Model: `XGBClassifier` with 200 estimators, learning rate 0.05, max depth 4.
 
 ### Ball outcome model
 
-Trained on every delivery in the dataset. Features are cumulative batter and bowler stats up to (but not including) the current ball — the model never looks ahead. Phase one-hot encoding (powerplay / middle / death) is included.
+Trained on every delivery in the dataset. Features include cumulative batter and bowler stats up to (but not including) the current ball, ensuring no look-ahead bias. The model also leverages dynamic features such as rolling window stats (`last12_runs`, `last12_wickets`), batter dot-ball pressure, and phase one-hot encoding (powerplay / middle / death).
 
 Model: `XGBClassifier` with 150 estimators, learning rate 0.08, max depth 5. Output classes: `{0, 1, 2, 3, 4, 6}` (5-run outcomes are mapped to 4).
 
@@ -174,6 +182,12 @@ Score calibration targets IPL 2024/25 averages (~191 runs per team).
 - Click to select up to 11 players; selection order sets batting position
 - Last 5 selected eligible bowlers bowl (T20: 5 bowlers)
 - Feed directly into the simulation engine
+
+### Dream11 Fantasy XI
+- Optimal 11 players selected from both squads
+- Scored on official Dream11 T20 rules
+- Recommends Captain (2x points) and Vice-Captain (1.5x points)
+- Interactive collapsible scoring system reference
 
 ### Squad Viewer
 - Full 2026 squad rosters for all 10 franchises
