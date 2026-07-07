@@ -15,7 +15,7 @@ IPL Intelligence gives you two ML-powered engines under one interface:
 
 **Win Predictor** — An XGBoost classifier trained on 13 match-level features (rolling strike rates, economy rates, batting averages, home advantage, toss outcome, head-to-head win %) to predict which team wins before the first ball is bowled. Supports pre-match mode where toss is unknown — the model averages predictions across all four possible toss scenarios and breaks them down for you.
 
-**Match Simulator** — Runs 6,767 full ball-by-ball T20 simulations using a second XGBoost model trained on cumulative batsman/bowler stats per delivery. Produces score distributions, P10/P90 ranges, a ball outcome breakdown (dots, 1s, 2s, fours, sixes, wickets), full scorecards, and a live win-probability momentum graph that updates after every over.
+**Match Simulator** — Runs 500 full ball-by-ball T20 simulations using a second XGBoost model trained on cumulative batsman/bowler stats per delivery. Produces score distributions, P10/P90 ranges, a ball outcome breakdown (dots, 1s, 2s, fours, sixes, wickets), full scorecards, and a live win-probability momentum graph that updates after every over.
 
 Everything else — Ideal XI generation, the custom XI builder, squad viewer, and the Impact Player designator — feeds into or out of these two engines.
 
@@ -137,7 +137,7 @@ Dismissal probability is modelled separately as a per-ball Bernoulli draw using 
 
 ### Simulation engine
 
-Each of the 6,767 simulated matches:
+Each of the 500 simulated matches:
 1. Determines batting order based on toss (known or randomly drawn)
 2. Simulates every ball across both 20-over innings using the ball outcome model (or calibrated heuristics if the model is unavailable)
 3. Applies IPL-calibrated phase run-rates: powerplay 0.150 rpb, middle 0.148 rpb, death 0.195 rpb
@@ -157,7 +157,7 @@ Score calibration targets IPL 2024/25 averages (~191 runs per team).
 - Head-to-head, strike rate, batting average, and economy comparison
 
 ### Monte Carlo Simulation
-- 6,767 full match simulations
+- 500 full match simulations
 - Mean score, standard deviation, P10 and P90 range per team
 - Ball outcome distribution (dot%, 1s, fours, sixes, wicket%)
 - Ball-by-ball log with phase labels and hover tooltips
@@ -199,6 +199,18 @@ Score calibration targets IPL 2024/25 averages (~191 runs per team).
 - Per team, per match — the player most likely to change the game
 - Shows the bench player they would replace
 - Follows the official IPL Impact Player rule: 1 substitution allowed after the toss, the replaced player cannot bowl or bat in the remaining innings
+
+---
+
+## Performance Benchmarking
+
+To measure the throughput and latency of the simulation engine under load, a benchmarking script is provided.
+
+```bash
+python time_sim.py
+```
+
+This runs a full 500-match Monte Carlo simulation (using balanced XIs) and outputs the precise execution time. The engine is optimized and can run efficiently, making it suitable for benchmarking across different hardware configurations (such as T4 GPUs) to evaluate raw simulation performance.
 
 ---
 

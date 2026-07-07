@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CricIQ — IPL Match Intelligence</title>
+<title>Pricket — IPL Match Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -62,7 +62,7 @@
   </button>
 </nav>
 
-<!-- ── TOP BAR ────────────────────────────────────────────── -->
+
 <header class="topbar">
   <a class="brand" href="#">
     <div class="brand-mark">
@@ -72,7 +72,7 @@
         <path d="M2 8 Q5 10.5 8 8 Q11 5.5 14 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
-    <span class="brand-name">CricIQ</span>
+    <span class="brand-name">Pricket</span>
     <span class="brand-tag">IPL 2026</span>
   </a>
 
@@ -87,10 +87,6 @@
   </nav>
 
   <div class="nav-right">
-    <div class="model-badge" title="Powered by XGBoost trained on IPL 2008–2024">
-      <span class="model-dot"></span>
-      <span>XGBoost · ~73% acc.</span>
-    </div>
     <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" aria-label="Toggle theme">
       <svg class="icon-moon" width="15" height="15" viewBox="0 0 15 15" fill="none">
         <path d="M7.5 1.5C4.2 1.5 1.5 4.2 1.5 7.5s2.7 6 6 6c2.2 0 4.1-1.2 5.2-3-.4.1-.8.1-1.2.1-3.3 0-6-2.7-6-6 0-1.2.4-2.4 1-3.3-.3 0-.6-.1-1-.1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
@@ -104,16 +100,16 @@
   </div>
 </header>
 
-<!-- ── MAIN DASHBOARD ─────────────────────────────────────── -->
+
 <main class="dashboard">
 
-  <!-- ═══ LEFT PANEL — Match Setup ═══ -->
+  
   <aside class="panel panel-left" id="selector-card">
     <div class="panel-header">
       <span class="panel-label">Match Setup</span>
     </div>
 
-    <!-- Team 1 -->
+    
     <div class="team-block" id="block-t1">
       <label class="field-label">Team 1</label>
       <div class="team-select-wrap" id="wrap-t1">
@@ -137,7 +133,7 @@
       <div class="team-indicator" id="t1-bar"></div>
     </div>
 
-    <!-- Swap -->
+    
     <div class="swap-row">
       <div class="swap-divider"></div>
       <button class="swap-btn" onclick="swapTeams()" title="Swap teams">
@@ -148,7 +144,7 @@
       <div class="swap-divider"></div>
     </div>
 
-    <!-- Team 2 -->
+    
     <div class="team-block" id="block-t2">
       <label class="field-label">Team 2</label>
       <div class="team-select-wrap" id="wrap-t2">
@@ -174,7 +170,7 @@
 
     <div class="panel-divider"></div>
 
-    <!-- Venue -->
+    
     <div class="field-group">
       <label class="field-label">
         Venue Status
@@ -194,7 +190,7 @@
 
     <div class="panel-divider"></div>
 
-    <!-- Toss -->
+    
     <div class="toss-section">
       <div class="toss-header">
         <div>
@@ -228,7 +224,7 @@
           <div class="field-group">
             <label class="field-label">Decision</label>
             <div class="select-wrap">
-              <select class="setup-select" id="toss_decision">
+              <select class="setup-select" id="toss_dec">
                 <option value="bat">Bat First</option>
                 <option value="field">Bowl First</option>
               </select>
@@ -241,7 +237,7 @@
       </div>
     </div>
 
-    <!-- Error message -->
+    
     <div class="error-msg" id="error-msg" style="display:none">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5a5 5 0 100 10 5 5 0 000-10zm0 2.5v2.5m0 1.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
       <span id="error-text">Select different teams</span>
@@ -252,18 +248,13 @@
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
 
-    <!-- Model info footer -->
-    <div class="model-info">
-      <div class="mi-row"><span class="mi-key">Model</span><span class="mi-val">XGBoost v4</span></div>
-      <div class="mi-row"><span class="mi-key">Training data</span><span class="mi-val">IPL 2008–2025</span></div>
-      <div class="mi-row"><span class="mi-key">Accuracy</span><span class="mi-val text-good">~73%</span></div>
-    </div>
+    
   </aside>
 
-  <!-- ═══ CENTER PANEL — Prediction Result ═══ -->
+  
   <section class="panel panel-center" id="predict-view">
 
-    <!-- Empty state -->
+    
     <div class="empty-state" id="empty-state">
       <div class="empty-icon">
         <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -276,7 +267,7 @@
       <div class="empty-sub">Configure match setup on the left, then run a prediction to see win probabilities and insights.</div>
     </div>
 
-    <!-- Loading state -->
+    
     <div class="loading-state" id="predict-anim" style="display:none">
       <div class="loading-spinner">
         <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
@@ -292,16 +283,16 @@
       </div>
     </div>
 
-    <!-- Result panel -->
+    
     <div id="predict-result" style="display:none">
-      <!-- Match header -->
+      
       <div class="result-match-header">
         <div class="rmh-team" id="rmh-t1">—</div>
         <div class="rmh-vs">VS</div>
         <div class="rmh-team" id="rmh-t2">—</div>
       </div>
 
-      <!-- Winner block -->
+      
       <div class="winner-block">
         <div class="winner-super-label">PREDICTED WINNER</div>
         <div class="winner-name-display" id="winner-name" style="font-size:clamp(22px,4vw,36px)">—</div>
@@ -309,7 +300,7 @@
         <div class="win-prob-label">Win Probability</div>
       </div>
 
-      <!-- Probability bar -->
+      
       <div class="prob-section">
         <div class="prob-teams">
           <span class="prob-team-label" id="p-t1-lbl">T1</span>
@@ -325,7 +316,7 @@
         </div>
       </div>
 
-      <!-- Confidence + Context -->
+      
       <div class="meta-row">
         <div class="meta-chip">
           <span class="mc-label">Confidence</span>
@@ -341,13 +332,13 @@
         </div>
       </div>
 
-      <!-- Toss scenarios (when toss unknown) -->
+      
       <div id="toss-scenarios-wrap" style="display:none">
         <div class="section-label">Toss Scenarios</div>
         <div class="toss-scenarios-grid" id="ts-list"></div>
       </div>
 
-      <!-- Stats grid -->
+      
       <div class="section-label" style="margin-top:20px">Head-to-Head Stats</div>
       <div class="stats-table">
         <div class="st-row st-head">
@@ -377,11 +368,11 @@
         </div>
       </div>
 
-      <!-- Why This Result -->
+      
       <div class="section-label" style="margin-top:20px;display:none" id="why-label">Why This Result</div>
       <div class="explanation-list" id="explanation-list"></div>
 
-      <!-- Impact players -->
+      
       <div class="impact-row" id="impact-row" style="display:none">
         <div class="impact-card" id="impact-t1">
           <div class="impact-badge">Impact Player</div>
@@ -397,64 +388,12 @@
         </div>
       </div>
 
-    </div><!-- /predict-result -->
+    </div>
   </section>
 
-  <!-- ═══ RIGHT PANEL — Insights ═══ -->
-  <aside class="panel panel-right">
+  
+  
 
-    <!-- Prediction History -->
-    <div class="panel-header">
-      <span class="panel-label">Recent Predictions</span>
-      <button class="clear-history-btn" onclick="clearHistory()" id="clear-hist-btn" style="display:none">Clear</button>
-    </div>
-    <div class="history-list" id="history-list">
-      <div class="history-empty">No predictions yet</div>
-    </div>
-
-    <div class="panel-divider"></div>
-
-    <!-- Key Factors -->
-    <div class="panel-header">
-      <span class="panel-label">Key Factors</span>
-    </div>
-    <div class="factors-list" id="factors-list">
-      <div class="factor-empty">Run a prediction to see insights</div>
-    </div>
-
-    <div class="panel-divider"></div>
-
-    <!-- About the model -->
-    <div class="panel-header">
-      <span class="panel-label">About the Model</span>
-    </div>
-    <div class="about-model">
-      <div class="am-row">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1.5" y="1.5" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M4 6.5h5M4 4.5h3M4 8.5h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-        XGBoost gradient boosted tree classifier
-      </div>
-      <div class="am-row">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 10 Q3.5 4 6.5 5.5 Q9.5 7 11 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/></svg>
-        18 engineered features per match
-      </div>
-      <div class="am-row">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 4v2.5l1.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-        IPL data from 2008–2024 (900+ matches)
-      </div>
-      <div class="am-row">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2.5 10.5l8-8M6 4h4v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Predictions are probabilistic, not deterministic
-      </div>
-    </div>
-
-  </aside>
-
-</main>
-
-<!-- ── OTHER VIEWS (Simulate, Ideal XI, Build XI) ──────── -->
-<!-- ════════════════════════════════════════════════════════
-     VIEW: SIMULATE
-     ════════════════════════════════════════════════════════ -->
 <section id="simulate-view" class="view-section hidden">
   <div class="panel panel-center">
     <div class="panel-header">
@@ -475,7 +414,7 @@
       🎲 Run Simulation
     </button>
 
-    <!-- Loading -->
+    <!-- loading -->
     <div class="loading-wrap" id="sim-anim">
       <div class="radar">
         <div class="radar-ring radar-ring-1"></div>
@@ -502,7 +441,7 @@
       <div class="loading-fact" id="sim-fact"></div>
     </div>
 
-    <!-- Result -->
+    <!-- result -->
     <div id="sim-result" style="display:none">
       <div class="divider"></div>
 
@@ -528,7 +467,7 @@
         <div class="mc-pill"><div class="mc-pill-val" id="mc-p90-t2">—</div><div class="mc-pill-lbl">T2 P90</div></div>
       </div>
 
-      <!-- 3D: Simulation Insights -->
+      <!-- 3d simulation insights -->
       <div class="sim-insights" id="sim-insights" style="display:none">
         <div class="section-label">Simulation Insights</div>
         <div class="si-grid">
@@ -557,7 +496,7 @@
         </div>
       </div>
 
-      <!-- Tabs -->
+      <!-- tabs -->
       <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('momentum',this)">Momentum</button>
         <button class="tab-btn" onclick="switchTab('dist',this)">Ball Distribution</button>
@@ -568,7 +507,7 @@
         <button class="tab-btn" onclick="switchTab('matchups',this)">Key Matchups</button>
       </div>
 
-      <!-- Momentum -->
+      <!-- momentum -->
       <div class="tab-panel active" id="tab-momentum">
         <div class="momentum-wrap">
           <div class="momentum-header">
@@ -588,13 +527,13 @@
         </div>
       </div>
 
-      <!-- Distribution -->
+      <!-- distribution -->
       <div class="tab-panel" id="tab-dist">
         <div class="dist-chart-wrap" id="dist-chart"></div>
         <div class="dist-tags" id="dist-tags"></div>
       </div>
 
-      <!-- Innings BBB -->
+      <!-- innings bbb -->
       <div class="tab-panel" id="tab-inn1">
         <div class="inn-header" id="inn1-header"></div>
         <div class="bbb-scroll" id="bbb-inn1"></div>
@@ -604,17 +543,17 @@
         <div class="bbb-scroll" id="bbb-inn2"></div>
       </div>
 
-      <!-- Scorecard -->
+      <!-- scorecard -->
       <div class="tab-panel" id="tab-scorecard">
         <div id="scorecard-content"></div>
       </div>
 
-      <!-- Playing XI -->
+      <!-- playing xi -->
       <div class="tab-panel" id="tab-xi-used">
         <div class="xi-grid" id="xi-grid"></div>
       </div>
 
-      <!-- 3E: Key Matchups -->
+      <!-- 3e key matchups -->
       <div class="tab-panel" id="tab-matchups">
         <div id="matchup-cards" style="display:flex;flex-direction:column;gap:10px;padding:4px 0"></div>
       </div>
@@ -622,9 +561,6 @@
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════
-     VIEW: IDEAL XI
-     ════════════════════════════════════════════════════════ -->
 <section id="ideal-xi-view" class="view-section hidden">
   <div class="panel panel-center">
     <div class="panel-header">
@@ -648,9 +584,6 @@
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════
-     VIEW: FANTASY XI (Dream11-style)
-     ════════════════════════════════════════════════════════ -->
 <section id="fantasy-xi-view" class="view-section hidden">
   <div class="panel panel-center fxi-panel">
 
@@ -690,7 +623,7 @@
 
     <div id="fxi-result" style="display:none">
 
-      <!-- Summary -->
+      <!-- summary -->
       <div class="fxi-summary">
         <div class="fxi-summary-stat">
           <div class="fxi-summary-val" id="fxi-total-pts">—</div>
@@ -713,10 +646,10 @@
         </div>
       </div>
 
-      <!-- Team distribution -->
+      <!-- team distribution -->
       <div class="fxi-dist-row" id="fxi-dist-row"></div>
 
-      <!-- Scoring rules collapsible -->
+      <!-- scoring rules collapsible -->
       <details class="fxi-scoring-ref">
         <summary class="fxi-scoring-summary">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M6 5v3M6 3.5v.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
@@ -780,13 +713,338 @@
       <div class="fxi-cards-label">Your Optimal Dream11 Squad</div>
       <div class="fxi-cards-grid" id="fxi-player-grid"></div>
 
-    </div><!-- /fxi-result -->
+    </div><!-- fxiresult -->
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════
-     VIEW: BUILDER
-     ════════════════════════════════════════════════════════ -->
+
+<section id="simulate-view" class="view-section hidden">
+  <div class="panel panel-center">
+    <div class="panel-header">
+      <span class="panel-label">Monte Carlo Simulation</span>
+      <span class="model-dot">500 Matches</span>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">XI Style</div>
+      <div class="style-pills" id="sim-style-pills">
+        <button class="style-pill active" onclick="setStyle('balanced',this)">Balanced</button>
+        <button class="style-pill" onclick="setStyle('aggressive',this)">Aggressive</button>
+        <button class="style-pill" onclick="setStyle('bowling',this)">Bowling-heavy</button>
+      </div>
+    </div>
+
+    <button class="btn-predict" id="simulate-btn" onclick="runSimulate()">
+      ≡ƒÄ▓ Run Simulation
+    </button>
+
+    <!-- loading -->
+    <div class="loading-wrap" id="sim-anim">
+      <div class="radar">
+        <div class="radar-ring radar-ring-1"></div>
+        <div class="radar-ring radar-ring-2"></div>
+        <div class="radar-ring radar-ring-3"></div>
+        <div class="radar-sweep"></div>
+        <div class="radar-blip"></div>
+        <div class="radar-blip"></div>
+        <div class="radar-blip"></div>
+        <div class="radar-core">≡ƒÄ▓</div>
+      </div>
+      <div class="loading-counter" id="sim-counter">0</div>
+      <div class="loading-label">matches simulated</div>
+      <div class="loading-desc">Running 500 matchesΓÇª</div>
+      <div class="sim-time-row">
+        <span class="sim-elapsed-lbl" id="sim-elapsed">0.0s</span>
+        <span class="sim-time-sep">┬╖</span>
+        <span class="sim-eta-lbl" id="sim-eta">EstimatingΓÇª</span>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-track"><div class="prog-fill" id="sim-bar" style="width:0%"></div></div>
+        <div class="prog-phases"><span>Start</span><span>PP</span><span>Middle</span><span>Death</span><span>Done</span></div>
+      </div>
+      <div class="loading-fact" id="sim-fact"></div>
+    </div>
+
+    <!-- result -->
+    <div id="sim-result" style="display:none">
+      <div class="divider"></div>
+
+      <div class="scoreboard">
+        <div class="score-card" id="sc1">
+          <div class="sc-team" id="sc1-team"></div>
+          <div class="sc-score" id="sc1-score">ΓÇö</div>
+          <div class="sc-detail" id="sc1-detail"></div>
+          <div class="sc-badge" id="sc1-badge"></div>
+        </div>
+        <div class="score-card" id="sc2">
+          <div class="sc-team" id="sc2-team"></div>
+          <div class="sc-score" id="sc2-score">ΓÇö</div>
+          <div class="sc-detail" id="sc2-detail"></div>
+          <div class="sc-badge" id="sc2-badge"></div>
+        </div>
+      </div>
+
+      <div class="mc-pills">
+        <div class="mc-pill"><div class="mc-pill-val" id="mc-p10-t1">ΓÇö</div><div class="mc-pill-lbl">T1 P10</div></div>
+        <div class="mc-pill"><div class="mc-pill-val" id="mc-p90-t1">ΓÇö</div><div class="mc-pill-lbl">T1 P90</div></div>
+        <div class="mc-pill"><div class="mc-pill-val" id="mc-p10-t2">ΓÇö</div><div class="mc-pill-lbl">T2 P10</div></div>
+        <div class="mc-pill"><div class="mc-pill-val" id="mc-p90-t2">ΓÇö</div><div class="mc-pill-lbl">T2 P90</div></div>
+      </div>
+
+      <!-- 3d simulation insights -->
+      <div class="sim-insights" id="sim-insights" style="display:none">
+        <div class="section-label">Simulation Insights</div>
+        <div class="si-grid">
+          <div class="si-card"><div class="si-val" id="si-avg-t1">ΓÇö</div><div class="si-lbl" id="si-avg-t1-lbl">Avg Score</div></div>
+          <div class="si-card"><div class="si-val" id="si-range-t1">ΓÇö</div><div class="si-lbl">Score Range (IQR)</div></div>
+          <div class="si-card"><div class="si-val" id="si-avg-t2">ΓÇö</div><div class="si-lbl" id="si-avg-t2-lbl">Avg Score</div></div>
+          <div class="si-card"><div class="si-val" id="si-range-t2">ΓÇö</div><div class="si-lbl">Score Range (IQR)</div></div>
+          <div class="si-card si-card-full"><div class="si-val" id="si-close">ΓÇö</div><div class="si-lbl">Close Match Probability (Γëñ15 run margin)</div></div>
+        </div>
+      </div>
+
+      <div class="impact-row" id="sim-impact-row" style="display:none">
+        <div class="impact-card">
+          <div class="impact-badge">Impact Player</div>
+          <div class="impact-team" id="sim-ip-t1-team"></div>
+          <div class="impact-name" id="sim-ip-t1-name"></div>
+          <div class="impact-reason" id="sim-ip-t1-reason"></div>
+          <div class="impact-bench">Replaces 1 bench player after innings</div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-badge">Impact Player</div>
+          <div class="impact-team" id="sim-ip-t2-team"></div>
+          <div class="impact-name" id="sim-ip-t2-name"></div>
+          <div class="impact-reason" id="sim-ip-t2-reason"></div>
+          <div class="impact-bench">Replaces 1 bench player after innings</div>
+        </div>
+      </div>
+
+      <!-- tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('momentum',this)">Momentum</button>
+        <button class="tab-btn" onclick="switchTab('dist',this)">Ball Distribution</button>
+        <button class="tab-btn" onclick="switchTab('inn1',this)">Innings 1</button>
+        <button class="tab-btn" onclick="switchTab('inn2',this)">Innings 2</button>
+        <button class="tab-btn" onclick="switchTab('scorecard',this)">Scorecard</button>
+        <button class="tab-btn" onclick="switchTab('xi-used',this)">Playing XI</button>
+        <button class="tab-btn" onclick="switchTab('matchups',this)">Key Matchups</button>
+      </div>
+
+      <!-- momentum -->
+      <div class="tab-panel active" id="tab-momentum">
+        <div class="momentum-wrap">
+          <div class="momentum-header">
+            <div class="momentum-title-txt" id="mom-title-txt">Win probability ┬╖ hover for details</div>
+            <div id="momentum-legend" class="momentum-legend"></div>
+          </div>
+          <div class="momentum-chart" id="momentum-container">
+            <svg class="momentum-svg" id="momentum-svg" viewBox="0 0 900 240" preserveAspectRatio="none" style="height:260px"></svg>
+            <div class="momentum-tooltip" id="momentum-tooltip">
+              <div class="tt-over" id="tt-over"></div>
+              <div class="tt-prob" id="tt-prob"></div>
+              <div class="tt-team" id="tt-team"></div>
+              <div class="tt-event" id="tt-event"></div>
+              <div class="tt-score" id="tt-score"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- distribution -->
+      <div class="tab-panel" id="tab-dist">
+        <div class="dist-chart-wrap" id="dist-chart"></div>
+        <div class="dist-tags" id="dist-tags"></div>
+      </div>
+
+      <!-- innings bbb -->
+      <div class="tab-panel" id="tab-inn1">
+        <div class="inn-header" id="inn1-header"></div>
+        <div class="bbb-scroll" id="bbb-inn1"></div>
+      </div>
+      <div class="tab-panel" id="tab-inn2">
+        <div class="inn-header" id="inn2-header"></div>
+        <div class="bbb-scroll" id="bbb-inn2"></div>
+      </div>
+
+      <!-- scorecard -->
+      <div class="tab-panel" id="tab-scorecard">
+        <div id="scorecard-content"></div>
+      </div>
+
+      <!-- playing xi -->
+      <div class="tab-panel" id="tab-xi-used">
+        <div class="xi-grid" id="xi-grid"></div>
+      </div>
+
+      <!-- 3e key matchups -->
+      <div class="tab-panel" id="tab-matchups">
+        <div id="matchup-cards" style="display:flex;flex-direction:column;gap:10px;padding:4px 0"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="ideal-xi-view" class="view-section hidden">
+  <div class="panel panel-center">
+    <div class="panel-header">
+      <span class="panel-label">Ideal Playing XI</span>
+      <span class="model-dot">AI Selected</span>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">Strategy</div>
+      <div class="style-pills" id="xi-style-pills">
+        <button class="style-pill active" onclick="setXIStyle('balanced',this)">Balanced</button>
+        <button class="style-pill" onclick="setXIStyle('aggressive',this)">Aggressive</button>
+        <button class="style-pill" onclick="setXIStyle('bowling',this)">Bowling-heavy</button>
+      </div>
+    </div>
+
+    <button class="btn-predict" onclick="loadIdealXI()">Generate Ideal XI</button>
+    <div class="divider"></div>
+    <div class="xi-grid" id="ideal-xi-grid"></div>
+    <div class="impact-row" id="ideal-impact-row" style="display:none;margin-top:0"></div>
+  </div>
+</section>
+
+<section id="fantasy-xi-view" class="view-section hidden">
+  <div class="panel panel-center fxi-panel">
+
+    <div class="panel-header">
+      <span class="panel-label">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="margin-right:6px;vertical-align:middle"><polygon points="10,1 12.9,7 19.5,7 14.5,11.5 16.5,18 10,14.5 3.5,18 5.5,11.5 0.5,7 7.1,7" stroke="currentColor" stroke-width="1.5" fill="var(--gold,#f59e0b)" stroke-linejoin="round"/></svg>
+        Dream11 Fantasy XI
+      </span>
+      <span class="model-dot" style="background:var(--gold,#f59e0b);color:#000;font-weight:700;font-size:10px">Dream11</span>
+    </div>
+
+    <p class="fxi-intro">
+      Optimal 11 players from both selected squads ΓÇö scored on official Dream11 T20 rules.
+      Captain gets <strong>├ù2</strong>, Vice-Captain gets <strong>├ù1.5</strong>. Max 7 from any one team.
+    </p>
+
+    <div class="fxi-teams-row" id="fxi-teams-row">
+      <div class="fxi-team-chip" id="fxi-chip-t1">ΓÇö</div>
+      <div class="fxi-vs-text">vs</div>
+      <div class="fxi-team-chip" id="fxi-chip-t2">ΓÇö</div>
+    </div>
+
+    <button class="btn-predict fxi-gen-btn" id="fantasy-gen-btn" onclick="loadFantasyXI()">
+      <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style="margin-right:7px;vertical-align:middle"><polygon points="10,1 12.9,7 19.5,7 14.5,11.5 16.5,18 10,14.5 3.5,18 5.5,11.5 0.5,7 7.1,7" stroke="currentColor" stroke-width="1.5" fill="currentColor" stroke-linejoin="round"/></svg>
+      Generate Fantasy XI
+    </button>
+
+    <div class="fxi-loading" id="fxi-loading" style="display:none">
+      <div class="loading-spinner">
+        <svg width="36" height="36" viewBox="0 0 40 40" fill="none">
+          <circle cx="20" cy="20" r="17" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+          <path d="M20 3 A17 17 0 0 1 37 20" stroke="var(--gold,#f59e0b)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="loading-label">Crunching Dream11 projectionsΓÇª</div>
+    </div>
+
+    <div id="fxi-result" style="display:none">
+
+      <!-- summary -->
+      <div class="fxi-summary">
+        <div class="fxi-summary-stat">
+          <div class="fxi-summary-val" id="fxi-total-pts">ΓÇö</div>
+          <div class="fxi-summary-lbl">Base Exp. Pts</div>
+        </div>
+        <div class="fxi-summary-divider"></div>
+        <div class="fxi-summary-stat">
+          <div class="fxi-summary-val" style="color:var(--gold,#f59e0b)" id="fxi-mult-pts">ΓÇö</div>
+          <div class="fxi-summary-lbl">With C &amp; VC Boost</div>
+        </div>
+        <div class="fxi-summary-divider"></div>
+        <div class="fxi-summary-stat">
+          <div class="fxi-summary-val fxi-cvc-name" id="fxi-captain-name">ΓÇö</div>
+          <div class="fxi-summary-lbl">Captain (├ù2)</div>
+        </div>
+        <div class="fxi-summary-divider"></div>
+        <div class="fxi-summary-stat">
+          <div class="fxi-summary-val fxi-cvc-name" id="fxi-vc-name">ΓÇö</div>
+          <div class="fxi-summary-lbl">Vice-Captain (├ù1.5)</div>
+        </div>
+      </div>
+
+      <!-- team distribution -->
+      <div class="fxi-dist-row" id="fxi-dist-row"></div>
+
+      <!-- scoring rules collapsible -->
+      <details class="fxi-scoring-ref">
+        <summary class="fxi-scoring-summary">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M6 5v3M6 3.5v.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          Dream11 Scoring System Reference
+        </summary>
+        <div class="fxi-rules-grid">
+          <div class="fxi-rules-col">
+            <div class="fxi-rules-heading">≡ƒÅÅ Batting</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+1</span><span>per run scored</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+1</span><span>per boundary (4)</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+2</span><span>per six</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>25-run milestone</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>50-run milestone</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>75-run milestone</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+16</span><span>100-run milestone</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ2</span><span>duck (non-tail)</span></div>
+            <div class="fxi-rules-sub">Strike Rate (min 10 balls):</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+6</span><span>SR ΓëÑ 170</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>SR 150ΓÇô169</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+2</span><span>SR 130ΓÇô149</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ2</span><span>SR 80ΓÇô89</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ4</span><span>SR 70ΓÇô79</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ6</span><span>SR &lt; 70</span></div>
+          </div>
+          <div class="fxi-rules-col">
+            <div class="fxi-rules-heading">≡ƒÄ» Bowling</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+25</span><span>per wicket</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>bowled / LBW bonus</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>3-wkt haul bonus</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>4-wkt haul bonus</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+16</span><span>5-wkt haul bonus</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>maiden over</span></div>
+            <div class="fxi-rules-sub">Economy Rate (min 2 overs):</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+6</span><span>Econ &lt; 5</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>Econ 5ΓÇô5.99</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+2</span><span>Econ 6ΓÇô6.99</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ2</span><span>Econ 10ΓÇô10.99</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ4</span><span>Econ 11ΓÇô11.99</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ6</span><span>Econ ΓëÑ 12</span></div>
+          </div>
+          <div class="fxi-rules-col">
+            <div class="fxi-rules-heading">≡ƒñ▓ Fielding</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>catch</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>3-catch bonus</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>stumping</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>direct run-out</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+6</span><span>indirect run-out</span></div>
+            <div class="fxi-rules-heading" style="margin-top:14px">ΓÜí Multipliers</div>
+            <div class="fxi-rule-row fxi-big-mult"><span class="fxi-rule-pts fxi-pos fxi-mult-badge">├ù2</span><span>Captain</span></div>
+            <div class="fxi-rule-row fxi-big-mult"><span class="fxi-rule-pts fxi-pos fxi-mult-badge">├ù1.5</span><span>Vice-Captain</span></div>
+            <div class="fxi-rules-heading" style="margin-top:14px">≡ƒôï Team Rules</div>
+            <div class="fxi-rule-row"><span class="fxi-rule-icon">≡ƒºñ</span><span>1ΓÇô4 Wicketkeepers</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-icon">≡ƒÅÅ</span><span>3ΓÇô6 Batters</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-icon">ΓÜí</span><span>1ΓÇô4 All-rounders</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-icon">≡ƒÄ»</span><span>3ΓÇô6 Bowlers</span></div>
+            <div class="fxi-rule-row"><span class="fxi-rule-icon">≡ƒöÆ</span><span>Max 7 from one team</span></div>
+          </div>
+        </div>
+      </details>
+
+      <div class="fxi-cards-label">Your Optimal Dream11 Squad</div>
+      <div class="fxi-cards-grid" id="fxi-player-grid"></div>
+
+    </div><!-- fxiresult -->
+  </div>
+</section>
+
+<section id="builder-view" class="view-section hidden">
+<!-- 
+     view builder
+      -->
   <div class="panel panel-center">
     <div class="panel-header">
       <span class="panel-label">Build Your XI</span>
@@ -798,8 +1056,8 @@
     </div>
 
     <div style="display:flex;gap:8px;margin-bottom:16px">
-      <button class="btn btn-ghost btn-sm" onclick="loadDefaultXI(1)">↺ <span id="reset-t1-lbl">T1</span> Default</button>
-      <button class="btn btn-ghost btn-sm" onclick="loadDefaultXI(2)">↺ <span id="reset-t2-lbl">T2</span> Default</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadDefaultXI(1)">Γå║ <span id="reset-t1-lbl">T1</span> Default</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadDefaultXI(2)">Γå║ <span id="reset-t2-lbl">T2</span> Default</button>
     </div>
 
     <div class="builder-grid">
@@ -821,152 +1079,12 @@
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════
-     APP SHOWCASE SECTION
-     ════════════════════════════════════════════════════════ -->
-<section class="app-section" id="app-section">
 
-  <!-- Hero -->
-  <div class="app-hero">
-    <div class="app-overline anim-reveal">
-      <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
-      IPL Intelligence Platform
-    </div>
-    <h2 class="app-hero-title anim-reveal" style="transition-delay:0.08s">
-      Predict. Simulate.<br><span class="gold">Dominate</span> the <span class="blue">IPL.</span>
-    </h2>
-    <p class="app-hero-sub anim-reveal" style="transition-delay:0.16s">
-      CricIQ brings XGBoost machine learning to cricket fans — trained on 900+ IPL matches for predictions that actually make sense.
-    </p>
-    <div class="app-stats-row anim-reveal" style="transition-delay:0.24s">
-      <div class="app-stat">
-        <div class="app-stat-val">~73%</div>
-        <div class="app-stat-lbl">Prediction Accuracy</div>
-      </div>
-      <div class="app-stat">
-        <div class="app-stat-val">900+</div>
-        <div class="app-stat-lbl">Matches in Training</div>
-      </div>
-      <div class="app-stat">
-        <div class="app-stat-val">500</div>
-        <div class="app-stat-lbl">Simulations per Run</div>
-      </div>
-      <div class="app-stat">
-        <div class="app-stat-val">18</div>
-        <div class="app-stat-lbl">Engineered Features</div>
-      </div>
-    </div>
-  </div>
+</main>
 
-  <!-- Features -->
-  <div class="app-features">
-    <h3 class="app-features-title anim-reveal">Everything You Need to Analyse a Match</h3>
-    <div class="features-grid">
 
-      <div class="feature-card anim-scale" style="transition-delay:0.05s">
-        <div class="fc-icon">🏏</div>
-        <div class="fc-title">Win Prediction</div>
-        <div class="fc-desc">Select any two IPL teams, configure toss and venue, and get real-time win probability powered by XGBoost — with toss-scenario averaging when the toss is unknown.</div>
-        <div class="fc-badge">
-          <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
-          XGBoost v3
-        </div>
-      </div>
 
-      <div class="feature-card anim-scale" style="transition-delay:0.1s">
-        <div class="fc-icon gold-icon">🎲</div>
-        <div class="fc-title">Monte Carlo Sim</div>
-        <div class="fc-desc">Run 6,767 full match simulations to get average scores, percentile ranges, ball-by-ball outcomes, win momentum graphs, and key batter–bowler matchups.</div>
-        <div class="fc-badge">
-          <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
-          500 Matches
-        </div>
-      </div>
 
-      <div class="feature-card anim-scale" style="transition-delay:0.15s">
-        <div class="fc-icon">⭐</div>
-        <div class="fc-title">Ideal Playing XI</div>
-        <div class="fc-desc">Let the AI pick the optimal XI from each squad for three strategy modes — Balanced, Aggressive, or Bowling-heavy — with an impact player suggestion per team.</div>
-        <div class="fc-badge">
-          <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
-          AI Selected
-        </div>
-      </div>
-
-      <div class="feature-card anim-scale" style="transition-delay:0.2s">
-        <div class="fc-icon gold-icon">🛠️</div>
-        <div class="fc-title">XI Builder</div>
-        <div class="fc-desc">Hand-pick your own 11 players from each squad, then simulate the match with your custom lineup. T20 rules apply: 5 bowlers, max 4 overs each.</div>
-        <div class="fc-badge">
-          <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="currentColor"/></svg>
-          Manual
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- Tech strip -->
-  <div class="app-tech">
-    <div class="tech-inner">
-      <div class="tech-left anim-reveal-left">
-        <div class="tech-eyebrow">Under the Hood</div>
-        <div class="tech-title">Powered by XGBoost<br>Gradient Boosted Trees</div>
-        <div class="tech-desc">Each prediction processes 18 engineered features — team strike rates, batting averages, bowling economies, head-to-head history, venue status, and toss outcomes — for probabilistic match forecasting.</div>
-      </div>
-      <div class="tech-pills anim-reveal" style="transition-delay:0.15s">
-        <div class="tech-pill">
-          <div class="tp-val">XGBoost</div>
-          <div class="tp-lbl">ML Model</div>
-        </div>
-        <div class="tech-pill">
-          <div class="tp-val">2008–24</div>
-          <div class="tp-lbl">Training Period</div>
-        </div>
-        <div class="tech-pill">
-          <div class="tp-val">18</div>
-          <div class="tp-lbl">Features</div>
-        </div>
-        <div class="tech-pill">
-          <div class="tp-val">~73%</div>
-          <div class="tp-lbl">Accuracy</div>
-        </div>
-        <div class="tech-pill">
-          <div class="tp-val">10</div>
-          <div class="tp-lbl">IPL Teams</div>
-        </div>
-        <div class="tech-pill">
-          <div class="tp-val">Monte Carlo</div>
-          <div class="tp-lbl">Simulation</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <div class="app-footer">
-    <div class="app-footer-brand">
-      <div class="app-footer-logo">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M2.5 9 Q6 6 9 9 Q12 12 15.5 9" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-          <path d="M2.5 9 Q6 12 9 9 Q12 6 15.5 9" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-        </svg>
-      </div>
-      <div>
-        <div class="app-footer-name">CricIQ</div>
-        <div class="app-footer-tagline">IPL Match Intelligence · 2025</div>
-      </div>
-    </div>
-    <div class="app-footer-right">
-      <div class="app-footer-copy">Predictions are probabilistic, not deterministic.</div>
-      <div class="app-footer-credit">Built with <span>XGBoost</span> · IPL data 2008–2024</div>
-    </div>
-  </div>
-
-</section>
-
-<!-- ── SQUAD MODAL ───────────────────────────────────────── -->
 <div id="squad-modal" style="display:none">
   <div class="squad-modal-inner">
     <div class="squad-modal-card">
@@ -1006,21 +1124,21 @@
 </div>
 
 <script>
-/* ════════════════════════════════════════════════════════════
-   CricIQ — IPL Intelligence JS (clean, deduplicated)
-   ════════════════════════════════════════════════════════════ */
+
 console.log("NEW FILE LOADED");
-/* ── Helpers ──────────────────────────────────────────────── */
+
 const $id = id => document.getElementById(id);
+// configure txt behavior
 const txt = (id, v) => { const el = $id(id); if (el) el.textContent = v; };
 
-/* ── Mobile nav active state ──────────────────────────────── */
+
+// configure setmobactive behavior
 function setMobActive(btn) {
   document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
 }
 
-/* ── Constants ────────────────────────────────────────────── */
+
 const TEAM_COLORS = {
   'Chennai Super Kings':         '#F9CD05',
   'Mumbai Indians':              '#004BA0',
@@ -1035,7 +1153,7 @@ const TEAM_COLORS = {
   'Gujarat Titans':              '#1C4E8A',
 };
 
-/* Ball outcome labels & colours */
+
 const OL = { '0':'Dot', '1':'Single', '2':'Double', '3':'Triple', '4':'Four', '6':'Six', 'W':'Wicket' };
 const OC = { '0':'#64748b', '1':'#3b82f6', '2':'#8b5cf6', '3':'#f59e0b', '4':'#10b981', '6':'#f97316', 'W':'#ef4444' };
 
@@ -1052,26 +1170,27 @@ const FACTS = [
   'The highest team score in IPL history is 287/2 by RCB.',
 ];
 
-/* ── Helpers ──────────────────────────────────────────────── */
+
 const clr = t => TEAM_COLORS[t] || '#3B82F6';
 
-/* ── State ────────────────────────────────────────────────── */
+
 let simStyle   = 'balanced';
 let xiStyle    = 'balanced';
 let firstTeam  = 'Team 1';
 let animTimers = [];
 
-// Squad modal state
+
 let squadCache  = {};
 let sqFilter    = 'all';
 let sqSortCol   = 'bat_runs';
 let sqSortDir   = -1;
 
-// Custom builder state
+
 let custXI    = { t1: [], t2: [] };
 let custSquad = { t1: [], t2: [] };
 
-/* ── View router ──────────────────────────────────────────── */
+
+// configure showview behavior
 function showView(id, btn) {
   document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -1082,27 +1201,29 @@ function showView(id, btn) {
   const dashboard = document.querySelector('.dashboard');
   if (id !== 'predict-view') {
     dashboard.classList.add('single-view');
-    // Smooth scroll to section
     setTimeout(() => el?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   } else {
     dashboard.classList.remove('single-view');
   }
 }
 
-/* ── Style pickers ────────────────────────────────────────── */
+
+// configure setstyle behavior
 function setStyle(style, btn) {
   simStyle = style;
   $id('sim-style-pills')?.querySelectorAll('.style-pill').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
 }
 
+// configure setxistyle behavior
 function setXIStyle(style, btn) {
   xiStyle = style;
   $id('xi-style-pills')?.querySelectorAll('.style-pill').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
 }
 
-/* ── Tab switcher ─────────────────────────────────────────── */
+
+// configure switchtab behavior
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1111,27 +1232,31 @@ function switchTab(name, btn) {
   if (btn) btn.classList.add('active');
 }
 
-/* ── Team color bars ──────────────────────────────────────── */
+
+// configure updatecolors behavior
 function updateColors() {
   const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
   const c1 = clr(t1), c2 = clr(t2);
+  // configure applybg behavior
   const applyBg = (id, bg) => { const el = $id(id); if (el) el.style.background = bg; };
   applyBg('t1-bar', c1);
   applyBg('t2-bar', c2);
   applyBg('stripe-t1', c1);
   applyBg('stripe-t2', c2);
-  populateTossWinner();
+  popTossWin();
   validateInputs();
 }
 
-/* ── Toss toggle ──────────────────────────────────────────── */
+
+// configure ontosstoggle behavior
 function onTossToggle() {
   const on = $id('toss-toggle').checked;
   $id('toss-fields').style.display = on ? 'block' : 'none';
   $id('toss-notice').style.display = on ? 'none' : 'flex';
 }
 
-function populateTossWinner() {
+// configure poptosswin behavior
+function popTossWin() {
   const sel = $id('toss_winner'); if (!sel) return;
   const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
   const cur = sel.value;
@@ -1139,7 +1264,8 @@ function populateTossWinner() {
   if ([t1, t2].includes(cur)) sel.value = cur;
 }
 
-/* ── Validate inputs ──────────────────────────────────────── */
+
+// configure validateinputs behavior
 function validateInputs() {
   const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
   const btn = $id('predict-btn');
@@ -1150,7 +1276,8 @@ function validateInputs() {
   if (btn) btn.disabled = same;
 }
 
-/* ── Swap teams ───────────────────────────────────────────── */
+
+// configure swapteams behavior
 function swapTeams() {
   const s1 = $id('team1'), s2 = $id('team2');
   if (!s1 || !s2) return;
@@ -1160,13 +1287,15 @@ function swapTeams() {
   updateColors();
 }
 
-/* ── Prediction History ───────────────────────────────────── */
+
 const HISTORY_KEY = 'criciq_history';
 
+// configure gethistory behavior
 function getHistory() {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
 }
 
+// configure savehistory behavior
 function saveHistory(item) {
   const h = getHistory();
   h.unshift(item);
@@ -1175,11 +1304,13 @@ function saveHistory(item) {
   renderHistory();
 }
 
+// configure clearhistory behavior
 function clearHistory() {
   localStorage.removeItem(HISTORY_KEY);
   renderHistory();
 }
 
+// configure renderhistory behavior
 function renderHistory() {
   const list = $id('history-list'); if (!list) return;
   const h = getHistory();
@@ -1197,14 +1328,16 @@ function renderHistory() {
     : '<div class="history-empty">No predictions yet</div>';
 }
 
-/* ── Confidence label ─────────────────────────────────────── */
+
+// configure conflabel behavior
 function confLabel(p) {
   if (p >= 70) return { label: 'High',   cls: 'conf-high' };
   if (p >= 58) return { label: 'Medium', cls: 'conf-med'  };
   return              { label: 'Low',    cls: 'conf-low'  };
 }
 
-/* ── Key Factors ──────────────────────────────────────────── */
+
+// configure renderfactors behavior
 function renderFactors(data) {
   const list = $id('factors-list'); if (!list) return;
   const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
@@ -1238,7 +1371,7 @@ function renderFactors(data) {
 
   const tossOn = $id('toss-toggle')?.checked;
   if (tossOn) {
-    const tw = $id('toss_winner')?.value, td = $id('toss_decision')?.value;
+    const tw = $id('toss_winner')?.value, td = $id('toss_dec')?.value;
     if (tw && td) factors.push({ icon: '🪙', label: 'Toss Factor', text: `${tw} won the toss and chose to ${td === 'bat' ? 'bat' : 'bowl'} first.` });
   } else {
     factors.push({ icon: '🎲', label: 'Toss Averaged', text: 'Toss outcome unknown — model averages across all 4 toss scenarios.' });
@@ -1256,7 +1389,7 @@ function renderFactors(data) {
     : '<div class="factor-empty">No factor data available</div>';
 }
 
-/* ── Main prediction ──────────────────────────────────────── */
+
 async function runPredict() {
   const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
   if (!t1 || !t2 || t1 === t2) return;
@@ -1281,16 +1414,16 @@ async function runPredict() {
   try {
     const venue  = $id('venue_status')?.value || 'neutral';
     const tossOn = $id('toss-toggle')?.checked;
-    // toss_known=false triggers backend to average all 4 scenarios and return toss_scenarios[]
+    
     let url = `/predict?team1=${encodeURIComponent(t1)}&team2=${encodeURIComponent(t2)}&venue_status=${venue}&toss_known=${tossOn ? 'true' : 'false'}`;
     if (tossOn) {
       const tw = $id('toss_winner')?.value;
-      const td = $id('toss_decision')?.value;
-      if (tw && td) url += `&toss_winner=${encodeURIComponent(tw)}&toss_decision=${td}`;
+      const td = $id('toss_dec')?.value;
+      if (tw && td) url += `&toss_winner=${encodeURIComponent(tw)}&toss_dec=${td}`;
     }
 
     const data = await fetch(url).then(r => r.json());
-    console.log('API RESPONSE:', data);  // DEBUG: inspect full backend response
+    console.log('API RESPONSE:', data);  
     clearInterval(stepTimer);
     if (data.error) throw new Error(data.error);
 
@@ -1307,7 +1440,7 @@ async function runPredict() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
 
-    // Auto-scroll to results
+    
     setTimeout(() => result?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
 
   } catch (e) {
@@ -1320,16 +1453,19 @@ async function runPredict() {
   }
 }
 
-/* ── Safe number formatter — NEVER returns '—' ────────────── */
+
+// configure safenum behavior
 function safeNum(val, fallback, decimals = 1) {
   const n = parseFloat(val);
   return isNaN(n) ? fallback.toFixed(decimals) : n.toFixed(decimals);
 }
 
-/* ── Animated counter for win probability ─────────────────── */
+
+// configure animatecounter behavior
 function animateCounter(el, target, duration) {
   if (!el) return;
   let start = 0, step = target / 60;
+  // configure tick behavior
   const tick = () => {
     start = Math.min(start + step, target);
     el.textContent = start.toFixed(1);
@@ -1338,37 +1474,38 @@ function animateCounter(el, target, duration) {
   requestAnimationFrame(tick);
 }
 
-/* ── renderPrediction: maps backend fields → UI ───────────── */
-function renderPrediction(data, t1, t2) {
-  // Backend returns: winner, probability (winner's %), confidence (max prob%)
-  // team1_stats: {sr, bat_avg, econ, h2h}, team2_stats: same
+
+// configure renderpred behavior
+function renderPred(data, t1, t2) {
+  
+  
   const c1 = clr(t1), c2 = clr(t2);
   const winner = data.winner || t1;
 
-  // probability = winner's win %, so derive t1/t2 splits
+  
   const winnerProb = parseFloat(data.probability) || 50;
   const t1Prob = winner === t1 ? winnerProb : (100 - winnerProb);
   const t2Prob = 100 - t1Prob;
   const p1 = Math.round(t1Prob);
   const p2 = 100 - p1;
 
-  // Header
+  
   txt('rmh-t1', t1); txt('rmh-t2', t2);
 
-  // Winner + winning probability — animated counter
+  
   txt('winner-name', winner);
   const probEl = $id('win-prob-display');
   if (probEl) {
-    // Rebuild inner so the % unit span is preserved
+    
     probEl.innerHTML = `<span id="win-prob-num">0.0</span><span class="win-prob-unit">%</span>`;
     animateCounter($id('win-prob-num'), winnerProb);
   }
 
-  // Highlight winner name colour
+  
   const winEl = $id('winner-name');
   if (winEl) winEl.style.color = winner === t1 ? c1 : c2;
 
-  // Probability bar — start at 0, animate after 50ms
+  
   const bar1 = $id('pf-t1'), bar2 = $id('pf-t2');
   if (bar1) {
     bar1.style.width = '0%';
@@ -1380,18 +1517,18 @@ function renderPrediction(data, t1, t2) {
   txt('p-t1-lbl', t1); txt('p-t2-lbl', t2);
   txt('prob-t1-pct', p1 + '%'); txt('prob-t2-pct', p2 + '%');
 
-  // 3C: Confidence chip — High / Medium / Low with colour coding
+  
   const gap = Math.abs(winnerProb - 50);
   const confLabel3 = gap > 15 ? 'High' : gap > 7.5 ? 'Medium' : 'Low';
   const confColor3 = gap > 15 ? 'var(--green,#4ade80)' : gap > 7.5 ? '#facc15' : '#f87171';
   const confEl = $id('conf-val');
   if (confEl) { confEl.textContent = confLabel3; confEl.style.color = confColor3; confEl.className = 'mc-val'; }
 
-  // Venue chip
+  
   const venue = $id('venue_status')?.value;
   txt('venue-chip-val', { neutral: 'Neutral', home: 'Home', away: 'Away' }[venue] || '—');
 
-  // Toss chip
+  
   const tossOn = $id('toss-toggle')?.checked;
   const tossChip = $id('toss-impact-chip');
   if (tossChip) {
@@ -1403,7 +1540,7 @@ function renderPrediction(data, t1, t2) {
   renderToss(data, tossOn);
   renderImpact(data, t1, t2);
 
-  // 3A: Why This Result explanation block
+  
   const whyLabel = $id('why-label');
   const exList   = $id('explanation-list');
   if (exList) {
@@ -1424,7 +1561,8 @@ function renderPrediction(data, t1, t2) {
   }
 }
 
-/* ── renderStats: team1_stats / team2_stats ───────────────── */
+
+// configure renderstats behavior
 function renderStats(data, t1, t2) {
   const s1 = data.team1_stats || {};
   const s2 = data.team2_stats || {};
@@ -1432,7 +1570,7 @@ function renderStats(data, t1, t2) {
   txt('sg-t1', t1.split(' ')[0]);
   txt('sg-t2', t2.split(' ')[0]);
 
-  // Defaults: sr→140, bat_avg→30, econ→8.5, bowl_avg→28
+  
   txt('sv-t1-sr',   safeNum(s1.sr,       140, 1));
   txt('sv-t2-sr',   safeNum(s2.sr,       140, 1));
   txt('sv-t1-bat',  safeNum(s1.bat_avg,  30,  1));
@@ -1440,20 +1578,21 @@ function renderStats(data, t1, t2) {
   txt('sv-t1-econ', safeNum(s1.econ,     8.5, 1));
   txt('sv-t2-econ', safeNum(s2.econ,     8.5, 1));
 
-  // H2H — backend puts h2h in team_stats as well
+  
   const h1 = parseFloat(s1.h2h);
   const h2 = parseFloat(s2.h2h);
   txt('sv-t1-h2h', isNaN(h1) ? '50.0%' : h1.toFixed(1) + '%');
   txt('sv-t2-h2h', isNaN(h2) ? '50.0%' : h2.toFixed(1) + '%');
 }
 
-/* ── renderToss: toss scenarios grid ─────────────────────── */
+
+// configure rendertoss behavior
 function renderToss(data, tossOn) {
   const tsWrap = $id('toss-scenarios-wrap');
   if (!tsWrap) return;
-  if (!tossOn && data.toss_scenarios?.length) {
+  if (!tossOn && data.toss_scen?.length) {
     tsWrap.style.display = 'block';
-    $id('ts-list').innerHTML = data.toss_scenarios.map(sc => `
+    $id('ts-list').innerHTML = data.toss_scen.map(sc => `
       <div class="ts-item">
         <span class="ts-label">${sc.label || sc.scenario || '—'}</span>
         <span class="ts-prob">${safeNum(sc.team1_win_pct, 50, 1)}%</span>
@@ -1463,13 +1602,14 @@ function renderToss(data, tossOn) {
   }
 }
 
-/* ── renderImpact: impact_players keyed by team name ─────── */
+
+// configure renderimpact behavior
 function renderImpact(data, t1, t2) {
   const ir = $id('impact-row');
   if (!ir) return;
   if (!data.impact_players) { ir.style.display = 'none'; return; }
 
-  // Backend: impact_players = { "Chennai Super Kings": {...}, "Mumbai Indians": {...} }
+  
   const ip1 = data.impact_players[t1] || {};
   const ip2 = data.impact_players[t2] || {};
   const hasAny = ip1.name || ip2.name;
@@ -1484,14 +1624,17 @@ function renderImpact(data, t1, t2) {
   txt('ip-t2-reason', ip2.reason || '');
 }
 
-/* ── Legacy wrapper kept for compatibility ────────────────── */
+
+// configure renderresult behavior
 function renderResult(data, t1, t2) {
-  renderPrediction(data, t1, t2);
+  renderPred(data, t1, t2);
 }
 
-/* ── Animation helpers ────────────────────────────────────── */
+
+// configure clearanimtimers behavior
 function clearAnimTimers() { animTimers.forEach(clearInterval); animTimers = []; }
 
+// configure runcounter behavior
 function runCounter(counterId, factId, barId, total, expectedMs) {
   clearAnimTimers();
   const start = Date.now();
@@ -1500,34 +1643,37 @@ function runCounter(counterId, factId, barId, total, expectedMs) {
   const iv = setInterval(() => {
     const elapsed   = Date.now() - start;
     const elapsedS  = (elapsed / 1000).toFixed(1);
-    const progress  = Math.min(elapsed / expectedMs, 0.97); // cap at 97% until server responds
+    const progress  = Math.min(elapsed / expectedMs, 0.97); 
     const remaining = Math.max(0, expectedMs - elapsed);
 
-    // Sync match counter to time-based progress (not fixed step)
+    
     count = Math.min(Math.floor(progress * total), total);
     if (counterId) txt(counterId, count.toLocaleString());
 
-    // Drive progress bar from real elapsed time
+    
     if (barId) { const b = $id(barId); if (b) b.style.width = (progress * 100) + '%'; }
 
-    // Update elapsed + ETA
+    
     txt('sim-elapsed', elapsedS + 's elapsed');
     if (remaining > 300)
       txt('sim-eta', '~' + (remaining / 1000).toFixed(1) + 's remaining');
     else if (elapsed < expectedMs)
       txt('sim-eta', 'Almost done…');
 
-    // Rotate facts
+    
     if (Math.random() < 0.04) txt(factId, FACTS[Math.floor(Math.random() * FACTS.length)]);
   }, 80);
   animTimers.push(iv);
 }
 
+// configure showanim behavior
 function showAnim(id) { const e = $id(id); if (e) e.style.display = 'flex'; }
+// configure hideanim behavior
 function hideAnim(id) { const e = $id(id); if (e) e.style.display = 'none'; }
+// configure setbtn behavior
 function setBtn(id, dis) { const e = $id(id); if (e) e.disabled = dis; }
 
-/* ── Generic API helper ───────────────────────────────────── */
+
 async function api(endpoint, payload) {
   const res = await fetch(endpoint, {
     method: 'POST',
@@ -1539,9 +1685,7 @@ async function api(endpoint, payload) {
   return d;
 }
 
-/* ════════════════════════════════════════════════════════
-   SIMULATE
-   ════════════════════════════════════════════════════════ */
+
 async function runSimulate() {
   const t1 = $id('team1').value, t2 = $id('team2').value;
   if (t1 === t2) { alert('Select two different teams'); return; }
@@ -1557,7 +1701,7 @@ async function runSimulate() {
 
   const simStart = Date.now();
 
-  // Live elapsed clock — runs independently of server
+  
   const clockIv = setInterval(() => {
     txt('sim-elapsed', ((Date.now() - simStart) / 1000).toFixed(1) + 's elapsed');
   }, 100);
@@ -1572,7 +1716,7 @@ async function runSimulate() {
         team1: t1, team2: t2,
         toss_known: tossKnown,
         toss_winner:   tossKnown ? ($id('toss_winner')?.value  || '') : '',
-        toss_decision: tossKnown ? ($id('toss_decision')?.value || 'bat') : 'bat',
+        toss_dec: tossKnown ? ($id('toss_dec')?.value || 'bat') : 'bat',
         style1: simStyle, style2: simStyle,
         n_matches: 500,
       })
@@ -1582,9 +1726,9 @@ async function runSimulate() {
     const decoder = new TextDecoder();
     let   buffer  = '';
 
-    // Helper: parse and act on a single SSE line
+    
     const handleLine = async (line) => {
-      if (!line.startsWith('data: ')) return false; // false = not done
+      if (!line.startsWith('data: ')) return false; 
       let msg;
       try { msg = JSON.parse(line.slice(6)); } catch { return false; }
 
@@ -1620,7 +1764,7 @@ async function runSimulate() {
         hideAnim('sim-anim');
         if (!msg.payload) throw new Error('Empty result payload from server');
         renderSim(msg.payload, t1, t2);
-        return true; // signal that we're done
+        return true; 
       }
       return false;
     };
@@ -1628,7 +1772,7 @@ async function runSimulate() {
     while (true) {
       const { done, value } = await reader.read();
 
-      // Fix bug 6: flush remaining buffer BEFORE breaking on done
+      
       if (done) {
         if (buffer.trim()) {
           await handleLine(buffer.trim());
@@ -1638,11 +1782,11 @@ async function runSimulate() {
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      buffer = lines.pop(); // keep incomplete last line
+      buffer = lines.pop(); 
 
       for (const line of lines) {
         const finished = await handleLine(line);
-        if (finished) return; // result received — exit early
+        if (finished) return; 
       }
     }
 
@@ -1650,7 +1794,7 @@ async function runSimulate() {
     console.error('SIM ERROR:', e);
     clearInterval(clockIv);
     hideAnim('sim-anim');
-    // Fix bug 8: clear previous error divs before appending a new one
+    
     const simResultEl = $id('sim-result');
     if (simResultEl) simResultEl.innerHTML = '';
     const errDiv = document.createElement('div');
@@ -1664,7 +1808,7 @@ async function runSimulate() {
   }
 }
 
-async function runCustomSimulate() {
+async function runSim() {
   const t1 = $id('team1').value, t2 = $id('team2').value;
   if (custXI.t1.length < 11 || custXI.t2.length < 11) {
     alert(`Select 11 per team.\n${t1}: ${custXI.t1.length}/11\n${t2}: ${custXI.t2.length}/11`);
@@ -1682,7 +1826,7 @@ async function runCustomSimulate() {
   const tossKnown = $id('toss-toggle').checked;
 
   const simStart  = Date.now();
-  // Fix bug 5: pass a sensible expectedMs so the counter actually animates
+  
   runCounter('sim-counter', 'sim-fact', 'sim-bar', 500, 6500);
 
   const clockIv = setInterval(() => {
@@ -1692,13 +1836,13 @@ async function runCustomSimulate() {
   try {
     const d = await api('/simulate-custom', {
       team1: t1, team2: t2,
-      team1_batting: custXI.t1,
-      team1_bowling: custXI.t1.slice(-5),
-      team2_batting: custXI.t2,
-      team2_bowling: custXI.t2.slice(-5),
+      t1_bat: custXI.t1,
+      t1_bwl: custXI.t1.slice(-5),
+      t2_bat: custXI.t2,
+      t2_bwl: custXI.t2.slice(-5),
       toss_known: tossKnown,
       toss_winner:   tossKnown ? $id('toss_winner').value : '',
-      toss_decision: tossKnown ? $id('toss_decision').value : 'bat',
+      toss_dec: tossKnown ? $id('toss_dec').value : 'bat',
       n_matches: 500,
     });
     const duration = Date.now() - simStart;
@@ -1721,8 +1865,9 @@ async function runCustomSimulate() {
   }
 }
 
+// configure rendersim behavior
 function renderSim(d, t1, t2) {
-  // Full guard — backend confirmed returns predicted_scores, win_probability, etc.
+  
   const ps = d.predicted_scores || {};
   const wp = d.win_probability  || {};
   const s1 = ps[t1] || { mean: 0, std: 0, p10: 0, p90: 0 };
@@ -1750,7 +1895,7 @@ function renderSim(d, t1, t2) {
   txt('mc-p10-t1', s1.p10 || '—'); txt('mc-p90-t1', s1.p90 || '—');
   txt('mc-p10-t2', s2.p10 || '—'); txt('mc-p90-t2', s2.p90 || '—');
 
-  // Impact players — keyed by full team name
+  
   const simImpactRow = $id('sim-impact-row');
   if (d.impact_players && simImpactRow) {
     const ip1 = d.impact_players[t1] || {};
@@ -1770,12 +1915,12 @@ function renderSim(d, t1, t2) {
 
   firstTeam = t1;
 
-  // Representative match — build innings header strings, render charts with guards
+  
   const rm = d.representative_match;
   if (rm) {
     const inn1 = rm.innings1, inn2 = rm.innings2;
     if (inn1) {
-      // Backend innings1 has team=t1 (first batting), score=total, wickets
+      
       txt('inn1-header', `${inn1.team || t1}  ${inn1.score || inn1.total || '?'}/${inn1.wickets || '?'}`);
       renderBBB('bbb-inn1', inn1);
     }
@@ -1798,7 +1943,7 @@ function renderSim(d, t1, t2) {
   }
   if (d.playing11) renderXI(d.playing11, t1, t2);
 
-  // 3D: Simulation Insights
+  
   const ins = d.simulation_insights;
   if (ins) {
     $id('sim-insights').style.display = '';
@@ -1808,16 +1953,16 @@ function renderSim(d, t1, t2) {
     $id('si-avg-t2').textContent      = ins.avg_score_t2;
     $id('si-avg-t2-lbl').textContent  = `${t2} Avg`;
     $id('si-range-t2').textContent    = `${ins.winning_range_t2[0]}–${ins.winning_range_t2[1]}`;
-    $id('si-close').textContent       = `${ins.close_match_pct}%`;
+    $id('si-close').textContent       = `${ins.cls_m_pct}%`;
   }
 
-  // 3C: Confidence chip for simulate uses d.confidence_level
-  if (d.confidence_level) {
-    const simConfEl = $id('conf-val');  // reuse only if in predict view; here we skip (separate view)
-    // no conf chip in simulate view currently; just log
+  
+  if (d.conf_level) {
+    const simConfEl = $id('conf-val');  
+    
   }
 
-  // 3E: Key Matchups
+  
   const mc = $id('matchup-cards');
   if (mc) {
     mc.innerHTML = '';
@@ -1845,22 +1990,23 @@ function renderSim(d, t1, t2) {
     }
   }
 
-  // Show result and scroll to it
+  
   const simResult = $id('sim-result');
   if (simResult) {
     simResult.style.display = 'block';
     setTimeout(() => simResult.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }
 
-  // Reset tabs to momentum
+  
   switchTab('momentum', document.querySelector('.tab-btn'));
 }
 
-/* ════════════════════════════════════════════════════════
-   MOMENTUM GRAPH
-   ════════════════════════════════════════════════════════ */
+
+// configure mkel behavior
 function mkEl(tag)         { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
+// configure setattr behavior
 function setAttr(el, attrs){ Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v)); }
+// configure addstop behavior
 function addStop(grad, offset, color, opacity) {
   const s = mkEl('stop');
   s.setAttribute('offset', offset);
@@ -1869,6 +2015,7 @@ function addStop(grad, offset, color, opacity) {
   grad.appendChild(s);
 }
 
+// configure rendermomentum behavior
 function renderMomentum(points, t1, t2) {
   const svg = $id('momentum-svg');
   svg.innerHTML = '';
@@ -1891,7 +2038,7 @@ function renderMomentum(points, t1, t2) {
   const px = over => PAD.left + (over / maxOver) * plotW;
   const py = prob => PAD.top + (1 - prob) * plotH;
 
-  /* Defs */
+  
   const defs = mkEl('defs');
   const gT1 = mkEl('linearGradient');
   setAttr(gT1, { id: 'gradT1', x1: '0', x2: '0', y1: '0', y2: '1' });
@@ -1910,7 +2057,7 @@ function renderMomentum(points, t1, t2) {
   defs.appendChild(cssAnim);
   svg.appendChild(defs);
 
-  /* Phase zones */
+  
   const phases = [
     { from: 0,  to: 6,  fill: 'rgba(59,130,246,0.035)',  label: 'PP',     labelX: 3    },
     { from: 6,  to: 15, fill: 'transparent',              label: 'MIDDLE', labelX: 6    },
@@ -1931,7 +2078,7 @@ function renderMomentum(points, t1, t2) {
     }
   });
 
-  /* Y-axis gridlines */
+  
   [0.25, 0.5, 0.75].forEach(v => {
     const line = mkEl('line');
     setAttr(line, { x1: PAD.left, x2: PAD.left + plotW, y1: py(v), y2: py(v),
@@ -1944,7 +2091,7 @@ function renderMomentum(points, t1, t2) {
     svg.appendChild(lbl);
   });
 
-  /* Innings separator */
+  
   const sepLine = mkEl('line');
   setAttr(sepLine, { x1: px(20), x2: px(20), y1: PAD.top, y2: PAD.top + plotH, stroke: 'rgba(255,255,255,0.18)', 'stroke-dasharray': '5,3' });
   svg.appendChild(sepLine);
@@ -1953,12 +2100,12 @@ function renderMomentum(points, t1, t2) {
   sepLbl.textContent = 'INN 2';
   svg.appendChild(sepLbl);
 
-  /* Path data */
+  
   const lineD = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.over)},${py(p.win_prob_t1)}`).join(' ');
   const first = points[0], last = points[points.length - 1];
   const midY = py(0.5);
 
-  /* Areas */
+  
   const areaAbove = mkEl('path');
   const areaAboveD = `M${px(first.over)},${midY} ` +
     points.map(p => `L${px(p.over)},${py(Math.max(p.win_prob_t1, 0.5))}`).join(' ') +
@@ -1973,7 +2120,7 @@ function renderMomentum(points, t1, t2) {
   setAttr(areaBelow, { d: areaBelowD, fill: 'url(#gradT2)', opacity: '0', style: 'animation:areaPop .8s ease .5s forwards' });
   svg.appendChild(areaBelow);
 
-  /* Main line */
+  
   const line = mkEl('path');
   setAttr(line, { d: lineD, fill: 'none', stroke: clr(t1), 'stroke-width': '2.5', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
   line.style.strokeDasharray = '3000';
@@ -1981,7 +2128,7 @@ function renderMomentum(points, t1, t2) {
   line.style.animation = 'drawLine 1.8s cubic-bezier(0.16,1,0.3,1) forwards';
   svg.appendChild(line);
 
-  /* Interactive dots */
+  
   const tooltip  = $id('momentum-tooltip');
   const container = $id('momentum-container');
 
@@ -2030,7 +2177,7 @@ function renderMomentum(points, t1, t2) {
     svg.appendChild(circle);
   });
 
-  /* X-axis labels */
+  
   [0, 6, 10, 15, 20, 26, 30, 35, 40].filter(o => o <= maxOver).forEach(o => {
     const lbl = mkEl('text');
     setAttr(lbl, { x: px(o), y: PAD.top + plotH + 16, fill: 'rgba(255,255,255,0.25)', 'font-size': '9', 'font-family': 'DM Sans', 'font-weight': '600', 'text-anchor': 'middle' });
@@ -2038,7 +2185,7 @@ function renderMomentum(points, t1, t2) {
     svg.appendChild(lbl);
   });
 
-  /* Legend */
+  
   $id('momentum-legend').innerHTML = `
     <div class="mom-leg-item"><div class="mom-leg-dot" style="background:${clr(t1)};box-shadow:0 0 6px ${clr(t1)}88"></div>${t1}</div>
     <div class="mom-leg-item"><div class="mom-leg-dot" style="background:${clr(t2)};box-shadow:0 0 6px ${clr(t2)}88"></div>${t2}</div>
@@ -2046,9 +2193,7 @@ function renderMomentum(points, t1, t2) {
   `;
 }
 
-/* ════════════════════════════════════════════════════════
-   IDEAL XI
-   ════════════════════════════════════════════════════════ */
+
 async function loadIdealXI() {
   const t1 = $id('team1').value, t2 = $id('team2').value;
   const grid = $id('ideal-xi-grid');
@@ -2056,7 +2201,7 @@ async function loadIdealXI() {
   const impactRow = $id('ideal-impact-row');
   impactRow.style.display = 'none';
 
-  // Smooth scroll to this section
+  
   $id('ideal-xi-view')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   try {
@@ -2112,9 +2257,8 @@ async function loadIdealXI() {
   }
 }
 
-/* ════════════════════════════════════════════════════════
-   SQUAD MODAL
-   ════════════════════════════════════════════════════════ */
+
+// configure opensquadmodal behavior
 function openSquadModal() {
   $id('squad-modal').style.display = 'block';
   document.body.style.overflow = 'hidden';
@@ -2122,6 +2266,7 @@ function openSquadModal() {
   if (team) { $id('squad-team-sel').value = team; loadSquad(); }
 }
 
+// configure closesquadmodal behavior
 function closeSquadModal() {
   $id('squad-modal').style.display = 'none';
   document.body.style.overflow = '';
@@ -2134,21 +2279,23 @@ async function loadSquad() {
     const d = await fetch(`/squad/${encodeURIComponent(team)}`).then(r => r.json());
     if (d.error) { $id('squad-table-wrap').innerHTML = `<p style="color:var(--red);text-align:center;padding:20px">${d.error}</p>`; return; }
     squadCache[team] = d.squad;
-    renderSquadTable(d.squad);
+    renderSquad(d.squad);
   } catch {
     $id('squad-table-wrap').innerHTML = '<p style="color:var(--red);text-align:center;padding:20px">Failed to load squad.</p>';
   }
 }
 
+// configure filtersquad behavior
 function filterSquad(f, btn) {
   sqFilter = f;
   document.querySelectorAll('.sq-filter').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   const team = $id('squad-team-sel')?.value;
-  if (squadCache[team]) renderSquadTable(squadCache[team]);
+  if (squadCache[team]) renderSquad(squadCache[team]);
 }
 
-function renderSquadTable(players) {
+// configure rendersquad behavior
+function renderSquad(players) {
   let f = [...players];
   if      (sqFilter === 'bat') f = players.filter(p => p.bowl_wkts < 10 && p.bat_runs > 80);
   else if (sqFilter === 'bowl') f = players.filter(p => p.bowl_wkts > 5);
@@ -2160,6 +2307,7 @@ function renderSquadTable(players) {
     return;
   }
 
+  // configure th behavior
   const th = (col, label) =>
     `<th onclick="sortSq('${col}')" style="user-select:none;cursor:pointer">${label}${sqSortCol === col ? (sqSortDir > 0 ? ' ↑' : ' ↓') : ''}</th>`;
 
@@ -2169,7 +2317,7 @@ function renderSquadTable(players) {
       ${th('bat_runs',    'Runs')}
       ${th('bat_sr',      'SR')}
       ${th('bat_avg',     'Avg')}
-      ${th('boundary_pct','Bdry%')}
+      ${th('bnd_pct','Bdry%')}
       ${th('bowl_wkts',   'Wkts')}
       ${th('bowl_econ',   'Econ')}
     </tr></thead>
@@ -2178,33 +2326,33 @@ function renderSquadTable(players) {
       <td>${p.bat_runs}</td>
       <td class="${p.bat_sr > 155 ? 'stat-good' : p.bat_sr > 130 ? 'stat-avg' : 'stat-bad'}">${p.bat_sr}</td>
       <td>${p.bat_avg}</td>
-      <td>${p.boundary_pct}%</td>
+      <td>${p.bnd_pct}%</td>
       <td class="${p.bowl_wkts > 50 ? 'stat-good' : p.bowl_wkts > 15 ? 'stat-avg' : 'stat-bad'}">${p.bowl_wkts}</td>
       <td class="${p.bowl_econ > 0 && p.bowl_econ < 8 ? 'stat-good' : p.bowl_econ < 10 ? 'stat-avg' : p.bowl_econ > 0 ? 'stat-bad' : ''}">${p.bowl_econ > 0 ? p.bowl_econ : '—'}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
 
+// configure sortsq behavior
 function sortSq(col) {
   if (sqSortCol === col) sqSortDir *= -1; else { sqSortCol = col; sqSortDir = -1; }
   const team = $id('squad-team-sel')?.value;
-  if (squadCache[team]) renderSquadTable(squadCache[team]);
+  if (squadCache[team]) renderSquad(squadCache[team]);
 }
 
-function openBuilderFromSquad() {
+// configure openbuilder behavior
+function openBuilder() {
   closeSquadModal();
   showView('builder-view', document.querySelectorAll('.nav-item')[3]);
   loadBothPools();
 }
 
-/* ════════════════════════════════════════════════════════
-   CUSTOM XI BUILDER
-   ════════════════════════════════════════════════════════ */
+
 async function loadBothPools() {
   const t1 = $id('team1').value;
   const t2 = $id('team2').value;
 
-  // Update headers and reset button labels
+  
   txt('builder-t1-head', t1);
   txt('builder-t2-head', t2);
   txt('reset-t1-lbl', t1.split(' ').pop());
@@ -2230,6 +2378,7 @@ async function loadPool(side, team) {
   }
 }
 
+// configure renderpool behavior
 function renderPool(side) {
   const el    = $id(`pool-${side}`);
   const squad = custSquad[side];
@@ -2254,6 +2403,7 @@ function renderPool(side) {
   txt(`builder-${side}-count`, `${custXI[side].length} / 11`);
 }
 
+// configure toggleplayer behavior
 function togglePlayer(side, name) {
   const xi  = custXI[side];
   const idx = xi.indexOf(name);
@@ -2280,9 +2430,8 @@ async function loadDefaultXI(num) {
   }
 }
 
-/* ════════════════════════════════════════════════════════
-   BALL-BY-BALL
-   ════════════════════════════════════════════════════════ */
+
+// configure renderbbb behavior
 function renderBBB(cid, innings) {
   const c = $id(cid);
   c.innerHTML = '';
@@ -2308,7 +2457,8 @@ function renderBBB(cid, innings) {
   });
 }
 
-/* ── Ball distribution ────────────────────────────────────── */
+
+// configure renderdist behavior
 function renderDist(dist, total) {
   const c = $id('dist-chart');
   if (!c) return;
@@ -2345,7 +2495,8 @@ function renderDist(dist, total) {
   });
 }
 
-/* ── Playing XI ───────────────────────────────────────────── */
+
+// configure renderxi behavior
 function renderXI(xi, t1, t2) {
   const grid = $id('xi-grid');
   grid.innerHTML = '';
@@ -2362,7 +2513,8 @@ function renderXI(xi, t1, t2) {
   });
 }
 
-/* ── Scorecard ────────────────────────────────────────────── */
+
+// configure renderscorecard behavior
 function renderScorecard(match, t1, t2) {
   const wrap = $id('scorecard-content');
   if (!match || (!match.innings1 && !match.innings2)) {
@@ -2373,7 +2525,7 @@ function renderScorecard(match, t1, t2) {
     if (!inn) return;
     const teamName = inn.team || (idx === 0 ? t1 : t2);
     const c = idx === 0 ? clr(t1) : clr(t2);
-    // Backend may return either score or total for the runs
+    
     const runs = inn.score ?? inn.total ?? '?';
     const wkts = inn.wickets ?? '?';
     html += `<div style="margin-bottom:22px">
@@ -2409,11 +2561,10 @@ function renderScorecard(match, t1, t2) {
   wrap.innerHTML = html || '<p style="color:var(--t2);padding:12px">No scorecard data</p>';
 }
 
-/* ═══════════════════════════════════════════════════════════
-   FANTASY XI — Dream11 Logic
-   ═══════════════════════════════════════════════════════════ */
 
-/* Update team chips when teams change */
+
+
+// configure fxiupdatechips behavior
 function fxiUpdateChips() {
   const t1 = $id('team1')?.value || '—';
   const t2 = $id('team2')?.value || '—';
@@ -2458,18 +2609,19 @@ async function loadFantasyXI() {
   }
 }
 
+// configure renderfantasyxi behavior
 function renderFantasyXI(data, t1, t2) {
   const players = data.players || [];
   const captain = players.find(p => p.is_captain);
   const vc      = players.find(p => p.is_vc);
 
-  /* ── Summary bar ─────────────────────────────────────────── */
+  
   txt('fxi-total-pts', data.total_expected_pts ?? '—');
   txt('fxi-mult-pts',  data.total_with_multipliers ?? '—');
   txt('fxi-captain-name', captain?.name ?? '—');
   txt('fxi-vc-name',      vc?.name ?? '—');
 
-  /* ── Team distribution ───────────────────────────────────── */
+  
   const distRow = $id('fxi-dist-row');
   if (distRow && data.team_counts) {
     const t1c = data.team_counts[t1] || 0;
@@ -2488,7 +2640,7 @@ function renderFantasyXI(data, t1, t2) {
     `;
   }
 
-  /* ── Player cards ────────────────────────────────────────── */
+  
   const grid = $id('fxi-player-grid');
   if (!grid) return;
   grid.innerHTML = '';
@@ -2508,16 +2660,16 @@ function renderFantasyXI(data, t1, t2) {
     const effPts = (p.pts * mult).toFixed(1);
     const roleIcon = ROLE_ICON[p.role] || '🏏';
 
-    /* Team abbreviation: first letter of each word, max 3 chars */
+    
     const abbr = p.team.split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
 
-    /* Points bar widths (normalised so highest scorer = 100%) */
+    
     const maxPts = players[0]?.pts || 1;
     const batW   = Math.max(4, Math.min(100, (p.bat_pts  / maxPts) * 100));
     const bowlW  = Math.max(4, Math.min(100, (p.bowl_pts / maxPts) * 100));
     const fieldW = Math.max(4, Math.min(100, (p.field_pts/ maxPts) * 100));
 
-    /* Projection text */
+    
     const batProjTxt  = p.exp_runs > 0
       ? `Est. ~${p.exp_runs.toFixed(0)} runs off ${p.exp_balls_faced} balls`
       : 'Minimal batting contribution expected';
@@ -2525,7 +2677,7 @@ function renderFantasyXI(data, t1, t2) {
       ? `Est. ~${p.exp_wkts.toFixed(1)} wkts in ${p.exp_overs} overs`
       : 'Not a primary bowler';
 
-    /* Card class */
+    
     const cardCls = isC ? 'fxi-card fxi-card--captain' : isVC ? 'fxi-card fxi-card--vc' : 'fxi-card';
 
     const card = document.createElement('div');
@@ -2593,24 +2745,26 @@ function renderFantasyXI(data, t1, t2) {
   });
 }
 
-/* ── Keyboard shortcut ────────────────────────────────────── */
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !$id('predict-btn')?.disabled) runPredict();
 });
 
-/* ── Squad modal backdrop ─────────────────────────────────── */
+
 $id('squad-modal').addEventListener('click', function (e) {
   if (e.target === this) closeSquadModal();
 });
 
-/* ── Theme Toggle ─────────────────────────────────────────── */
+
+// configure toggletheme behavior
 function toggleTheme() {
   document.body.classList.toggle('light-mode');
   try { localStorage.setItem('criciq_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark'); } catch {}
 }
 
-/* ── Scroll animations (Intersection Observer) ────────────── */
-function initScrollAnimations() {
+
+// configure initscroll behavior
+function initScroll() {
   const opts = { threshold: 0.12, rootMargin: '0px 0px -40px 0px' };
   const obs = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -2623,9 +2777,9 @@ function initScrollAnimations() {
   document.querySelectorAll('.anim-reveal, .anim-reveal-left, .anim-scale').forEach(el => obs.observe(el));
 }
 
-/* ── Init ─────────────────────────────────────────────────── */
+
 document.addEventListener('DOMContentLoaded', () => {
-  // Restore theme
+  
   try {
     if (localStorage.getItem('criciq_theme') === 'light') document.body.classList.add('light-mode');
   } catch {}
@@ -2640,8 +2794,8 @@ document.addEventListener('DOMContentLoaded', () => {
   $id('team1')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); fxiUpdateChips(); });
   $id('team2')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); fxiUpdateChips(); });
 
-  // Init scroll animations
-  initScrollAnimations();
+  
+  initScroll();
 });
 </script>
 </body>

@@ -8,7 +8,7 @@ Outputs
 ml_ready_data.csv       match-level features + target
 team_stats.csv          latest rolling team stats
 h2h_stats.csv           head-to-head historical win %
-player_stats.csv        per-player batting/bowling stats
+plr_sts.csv        per-player batting/bowling stats
 matchup_stats.csv       batsman vs bowler historical matchup data
 ball_model_data.csv     ball-level features for XGBoost ball-outcome model
 match_model.joblib      trained + calibrated match-winner model
@@ -40,7 +40,6 @@ from xgboost import XGBClassifier
 
 warnings.filterwarnings("ignore")
 
-# ── Optional imports (non-fatal) ──────────────────────────────────────────────
 try:
     import optuna
     optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -65,7 +64,6 @@ except ImportError:
     HAS_MPL = False
 
 
-# ── Constants ─────────────────────────────────────────────────────────────────
 
 TEAM_MAPPING = {
     "Delhi Daredevils":             "Delhi Capitals",
@@ -83,7 +81,7 @@ ACTIVE_TEAMS = [
     "Sunrisers Hyderabad", "Punjab Kings", "Lucknow Super Giants", "Gujarat Titans",
 ]
 
-VENUE_HOME_TEAM = {
+HOME_TM = {
     "M Chinnaswamy Stadium":                        "Royal Challengers Bengaluru",
     "Wankhede Stadium":                             "Mumbai Indians",
     "MA Chidambaram Stadium":                       "Chennai Super Kings",
@@ -96,7 +94,7 @@ VENUE_HOME_TEAM = {
     "Ekana Cricket Stadium":                        "Lucknow Super Giants",
 }
 
-VENUE_MAPPING = {
+VEN_MAP = {
     "Brabourne Stadium, Mumbai":                            "Brabourne Stadium",
     "Dr DY Patil Sports Academy, Mumbai":                  "Dr DY Patil Sports Academy",
     "M.Chinnaswamy Stadium":                               "M Chinnaswamy Stadium",
@@ -121,7 +119,7 @@ VENUE_MAPPING = {
         "Maharaja Yadavindra Singh International Cricket Stadium, Mullanpur",
 }
 
-MATCH_FEATURES = [
+M_FEATS = [
     "team1_sr", "team2_sr",
     "team1_econ", "team2_econ",
     "team1_bat_avg", "team2_bat_avg",
@@ -129,7 +127,6 @@ MATCH_FEATURES = [
     "team1_is_home", "team2_is_home",
     "toss_winner_is_team1", "toss_decision_bat",
     "team1_h2h_win_pct",
-    # new features (section 5)
     "team1_last5_wins", "team2_last5_wins",
     "team1_venue_winrate", "team2_venue_winrate",
     "team1_chase_winrate", "team2_chase_winrate",
@@ -137,43 +134,37 @@ MATCH_FEATURES = [
     "team1_phase_mid_rr", "team2_phase_mid_rr",
     "team1_phase_death_rr", "team2_phase_death_rr",
     "team1_death_econ", "team2_death_econ",
-    # upgrade features
     "sr_diff", "econ_diff", "form_diff",
     "team1_encoded", "team2_encoded",
     "team1_matchup_strength", "team2_matchup_strength",
     "team1_depth", "team2_depth",
 ]
 
-BALL_FEATURES = [
-    # pre-delivery cumulative batter state
+B_FEATS = [
     "batter_cum_runs", "batter_cum_balls",
     "batter_roll_sr",
     "striker_sr_vs_pace", "striker_sr_vs_spin",
     "dot_ball_pressure",
-    # pre-delivery cumulative bowler state
     "bowler_cum_balls", "bowler_cum_wkts",
     "bowler_roll_econ", "bowler_roll_wktr",
     "bowler_economy_this_phase",
-    # matchup
     "batter_vs_bowler_matchup_sr",
-    # match state
     "innings", "over", "ball_in_over",
     "phase_pp", "phase_mid", "phase_death",
     "wickets_in_hand",
     "runs_in_innings",
-    "balls_remaining",
+    "b_remain",
     "required_run_rate",   # 0 for 1st innings
-    # upgrade features — rolling window & pressure
     "last12_runs", "last12_wickets", "pressure_index",
 ]
 
-TRAIN_SEASONS_END = 2023   # inclusive — train on 2008-2023
+TRN_SSN_END = 2023
 VAL_SEASON        = 2024
-TEST_SEASON_START = 2025
+TST_SSN_ST = 2025
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
+# process safe divide logic
 def safe_divide(numerator, denominator, default=0.0):
     """Safely divide and preserve pandas compatibility."""
     if np.isscalar(numerator) and np.isscalar(denominator):
@@ -184,6 +175,7 @@ def safe_divide(numerator, denominator, default=0.0):
     return result
 
 
+# process over phase logic
 def _over_phase(over_int: int) -> str:
     if over_int < 6:
         return "powerplay"
@@ -192,35 +184,30 @@ def _over_phase(over_int: int) -> str:
     return "death"
 
 
-# ── 1. Load & clean ───────────────────────────────────────────────────────────
 
+# process load and clean logic
 def load_and_clean(csv_path: str = "ipl_data.csv") -> pd.DataFrame:
     print("Loading raw data...")
     df = pd.read_csv(csv_path, low_memory=False)
 
-    # Standardise team names
     for col in ["batting_team", "bowling_team", "toss_winner", "match_won_by"]:
         if col in df.columns:
             df[col] = df[col].replace(TEAM_MAPPING)
 
-    # Active teams only
     df = df[
         df["batting_team"].isin(ACTIVE_TEAMS) &
         df["bowling_team"].isin(ACTIVE_TEAMS)
     ].copy()
 
-    # Parse season / date
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df["season"] = df["date"].dt.year
     else:
         df["season"] = 2020  # fallback
 
-    # Venue normalisation
     if "venue" in df.columns:
-        df["venue"] = df["venue"].replace(VENUE_MAPPING)
+        df["venue"] = df["venue"].replace(VEN_MAP)
 
-    # Derived ball-level columns
     df["is_wicket"]      = df["player_out"].notna().astype(int)
     df["is_boundary_4"]  = (df["runs_total"] == 4).astype(int)
     df["is_boundary_6"]  = (df["runs_total"] == 6).astype(int)
@@ -229,18 +216,15 @@ def load_and_clean(csv_path: str = "ipl_data.csv") -> pd.DataFrame:
     df["ball_in_over"]   = df["ball"].apply(lambda b: int(round((b % 1) * 10)))
     df["over_phase"]     = df["over_int"].apply(_over_phase)
 
-    # Bowling type heuristic (used for pace/spin SR features)
-    # We don't have pitch data; approximate from name/historical tendency.
-    # Will be replaced per player from ipl_squads if available.
     if "bowling_style" not in df.columns:
-        df["bowling_style"] = "pace"  # default; overridden below
+        df["bowling_style"] = "pace"  # default overridden below
 
     df = df.sort_values(["date", "match_id", "innings", "ball"]).reset_index(drop=True)
     print(f"  → {len(df):,} deliveries | seasons {df['season'].min()}–{df['season'].max()}")
     return df
 
 
-# ── 2. Rolling team stats (match-level, no leakage) ───────────────────────────
+# process safe div logic
 def _safe_div(num, den, fill=0.0):
     import numpy as np
     import pandas as pd
@@ -251,6 +235,7 @@ def _safe_div(num, den, fill=0.0):
     
     return fill if den == 0 else num / den
 
+# process build team stats logic
 def build_team_stats(df: pd.DataFrame):
     """
     Compute dynamic rolling last-5-match batting / bowling stats.
@@ -275,7 +260,6 @@ def build_team_stats(df: pd.DataFrame):
         .sort_values(["bowling_team", "date"])
     )
 
-    # Rolling 5-match sums — shift(1) ensures no same-match leakage
     for grp, df_ref, cols in [
         ("batting_team",  match_bat,  ["runs", "balls", "wickets"]),
         ("bowling_team",  match_bowl, ["runs_c", "balls_b", "wkts_t"]),
@@ -295,7 +279,6 @@ def build_team_stats(df: pd.DataFrame):
     match_bowl["dyn_bowl_avg"] = _safe_div(match_bowl["roll_runs_c"],
                                             match_bowl["roll_wkts_t"].replace(0, 1), 28.0).fillna(28.0)
 
-    # Latest snapshot per team (for the prediction API)
     latest_bat  = match_bat.groupby("batting_team").last()[["dyn_sr", "dyn_bat_avg"]]
     latest_bowl = match_bowl.groupby("bowling_team").last()[["dyn_econ", "dyn_bowl_avg"]]
     team_stats  = pd.concat([latest_bat, latest_bowl], axis=1)
@@ -306,8 +289,8 @@ def build_team_stats(df: pd.DataFrame):
     return match_bat, match_bowl, team_stats
 
 
-# ── 3. Phase run rates & new match-level features ────────────────────────────
 
+# process build phase features logic
 def build_phase_features(df: pd.DataFrame) -> pd.DataFrame:
     """Per-match phase run rates: powerplay / middle / death."""
     phase_rr = (
@@ -321,7 +304,6 @@ def build_phase_features(df: pd.DataFrame) -> pd.DataFrame:
     ).reset_index()
     phase_wide.columns = [f"phase_{c}_rr" if c not in ("match_id", "batting_team") else c
                           for c in phase_wide.columns]
-    # Death bowling economy for bowling team
     death_df = df[df["over_phase"] == "death"].copy()
     death_bowl = (
         death_df.groupby(["match_id", "bowling_team"])
@@ -332,12 +314,11 @@ def build_phase_features(df: pd.DataFrame) -> pd.DataFrame:
     return phase_wide, death_bowl
 
 
+# process build venue chase features logic
 def build_venue_chase_features(df: pd.DataFrame, matches_base: pd.DataFrame) -> pd.DataFrame:
     """Venue win rate and chase/defend win rate per team."""
-    # We compute on match level (innings==1 rows already de-duplicated)
     m = matches_base.copy()
 
-    # Venue win rate — rolling (use historical only, shift 1)
     venue_wins = []
     for team in ACTIVE_TEAMS:
         t_df = m[(m["team1"] == team) | (m["team2"] == team)].sort_values("date").copy()
@@ -350,14 +331,13 @@ def build_venue_chase_features(df: pd.DataFrame, matches_base: pd.DataFrame) -> 
         venue_wins.append(t_df[["match_id", "team", "venue_wr"]])
     venue_df = pd.concat(venue_wins, ignore_index=True)
 
-    # Chase win rate
     chase_wins = []
     for team in ACTIVE_TEAMS:
         t_df = m[(m["team1"] == team) | (m["team2"] == team)].sort_values("date").copy()
         t_df["team_won"]   = (t_df["match_won_by"] == team).astype(int)
         t_df["team_chased"] = t_df.apply(
-            lambda r: 1 if (r["team2"] == team and r["toss_decision"] == "bat") or
-                           (r["team1"] == team and r["toss_decision"] == "field") else 0, axis=1)
+            lambda r: 1 if (r["team2"] == team and r["toss_dec"] == "bat") or
+                           (r["team1"] == team and r["toss_dec"] == "field") else 0, axis=1)
         t_df["chase_wr"] = (
             t_df.groupby("team_chased")["team_won"]
             .transform(lambda x: x.expanding().mean().shift(1).fillna(0.5))
@@ -369,15 +349,14 @@ def build_venue_chase_features(df: pd.DataFrame, matches_base: pd.DataFrame) -> 
     return venue_df, chase_df
 
 
-# ── 4. Match-level ML dataset ─────────────────────────────────────────────────
 
+# process build match features logic
 def build_match_features(df: pd.DataFrame,
                           match_bat: pd.DataFrame,
                           match_bowl: pd.DataFrame,
                           matchup_df: pd.DataFrame | None = None) -> pd.DataFrame:
     print("Building match-level feature set...")
 
-    # Base: one row per match (innings 1 only for team assignment)
     matches = (
         df[df["innings"] == 1]
         .drop_duplicates(subset=["match_id"])
@@ -385,9 +364,8 @@ def build_match_features(df: pd.DataFrame,
     )
     matches.rename(columns={"batting_team": "team1", "bowling_team": "team2"}, inplace=True)
     matches.dropna(subset=["match_won_by", "team1", "team2",
-                            "venue", "toss_winner", "toss_decision"], inplace=True)
+                            "venue", "toss_winner", "toss_dec"], inplace=True)
 
-    # Join rolling batting & bowling stats for each team at match time
     for side in ["team1", "team2"]:
         bat_cols = match_bat[["match_id", "batting_team", "dyn_sr", "dyn_bat_avg"]]
         matches = matches.merge(
@@ -409,7 +387,6 @@ def build_match_features(df: pd.DataFrame,
         matches.rename(columns={"dyn_econ": f"{side}_econ", "dyn_bowl_avg": f"{side}_bowl_avg"},
                        inplace=True)
 
-    # H2H
     matches["team_A"] = matches.apply(lambda r: min(r["team1"], r["team2"]), axis=1)
     matches["team_B"] = matches.apply(lambda r: max(r["team1"], r["team2"]), axis=1)
     matches["matchup"] = matches["team_A"] + " vs " + matches["team_B"]
@@ -423,27 +400,24 @@ def build_match_features(df: pd.DataFrame,
         lambda r: r["team_A_h2h_win_pct"] if r["team1"] == r["team_A"] else 1 - r["team_A_h2h_win_pct"],
         axis=1
     )
-    # Save H2H table
     (matches.drop_duplicates(subset=["matchup"], keep="last")
      [["team_A", "team_B", "team_A_h2h_win_pct"]]
      .to_csv("h2h_stats.csv", index=False))
     print("  → h2h_stats.csv saved")
 
-    # Home/away
-    matches["venue_home_team"]       = matches["venue"].map(VENUE_HOME_TEAM)
+    matches["venue_home_team"]       = matches["venue"].map(HOME_TM)
     matches["team1_is_home"]         = (matches["team1"] == matches["venue_home_team"]).astype(int)
     matches["team2_is_home"]         = (matches["team2"] == matches["venue_home_team"]).astype(int)
     matches["toss_winner_is_team1"]  = (matches["toss_winner"] == matches["team1"]).astype(int)
-    matches["toss_decision_bat"]     = (matches["toss_decision"] == "bat").astype(int)
+    matches["toss_decision_bat"]     = (matches["toss_dec"] == "bat").astype(int)
 
-    # Rolling last-5 wins per team
-    match_results_t1 = matches[["date", "match_id", "team1", "match_won_by"]].copy()
-    match_results_t2 = matches[["date", "match_id", "team2", "match_won_by"]].copy()
-    match_results_t1["team"] = match_results_t1["team1"]
-    match_results_t2["team"] = match_results_t2["team2"]
+    res_t1 = matches[["date", "match_id", "team1", "match_won_by"]].copy()
+    res_t2 = matches[["date", "match_id", "team2", "match_won_by"]].copy()
+    res_t1["team"] = res_t1["team1"]
+    res_t2["team"] = res_t2["team2"]
     all_results = pd.concat([
-        match_results_t1.assign(won=lambda r: (r["match_won_by"] == r["team"]).astype(int)),
-        match_results_t2.assign(won=lambda r: (r["match_won_by"] == r["team"]).astype(int)),
+        res_t1.assign(won=lambda r: (r["match_won_by"] == r["team"]).astype(int)),
+        res_t2.assign(won=lambda r: (r["match_won_by"] == r["team"]).astype(int)),
     ]).sort_values("date")
     all_results["last5_wins"] = (
         all_results.groupby("team")["won"]
@@ -457,7 +431,6 @@ def build_match_features(df: pd.DataFrame,
     matches[["team1_last5_wins", "team2_last5_wins"]] = (
         matches[["team1_last5_wins", "team2_last5_wins"]].fillna(0.5))
 
-    # Phase run rates
     phase_wide, death_bowl = build_phase_features(df)
     for side in ["team1", "team2"]:
         matches = matches.merge(
@@ -476,7 +449,6 @@ def build_match_features(df: pd.DataFrame,
             on=["match_id", side], how="left"
         )
 
-    # Venue / chase win rates
     venue_df, chase_df = build_venue_chase_features(df, matches)
     for side in ["team1", "team2"]:
         matches = matches.merge(
@@ -488,47 +460,44 @@ def build_match_features(df: pd.DataFrame,
             on=["match_id", side], how="left"
         )
 
-    # Target
     matches["target"] = (matches["match_won_by"] == matches["team1"]).astype(int)
 
-    # ── Upgrade 1A: Difference features ──────────────────────────────────────
     matches["sr_diff"]   = matches["team1_sr"]         - matches["team2_sr"]
     matches["econ_diff"] = matches["team2_econ"]       - matches["team1_econ"]
     matches["form_diff"] = matches["team1_last5_wins"] - matches["team2_last5_wins"]
 
-    # ── Upgrade 1B: Team identity encoding ───────────────────────────────────
     all_team_names = list(set(matches["team1"].tolist() + matches["team2"].tolist()))
-    team_label_enc = LabelEncoder()
-    team_label_enc.fit(all_team_names)
-    matches["team1_encoded"] = team_label_enc.transform(matches["team1"])
-    matches["team2_encoded"] = team_label_enc.transform(matches["team2"])
-    joblib.dump(team_label_enc, "team_encoder.joblib")
+    tm_lbl_enc = LabelEncoder()
+    tm_lbl_enc.fit(all_team_names)
+    matches["team1_encoded"] = tm_lbl_enc.transform(matches["team1"])
+    matches["team2_encoded"] = tm_lbl_enc.transform(matches["team2"])
+    joblib.dump(tm_lbl_enc, "team_encoder.joblib")
     print("  → team_encoder.joblib saved")
 
-    # Fill NaN in new features with neutral values
-    for col in MATCH_FEATURES:
+    for col in M_FEATS:
         if col in matches.columns:
             fill = 0.5 if "winrate" in col or "h2h" in col or "last5" in col else 0.0
             matches[col] = matches[col].fillna(fill)
 
-    matches = matches.dropna(subset=[f for f in MATCH_FEATURES if f in matches.columns])
-    avail_features = [f for f in MATCH_FEATURES if f in matches.columns]
+    matches = matches.dropna(subset=[f for f in M_FEATS if f in matches.columns])
+    avail_features = [f for f in M_FEATS if f in matches.columns]
 
-    # ── Upgrade 1C: Matchup strength per match ────────────────────────────────
     if matchup_df is not None and not matchup_df.empty:
-        player_stats_df = pd.read_csv("player_stats.csv") if Path("player_stats.csv").exists() else pd.DataFrame()
+        plr_sts_df = pd.read_csv("plr_sts.csv") if Path("plr_sts.csv").exists() else pd.DataFrame()
 
+        # process top bowlers logic
         def _top_bowlers(team_name, n=5):
-            if player_stats_df.empty or "bowling_team" not in player_stats_df.columns:
+            if plr_sts_df.empty or "bowling_team" not in plr_sts_df.columns:
                 return []
-            sub = player_stats_df[player_stats_df["bowling_team"] == team_name]
+            sub = plr_sts_df[plr_sts_df["bowling_team"] == team_name]
             sub = sub.sort_values("bowl_wkts", ascending=False)
             return sub["bowler"].dropna().tolist()[:n]
 
+        # process batters for team logic
         def _batters_for_team(team_name, n=8):
-            if player_stats_df.empty or "batting_team" not in player_stats_df.columns:
+            if plr_sts_df.empty or "batting_team" not in plr_sts_df.columns:
                 return []
-            sub = player_stats_df[player_stats_df["batting_team"] == team_name]
+            sub = plr_sts_df[plr_sts_df["batting_team"] == team_name]
             sub = sub.sort_values("bat_runs", ascending=False)
             return sub["batter"].dropna().tolist()[:n]
 
@@ -546,8 +515,6 @@ def build_match_features(df: pd.DataFrame,
         matches["team1_matchup_strength"] = 100.0
         matches["team2_matchup_strength"] = 100.0
 
-    # ── Upgrade 1D: Batting depth (avg SR of positions 5–8) ──────────────────
-    # Compute per match from ball-by-ball data using batting position order
     depth_data = (
         df.groupby(["match_id", "innings", "batting_team"])
         .apply(lambda g: (
@@ -558,16 +525,17 @@ def build_match_features(df: pd.DataFrame,
         .reset_index(drop=True)
     ) if not df.empty else pd.DataFrame()
 
+    # process match depth logic
     def _match_depth(match_id, team):
         if df.empty:
             return 130.0
         sub = df[(df["match_id"] == match_id) & (df["batting_team"] == team)]
         if sub.empty:
             return 130.0
-        batter_order = sub.groupby("batter").agg(
+        bat_order = sub.groupby("batter").agg(
             first_ball=("ball", "min"), runs=("runs_total", "sum"), balls=("ball", "count")
         ).sort_values("first_ball").reset_index()
-        depth = batter_order.iloc[4:8]  # positions 5–8 (0-indexed 4–7)
+        depth = bat_order.iloc[4:8]
         if depth.empty:
             return 130.0
         srs = _safe_div(depth["runs"], depth["balls"].replace(0, 1)) * 100
@@ -580,10 +548,9 @@ def build_match_features(df: pd.DataFrame,
     matches["team1_depth"] = t1_depth
     matches["team2_depth"] = t2_depth
 
-    avail_features = [f for f in MATCH_FEATURES if f in matches.columns]
+    avail_features = [f for f in M_FEATS if f in matches.columns]
     matches[avail_features + ["target", "season", "match_id"]].to_csv("ml_ready_data.csv", index=False)
     print(f"  → ml_ready_data.csv saved ({len(matches)} matches, {len(avail_features)} features)")
-    # 🔧 ensure season exists in final dataset
     if "season" not in matches.columns:
         if "date" in matches.columns:
             matches["season"] = pd.to_datetime(matches["date"], errors="coerce").dt.year
@@ -594,8 +561,8 @@ def build_match_features(df: pd.DataFrame,
     return matches, avail_features
 
 
-# ── 5. Player stats ───────────────────────────────────────────────────────────
 
+# process build player stats logic
 def build_player_stats(df: pd.DataFrame) -> pd.DataFrame:
     print("Computing player-level batting & bowling stats...")
 
@@ -611,10 +578,9 @@ def build_player_stats(df: pd.DataFrame) -> pd.DataFrame:
     )
     bat["bat_sr"]       = _safe_div(bat["bat_runs"], bat["bat_balls"]) * 100
     bat["bat_avg"]      = _safe_div(bat["bat_runs"], bat["bat_dismissals"].replace(0, 1))
-    bat["boundary_pct"] = _safe_div(bat["bat_4s"] + bat["bat_6s"], bat["bat_balls"]) * 100
+    bat["bnd_pct"] = _safe_div(bat["bat_4s"] + bat["bat_6s"], bat["bat_balls"]) * 100
     bat["dot_pct"]      = _safe_div(bat["bat_dots"], bat["bat_balls"]) * 100
 
-    # SR vs pace / spin (approximate: columns may not exist)
     sr_pace = _build_sr_by_style(df, "pace")
     sr_spin = _build_sr_by_style(df, "spin")
     bat = bat.merge(sr_pace, on="batter", how="left").fillna({"sr_vs_pace": bat["bat_sr"]})
@@ -632,7 +598,6 @@ def build_player_stats(df: pd.DataFrame) -> pd.DataFrame:
     bowl["bowl_avg"]    = _safe_div(bowl["bowl_runs"], bowl["bowl_wkts"].replace(0, 1))
     bowl["wicket_rate"] = _safe_div(bowl["bowl_wkts"], bowl["bowl_balls"])
 
-    # Phase economy
     for phase in ["powerplay", "middle", "death"]:
         ph_df = df[df["over_phase"] == phase]
         ph_bowl = (
@@ -643,19 +608,20 @@ def build_player_stats(df: pd.DataFrame) -> pd.DataFrame:
         ph_bowl[f"econ_{phase}"] = _safe_div(ph_bowl["r"], ph_bowl["b"] / 6)
         bowl = bowl.merge(ph_bowl[["bowler", f"econ_{phase}"]], on="bowler", how="left")
 
-    player_stats = pd.merge(
+    plr_sts = pd.merge(
         bat, bowl,
         left_on=["batter", "batting_team"],
         right_on=["bowler", "bowling_team"],
         how="outer", suffixes=("_bat", "_bowl")
     )
-    player_stats["player"] = player_stats["batter"].fillna(player_stats["bowler"])
-    player_stats["team"]   = player_stats["batting_team"].fillna(player_stats["bowling_team"])
-    player_stats.to_csv("player_stats.csv", index=False)
-    print("  → player_stats.csv saved")
-    return player_stats
+    plr_sts["player"] = plr_sts["batter"].fillna(plr_sts["bowler"])
+    plr_sts["team"]   = plr_sts["batting_team"].fillna(plr_sts["bowling_team"])
+    plr_sts.to_csv("plr_sts.csv", index=False)
+    print("  → plr_sts.csv saved")
+    return plr_sts
 
 
+# process build sr by style logic
 def _build_sr_by_style(df: pd.DataFrame, style: str) -> pd.DataFrame:
     """Approximate SR vs pace/spin using bowling_style column if available."""
     if "bowling_style" not in df.columns:
@@ -668,26 +634,27 @@ def _build_sr_by_style(df: pd.DataFrame, style: str) -> pd.DataFrame:
     return g[["batter", f"sr_vs_{style}"]]
 
 
-# ── 6. Matchup stats ──────────────────────────────────────────────────────────
 
+# process build matchup stats logic
 def build_matchup_stats(df: pd.DataFrame) -> pd.DataFrame:
     print("Building batsman vs bowler matchup table...")
     matchup = (
         df.groupby(["batter", "bowler"])
         .agg(m_runs=("runs_total", "sum"),
              m_balls=("ball", "count"),
-             m_dismissals=("is_wicket", "sum"),
+             m_dism=("is_wicket", "sum"),
              m_4s=("is_boundary_4", "sum"),
              m_6s=("is_boundary_6", "sum"))
         .reset_index()
     )
     matchup["m_sr"]           = _safe_div(matchup["m_runs"], matchup["m_balls"]) * 100
-    matchup["m_dismiss_prob"] = _safe_div(matchup["m_dismissals"], matchup["m_balls"])
+    matchup["m_dism_prb"] = _safe_div(matchup["m_dism"], matchup["m_balls"])
     matchup.to_csv("matchup_stats.csv", index=False)
     print("  → matchup_stats.csv saved")
     return matchup
 
 
+# process compute matchup strength logic
 def compute_matchup_strength(team_batters: list, opponent_bowlers: list,
                               matchup_df: pd.DataFrame, default: float = 100.0) -> float:
     """Mean SR for team's batters vs opponent's top bowlers from matchup_df."""
@@ -705,14 +672,13 @@ def compute_matchup_strength(team_batters: list, opponent_bowlers: list,
     return float(np.mean(srs)) if srs else default
 
 
-# ── 7. Ball-level ML dataset (LEAKAGE-FREE) ───────────────────────────────────
 
+# process build ball features logic
 def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFrame:
     print("Building ball-level XGBoost training dataset (leakage-free)...")
 
     df = df.sort_values(["batter", "date", "match_id", "innings", "ball"]).copy()
 
-    # === FIX: shift INSIDE group to avoid cross-player leakage ===
     for grp, src_col, out_col in [
         ("batter", "runs_total", "batter_cum_runs"),
         ("bowler", "runs_total", "bowler_cum_runs"),
@@ -738,7 +704,6 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
     df["bowler_roll_wktr"] = _safe_div(df["bowler_cum_wkts"],
                                         df["bowler_cum_balls"].replace(0, 1))
 
-    # SR vs pace / spin (fallback: overall SR)
     df["striker_sr_vs_pace"] = df["batter_roll_sr"]
     df["striker_sr_vs_spin"] = df["batter_roll_sr"]
     if "bowling_style" in df.columns:
@@ -747,17 +712,14 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
         df.loc[~pace_mask, "striker_sr_vs_pace"] = df.loc[~pace_mask, "batter_roll_sr"]
         df.loc[~spin_mask, "striker_sr_vs_spin"] = df.loc[~spin_mask, "batter_roll_sr"]
 
-    # Matchup SR (batter vs bowler historical, pre-match only — approximation via merge)
     mu = matchup_df[["batter", "bowler", "m_sr"]].rename(columns={"m_sr": "batter_vs_bowler_matchup_sr"})
     df = df.merge(mu, on=["batter", "bowler"], how="left")
     df["batter_vs_bowler_matchup_sr"] = df["batter_vs_bowler_matchup_sr"].fillna(df["batter_roll_sr"])
 
-    # Phase one-hot
     df["phase_pp"]    = (df["over_phase"] == "powerplay").astype(int)
     df["phase_mid"]   = (df["over_phase"] == "middle").astype(int)
     df["phase_death"] = (df["over_phase"] == "death").astype(int)
 
-    # Bowler economy this phase (per match)
     phase_econ = (
         df.groupby(["match_id", "innings", "bowler", "over_phase"])
         .apply(lambda g: _safe_div(g["runs_total"].sum(), len(g) / 6, 9.0))
@@ -766,8 +728,6 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
     df = df.merge(phase_econ, on=["match_id", "innings", "bowler", "over_phase"], how="left")
     df["bowler_economy_this_phase"] = df["bowler_economy_this_phase"].fillna(df["bowler_roll_econ"])
 
-    # Match state features
-    # These require cumulative within-innings state
     df = df.sort_values(["match_id", "innings", "ball"]).reset_index(drop=True)
 
     df["runs_in_innings"] = df.groupby(["match_id", "innings"])["runs_total"].transform(
@@ -778,10 +738,10 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
     )
     df["wickets_in_hand"]  = 10 - df["wickets_in_innings"]
     df["ball_seq"]         = df.groupby(["match_id", "innings"]).cumcount()
-    df["balls_remaining"]  = 120 - df["ball_seq"]
+    df["b_remain"]  = 120 - df["ball_seq"]
     df["over"]             = df["over_int"]
 
-    # Dot-ball pressure (consecutive dots faced by batter in this innings)
+    # process dot pressure logic
     def _dot_pressure(series):
         """Consecutive dots so far by this batter."""
         result = []
@@ -799,11 +759,9 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
         .transform(lambda x: pd.Series(_dot_pressure(x), index=x.index))
     )
 
-    # Required run rate (2nd innings only)
     df["required_run_rate"] = 0.0
     inn2 = df["innings"] == 2
     if inn2.any():
-        # target = 1st innings score + 1 (approx via match-level)
         inn1_totals = (
             df[df["innings"] == 1]
             .groupby("match_id")["runs_total"]
@@ -815,15 +773,13 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
         df["inn1_total"] = df["inn1_total"].fillna(160)
         df.loc[inn2, "required_run_rate"] = _safe_div(
             df.loc[inn2, "inn1_total"] + 1 - df.loc[inn2, "runs_in_innings"],
-            df.loc[inn2, "balls_remaining"] / 6, 999.0
+            df.loc[inn2, "b_remain"] / 6, 999.0
         )
         df["required_run_rate"] = df["required_run_rate"].clip(0, 36)
 
-    # Target: runs outcome (clipped; wickets NOT included — post-delivery info)
     df["ball_outcome"] = df["runs_total"].clip(upper=6)
     df.loc[df["ball_outcome"] == 5, "ball_outcome"] = 4
 
-    # ── Upgrade 1E: Rolling window (last 12 balls) & pressure index ───────────
     df["last12_runs"] = df.groupby(["match_id", "innings"])["runs_total"].transform(
         lambda x: x.shift(1).rolling(12, min_periods=1).sum()
     )
@@ -831,7 +787,6 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
         lambda x: x.shift(1).rolling(12, min_periods=1).sum()
     )
 
-    # current_rr = runs scored / overs bowled so far
     df["current_rr"] = _safe_div(df["runs_in_innings"], (df["ball_seq"] / 6).replace(0, 0.01), 0.0)
     df["pressure_index"] = np.where(
         (df["innings"] == 2) & (df["current_rr"] > 0),
@@ -840,20 +795,20 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
     )
     df["pressure_index"] = df["pressure_index"].fillna(1.0).clip(0, 5)
 
-    avail_ball_features = [f for f in BALL_FEATURES if f in df.columns]
-    ball_df = df[avail_ball_features + ["ball_outcome", "season"]].dropna()
+    avail_b_fts = [f for f in B_FEATS if f in df.columns]
+    ball_df = df[avail_b_fts + ["ball_outcome", "season"]].dropna()
     ball_df.to_csv("ball_model_data.csv", index=False)
     print(f"  → ball_model_data.csv saved ({len(ball_df):,} deliveries, "
-          f"{len(avail_ball_features)} features)")
-    return ball_df, avail_ball_features
+          f"{len(avail_b_fts)} features)")
+    return ball_df, avail_b_fts
 
 
-# ── 8. Time-based train / val / test split ────────────────────────────────────
 
+# process time split logic
 def time_split(df: pd.DataFrame, feature_cols: list[str], target_col: str = "target"):
-    train = df[df["season"] <= TRAIN_SEASONS_END]
+    train = df[df["season"] <= TRN_SSN_END]
     val   = df[df["season"] == VAL_SEASON]
-    test  = df[df["season"] >= TEST_SEASON_START]
+    test  = df[df["season"] >= TST_SSN_ST]
     X_train, y_train = train[feature_cols].values, train[target_col].values
     X_val,   y_val   = val[feature_cols].values,   val[target_col].values
     X_test,  y_test  = test[feature_cols].values,  test[target_col].values
@@ -861,8 +816,8 @@ def time_split(df: pd.DataFrame, feature_cols: list[str], target_col: str = "tar
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-# ── 9. Optuna hyperparameter tuning ───────────────────────────────────────────
 
+# process tune xgb logic
 def tune_xgb(X_train, y_train, X_val, y_val, n_trials: int = 40,
              n_classes: int = 2) -> dict:
     if not HAS_OPTUNA:
@@ -871,8 +826,9 @@ def tune_xgb(X_train, y_train, X_val, y_val, n_trials: int = 40,
                     min_child_weight=3, eval_metric="logloss" if n_classes == 2 else "mlogloss",
                     random_state=42)
 
-    objective_metric = "logloss" if n_classes == 2 else "mlogloss"
+    obj_met = "logloss" if n_classes == 2 else "mlogloss"
 
+    # process objective logic
     def objective(trial):
         params = dict(
             n_estimators     = trial.suggest_int("n_estimators", 200, 600, step=100),
@@ -882,7 +838,7 @@ def tune_xgb(X_train, y_train, X_val, y_val, n_trials: int = 40,
             subsample        = trial.suggest_float("subsample", 0.7, 0.9),
             colsample_bytree = trial.suggest_float("colsample_bytree", 0.6, 1.0),
             gamma            = trial.suggest_float("gamma", 0.0, 0.3),
-            eval_metric      = objective_metric,
+            eval_metric      = obj_met,
             early_stopping_rounds = 50,
             random_state     = 42,
             verbosity        = 0,
@@ -899,7 +855,7 @@ def tune_xgb(X_train, y_train, X_val, y_val, n_trials: int = 40,
     study.optimize(objective, n_trials=n_trials, show_progress_bar=False)
     best = study.best_params
     best["random_state"] = 42
-    best["eval_metric"]  = objective_metric
+    best["eval_metric"]  = obj_met
     if n_classes > 2:
         best["num_class"] = n_classes
         best["objective"] = "multi:softprob"
@@ -907,8 +863,8 @@ def tune_xgb(X_train, y_train, X_val, y_val, n_trials: int = 40,
     return best
 
 
-# ── 10. Train & calibrate ─────────────────────────────────────────────────────
 
+# process train match model logic
 def train_match_model(X_train, y_train, X_val, y_val, feature_names: list[str]):
     print("Training match-winner model...")
     params = tune_xgb(X_train, y_train, X_val, y_val, n_trials=30)
@@ -918,13 +874,13 @@ def train_match_model(X_train, y_train, X_val, y_val, feature_names: list[str]):
              verbose=False)
     cal = CalibratedClassifierCV(base, method="isotonic", cv=3)
     cal.fit(X_train, y_train)
-    # Store feature names on wrapper for explainability
     cal.feature_names_in_ = np.array(feature_names)
     joblib.dump({"model": cal, "features": feature_names}, "match_model.joblib")
     print("  → match_model.joblib saved")
     return cal, base
 
 
+# process train ball model logic
 def train_ball_model(X_train, y_train, X_val, y_val, classes, feature_names: list[str]):
     print("Training ball-outcome model...")
     n_cls  = len(classes)
@@ -941,14 +897,13 @@ def train_ball_model(X_train, y_train, X_val, y_val, classes, feature_names: lis
     return cal, base
 
 
-# ── 11. Evaluation ────────────────────────────────────────────────────────────
 
+# process evaluate model logic
 def evaluate_model(model, X_test, y_test, name: str, classes=None) -> dict:
     preds  = model.predict(X_test)
     proba  = model.predict_proba(X_test)
 
     if classes is None or len(classes) == 2:
-        # Binary
         metrics = {
             "accuracy"   : round(accuracy_score(y_test, preds), 4),
             "roc_auc"    : round(roc_auc_score(y_test, proba[:, 1]), 4),
@@ -971,7 +926,6 @@ def evaluate_model(model, X_test, y_test, name: str, classes=None) -> dict:
     for k, v in metrics.items():
         print(f"    {k:<15}: {v}")
 
-    # Calibration curve (binary only)
     if HAS_MPL and (classes is None or len(classes) == 2):
         try:
             fraction, mean_pred = calibration_curve(y_test, proba[:, 1], n_bins=10)
@@ -993,8 +947,8 @@ def evaluate_model(model, X_test, y_test, name: str, classes=None) -> dict:
     return metrics
 
 
-# ── 12. SHAP plots ────────────────────────────────────────────────────────────
 
+# process shap plot logic
 def shap_plot(base_model, X_sample, feature_names: list[str], title: str, fname: str):
     if not HAS_SHAP or not HAS_MPL:
         return
@@ -1003,7 +957,7 @@ def shap_plot(base_model, X_sample, feature_names: list[str], title: str, fname:
         expln = shap.TreeExplainer(base_model)
         vals  = expln.shap_values(X_df)
         if isinstance(vals, list):
-            vals = vals[1]  # binary positive class
+            vals = vals[1]
         fig, ax = plt.subplots(figsize=(8, 6))
         shap.summary_plot(vals, X_df, max_display=15, show=False, plot_type="bar")
         plt.title(title)
@@ -1015,30 +969,23 @@ def shap_plot(base_model, X_sample, feature_names: list[str], title: str, fname:
         print(f"  ! SHAP plot failed: {e}")
 
 
-# ── Main pipeline ─────────────────────────────────────────────────────────────
 
+# process clean and prepare data logic
 def clean_and_prepare_data(csv_path: str = "ipl_data.csv") -> None:
     results: dict = {}
 
-    # ── Step 1: Load & clean ─────────────────────────────────────
     df = load_and_clean(csv_path)
 
-    # ── Step 2: Team stats ────────────────────────────────────────
     match_bat, match_bowl, _ = build_team_stats(df)
 
-    # ── Step 3: Player stats ──────────────────────────────────────
     build_player_stats(df)
 
-    # ── Step 4: Matchup stats ─────────────────────────────────────
     matchup_df = build_matchup_stats(df)
 
-    # ── Step 5: Match-level features ──────────────────────────────
     matches_df, match_feats = build_match_features(df, match_bat, match_bowl, matchup_df)
 
-    # ── Step 6: Ball-level features ───────────────────────────────
     ball_df, ball_feats = build_ball_features(df, matchup_df)
 
-    # ══════════════ MATCH MODEL ════════════════════════════════════
     print("\n=== MATCH-WINNER MODEL ===")
     X_tr, y_tr, X_vl, y_vl, X_te, y_te = time_split(matches_df, match_feats)
     if len(X_tr) == 0:
@@ -1049,7 +996,6 @@ def clean_and_prepare_data(csv_path: str = "ipl_data.csv") -> None:
         results["match_model"] = {"features": match_feats, **m_metrics}
         shap_plot(base_m, X_tr, match_feats, "Match Model — Feature Importance", "shap_match.png")
 
-    # ══════════════ BALL MODEL ═════════════════════════════════════
     print("\n=== BALL-OUTCOME MODEL ===")
     le   = LabelEncoder()
     y_ball = le.fit_transform(ball_df["ball_outcome"].astype(int).replace(5, 4))
@@ -1068,7 +1014,6 @@ def clean_and_prepare_data(csv_path: str = "ipl_data.csv") -> None:
                                   **b_metrics}
         shap_plot(base_b, Xb_tr, ball_feats, "Ball Model — Feature Importance", "shap_ball.png")
 
-    # ── Save results ──────────────────────────────────────────────
     with open("results.json", "w") as f:
         json.dump(results, f, indent=2, default=str)
     print("\n  → results.json saved")

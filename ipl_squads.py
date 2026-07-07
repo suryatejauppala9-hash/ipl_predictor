@@ -13,7 +13,7 @@ may not be reflected here.
 
 Generates
 ---------
-player_stats.csv    per-player batting/bowling stats
+plr_sts.csv    per-player batting/bowling stats
 matchup_stats.csv   batsman vs bowler historical matchup data (synthetic)
 """
 
@@ -25,44 +25,26 @@ import warnings
 import numpy as np
 import pandas as pd
 
-# ── Staleness guard ───────────────────────────────────────────────────────────
-SQUAD_LAST_UPDATED = datetime.date(2026, 4, 15)   # Updated post-IPL 2025 + 2026 auction
-_STALE_AFTER_DAYS  = 365
+SQD_UPDATED = datetime.date(2026, 4, 15)
+_STALE_DYS  = 365
 
+# process check staleness logic
 def _check_staleness() -> None:
-    delta = datetime.date.today() - SQUAD_LAST_UPDATED
-    if delta.days > _STALE_AFTER_DAYS:
+    delta = datetime.date.today() - SQD_UPDATED
+    if delta.days > _STALE_DYS:
         warnings.warn(
-            f"ipl_squads.py was last updated {SQUAD_LAST_UPDATED} "
+            f"ipl_squads.py was last updated {SQD_UPDATED} "
             f"({delta.days} days ago). Player stats may be outdated — "
-            "please update SQUADS and SQUAD_LAST_UPDATED.",
+            "please update SQUADS and SQD_UPDATED.",
             UserWarning, stacklevel=2,
         )
 
 _check_staleness()
 
-# ── Role & bowling-type constants ─────────────────────────────────────────────
-#
-# role         : 'bat' | 'bowl' | 'allround' | 'wk'
-# bowling_type : 'pace' | 'spin' | 'none'
-#
-# Stats schema (positional tuple):
-#   (name, role, bowling_type,
-#    bat_sr, bat_avg, bat_runs,
-#    bowl_econ, bowl_avg, bowl_wkts)
-#
-# Sources:
-#   bat_sr / bat_avg / bat_runs : ESPNcricinfo career stats (IPL 2022-2025)
-#   bowl_econ / bowl_avg        : ESPNcricinfo career bowling (IPL 2022-2025)
-#   bowl_wkts                   : career IPL wickets (all seasons)
 
 SQUADS: dict[str, list[tuple]] = {
 
-    # ── Chennai Super Kings ───────────────────────────────────────
-    # Source: BCCI IPL 2026 retention list + auction (Oct 2025)
-    #         ESPNcricinfo CSK squad page (accessed Apr 2025)
     "Chennai Super Kings": [
-        # name                   role        bowl_type  bat_sr  bat_avg  bat_runs  bowl_econ  bowl_avg  wkts
         ("Ruturaj Gaikwad",      "bat",      "none",    142.0,  38.5,    2800,     0.0,       0.0,       0),
         ("MS Dhoni",             "wk",       "none",    127.0,  28.0,    1800,     0.0,       0.0,       0),
         ("Sanju Samson",         "wk",       "none",    148.0,  36.0,    2400,     0.0,       0.0,       0),
@@ -90,8 +72,6 @@ SQUADS: dict[str, list[tuple]] = {
         ("Aman Khan",            "allround", "spin",    110.0,  14.0,      90,     8.5,       32.0,      6),
     ],
 
-    # ── Delhi Capitals ────────────────────────────────────────────
-    # Source: BCCI retention + auction Oct 2025; Cricbuzz DC squad
     "Delhi Capitals": [
         ("KL Rahul",             "wk",       "none",    140.0,  42.0,    3200,     0.0,       0.0,       0),
         ("Prithvi Shaw",         "bat",      "none",    155.0,  28.0,    1100,     0.0,       0.0,       0),
@@ -120,8 +100,6 @@ SQUADS: dict[str, list[tuple]] = {
         ("Sahil Parakh",         "bat",      "none",    130.0,  20.0,     180,     0.0,       0.0,       0),
     ],
 
-    # ── Gujarat Titans ────────────────────────────────────────────
-    # Source: BCCI 2026 auction; Cricbuzz/ESPNcricinfo GT squad (Mar 2025)
     "Gujarat Titans": [
         ("Shubman Gill",         "bat",      "none",    145.0,  45.0,    2900,     0.0,       0.0,       0),
         ("Sai Sudharsan",        "bat",      "none",    140.0,  42.0,    2200,     0.0,       0.0,       0),
@@ -150,8 +128,6 @@ SQUADS: dict[str, list[tuple]] = {
         ("Kulwant Khejroliya",   "bowl",     "pace",     72.0,   7.0,      38,     9.2,       32.0,      8),
     ],
 
-    # ── Kolkata Knight Riders ─────────────────────────────────────
-    # Source: KKR official 2026 squad (kkr.in); ESPNcricinfo player pages
     "Kolkata Knight Riders": [
         ("Ajinkya Rahane",       "bat",      "none",    130.0,  32.0,    2200,     0.0,       0.0,       0),
         ("Rinku Singh",          "bat",      "none",    162.0,  38.0,    1600,     0.0,       0.0,       0),
@@ -180,8 +156,6 @@ SQUADS: dict[str, list[tuple]] = {
         ("Blessing Muzarabani",  "bowl",     "pace",     72.0,   7.0,      38,     9.0,       30.0,     10),
     ],
 
-    # ── Lucknow Super Giants ──────────────────────────────────────
-    # Source: LSG official announcement; ESPNcricinfo (Feb 2025)
     "Lucknow Super Giants": [
         ("Rishabh Pant",         "wk",       "none",    165.0,  40.0,    3000,     0.0,       0.0,       0),
         ("Josh Inglis",          "bat",      "none",    158.0,  34.0,    1200,     0.0,       0.0,       0),
@@ -210,8 +184,6 @@ SQUADS: dict[str, list[tuple]] = {
         ("Mukul Choudhary",      "wk",       "none",    120.0,  18.0,     180,     0.0,       0.0,       0),
     ],
 
-    # ── Mumbai Indians ────────────────────────────────────────────
-    # Source: MI official retention; ESPNcricinfo (Jan 2025)
     "Mumbai Indians": [
         ("Rohit Sharma",         "bat",      "none",    148.0,  42.0,    6200,     0.0,       0.0,       0),
         ("Surya Kumar Yadav",    "bat",      "none",    175.0,  38.0,    3200,     0.0,       0.0,       0),
@@ -240,8 +212,6 @@ SQUADS: dict[str, list[tuple]] = {
         ("Mohammad Izhar",       "bowl",     "pace",     70.0,   7.0,      35,     9.0,       30.0,      8),
     ],
 
-    # ── Punjab Kings ─────────────────────────────────────────────
-    # Source: PBKS auction results; ESPNcricinfo Punjab squad (Feb 2025)
     "Punjab Kings": [
         ("Shreyas Iyer",         "bat",      "none",    135.0,  38.0,    3500,     0.0,       0.0,       0),
         ("Prabhsimran Singh",    "wk",       "none",    158.0,  32.0,    1400,     0.0,       0.0,       0),
@@ -270,8 +240,6 @@ SQUADS: dict[str, list[tuple]] = {
         ("Pravin Dubey",         "bowl",     "pace",     72.0,   7.0,      35,     8.8,       30.0,     12),
     ],
 
-    # ── Rajasthan Royals ─────────────────────────────────────────
-    # Source: RR 2026 retention; ESPNcricinfo (Mar 2025)
     "Rajasthan Royals": [
         ("Yashasvi Jaiswal",     "bat",      "none",    165.0,  42.0,    2800,     0.0,       0.0,       0),
         ("Vaibhav Sooryavanshi", "bat",      "none",    168.0,  30.0,     600,     0.0,       0.0,       0),
@@ -300,8 +268,6 @@ SQUADS: dict[str, list[tuple]] = {
         ("Brijesh Sharma",       "bowl",     "pace",     68.0,   6.0,      28,     9.4,       32.0,      6),
     ],
 
-    # ── Royal Challengers Bengaluru ───────────────────────────────
-    # Source: RCB retention + auction; Cricbuzz RCB squad (Jan 2025)
     "Royal Challengers Bengaluru": [
         ("Virat Kohli",          "bat",      "none",    145.0,  48.0,    8700,     0.0,       0.0,       0),
         ("Rajat Patidar",        "bat",      "none",    148.0,  38.0,    1800,     0.0,       0.0,       0),
@@ -330,8 +296,6 @@ SQUADS: dict[str, list[tuple]] = {
         ("Vicky Ostwal",         "allround", "spin",    100.0,  11.0,      80,     8.0,       28.0,     12),
     ],
 
-    # ── Sunrisers Hyderabad ───────────────────────────────────────
-    # Source: SRH retention + auction 2026; ESPNcricinfo SRH squad (Mar 2025)
     "Sunrisers Hyderabad": [
         ("Travis Head",          "bat",      "none",    185.0,  42.0,    2800,     0.0,       0.0,       0),
         ("Abhishek Sharma",      "allround", "spin",    172.0,  36.0,    1600,     8.2,       28.0,     18),
@@ -361,7 +325,6 @@ SQUADS: dict[str, list[tuple]] = {
     ],
 }
 
-# Map legacy role string → canonical field
 _ROLE_MAP = {
     "bat":      "Batter",
     "bowl":     "Bowler",
@@ -370,8 +333,9 @@ _ROLE_MAP = {
 }
 
 
+# process generate player stats logic
 def generate_player_stats() -> pd.DataFrame:
-    """Generate player_stats.csv from hard-coded squad data."""
+    """Generate plr_sts.csv from hard-coded squad data."""
     rows = []
     np.random.seed(42)
 
@@ -381,7 +345,7 @@ def generate_player_stats() -> pd.DataFrame:
             role = _ROLE_MAP.get(role_code, "All-rounder")
 
             bat_balls = int(bat_runs / bat_sr * 100) if bat_sr > 0 and bat_runs > 0 else 50
-            boundary_pct = max(8.0, min(35.0, (bat_sr - 100) * 0.4 + 12.0))
+            bnd_pct = max(8.0, min(35.0, (bat_sr - 100) * 0.4 + 12.0))
             dot_pct      = max(25.0, min(60.0, 75.0 - bat_sr * 0.25))
 
             bowl_balls = (int(bowl_wkts * bowl_avg * 6 / bowl_econ)
@@ -389,21 +353,20 @@ def generate_player_stats() -> pd.DataFrame:
             bowl_runs  = int(bowl_econ * bowl_balls / 6) if bowl_balls > 0 else 0
             wicket_rate = bowl_wkts / bowl_balls if bowl_balls > 0 else 0.0
 
-            # Phase economy estimates (heuristics — no phase data per hard-coded player)
-            econ_pp    = bowl_econ * 0.9  if bowl_wkts > 0 else 0.0   # tighter in PP
+            econ_pp    = bowl_econ * 0.9  if bowl_wkts > 0 else 0.0
             econ_mid   = bowl_econ * 1.0  if bowl_wkts > 0 else 0.0
-            econ_death = bowl_econ * 1.15 if bowl_wkts > 0 else 0.0   # costlier at death
+            econ_death = bowl_econ * 1.15 if bowl_wkts > 0 else 0.0
 
             rows.append({
                 "player":        name,
                 "team":          team,
                 "role":          role,
-                "bowling_type":  bowl_type,   # 'pace' | 'spin' | 'none'
+                "bowling_type":  bowl_type,   # pace  spin  none
                 "bat_sr":        bat_sr,
                 "bat_avg":       bat_avg,
                 "bat_runs":      bat_runs,
                 "bat_balls":     bat_balls,
-                "boundary_pct":  round(boundary_pct, 1),
+                "bnd_pct":  round(bnd_pct, 1),
                 "dot_pct":       round(dot_pct, 1),
                 "bowl_econ":     bowl_econ,
                 "bowl_avg":      bowl_avg,
@@ -417,11 +380,12 @@ def generate_player_stats() -> pd.DataFrame:
             })
 
     df = pd.DataFrame(rows)
-    df.to_csv("player_stats.csv", index=False)
-    print(f"  -> player_stats.csv: {len(df)} players across {df['team'].nunique()} teams")
+    df.to_csv("plr_sts.csv", index=False)
+    print(f"  -> plr_sts.csv: {len(df)} players across {df['team'].nunique()} teams")
     return df
 
 
+# process generate matchup stats logic
 def generate_matchup_stats(player_df: pd.DataFrame) -> pd.DataFrame:
     """
     Generate synthetic batsman vs bowler matchup data.
@@ -444,18 +408,18 @@ def generate_matchup_stats(player_df: pd.DataFrame) -> pd.DataFrame:
             m_sr          = round(base_sr * bowl_factor * 100 * np.random.uniform(0.85, 1.15), 1)
             m_runs        = int(m_sr * m_balls / 100)
 
-            dismiss_base  = bwrow["wicket_rate"] if bwrow["wicket_rate"] > 0 else 0.05
-            m_dismiss_prob = round(np.clip(dismiss_base * np.random.uniform(0.7, 1.4), 0.01, 0.25), 5)
-            m_dismissals  = int(m_balls * m_dismiss_prob)
+            dism_base  = bwrow["wicket_rate"] if bwrow["wicket_rate"] > 0 else 0.05
+            m_dism_prb = round(np.clip(dism_base * np.random.uniform(0.7, 1.4), 0.01, 0.25), 5)
+            m_dism  = int(m_balls * m_dism_prb)
 
             rows.append({
                 "batter":         batter,
                 "bowler":         bowler,
                 "m_runs":         m_runs,
                 "m_balls":        m_balls,
-                "m_dismissals":   m_dismissals,
+                "m_dism":   m_dism,
                 "m_sr":           m_sr,
-                "m_dismiss_prob": m_dismiss_prob,
+                "m_dism_prb": m_dism_prb,
             })
 
     df = pd.DataFrame(rows)
