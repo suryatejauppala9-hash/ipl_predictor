@@ -52,7 +52,7 @@ ipl-intelligence/
     ├── ml_ready_data.csv       ← match-level XGBoost training data
     ├── team_stats.csv          ← latest rolling team stats
     ├── h2h_stats.csv           ← head-to-head win percentages
-    ├── player_stats.csv        ← per-player batting & bowling career stats
+    ├── plr_sts.csv             ← per-player batting & bowling career stats
     ├── matchup_stats.csv       ← batsman vs bowler historical matchups
     └── ball_model_data.csv     ← ball-level XGBoost training data
 ```
@@ -125,13 +125,13 @@ Features used at prediction time:
 | `team1_matchup_strength` / `team2_matchup_strength`| Aggregate batter vs top bowler historical SR |
 | `team1_depth` / `team2_depth` | Batting depth (average SR of positions 5–8) |
 
-Model: `XGBClassifier` with 200 estimators, learning rate 0.05, max depth 4.
+Model: `XGBClassifier` with 300 estimators, learning rate 0.05, max depth 4.
 
 ### Ball outcome model
 
 Trained on every delivery in the dataset. Features include cumulative batter and bowler stats up to (but not including) the current ball, ensuring no look-ahead bias. The model also leverages dynamic features such as rolling window stats (`last12_runs`, `last12_wickets`), batter dot-ball pressure, and phase one-hot encoding (powerplay / middle / death).
 
-Model: `XGBClassifier` with 150 estimators, learning rate 0.08, max depth 5. Output classes: `{0, 1, 2, 3, 4, 6}` (5-run outcomes are mapped to 4).
+Model: `XGBClassifier` with 200 estimators, learning rate 0.08, max depth 5. Output classes: `{0, 1, 2, 3, 4, 6}` (5-run outcomes are mapped to 4).
 
 Dismissal probability is modelled separately as a per-ball Bernoulli draw using the bowler's historical wicket rate, scaled by phase. Both models run independently and are combined during simulation.
 
@@ -221,13 +221,15 @@ The FastAPI backend exposes these endpoints directly if you want to build on top
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/` | Serves the UI |
-| `POST` | `/predict` | Win prediction |
-| `POST` | `/simulate` | Monte Carlo simulation |
+| `POST`/`GET` | `/predict` | Win prediction |
+| `POST` | `/simulate-stream` | Monte Carlo simulation (SSE) |
 | `POST` | `/simulate-custom` | Simulation with a custom XI |
+| `GET` | `/fantasy-xi` | Dream11 Fantasy XI |
 | `GET` | `/ideal-xi/{team}` | Ideal XI for a team (`?style=balanced\|aggressive\|bowling`) |
 | `GET` | `/playing11/{team}` | Default playing XI |
 | `GET` | `/squad/{team}` | Full squad with stats |
 | `GET` | `/player-stats` | All player stats (optional `?team=` filter) |
+| `GET` | `/model-info` | Model configuration and features |
 
 ---
 
