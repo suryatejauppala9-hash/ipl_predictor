@@ -13,7 +13,7 @@ A full-stack cricket analytics application that simulates, predicts, and visuali
 
 IPL Intelligence gives you two ML-powered engines under one interface:
 
-**Win Predictor** — An XGBoost classifier trained on 13 match-level features (rolling strike rates, economy rates, batting averages, home advantage, toss outcome, head-to-head win %) to predict which team wins before the first ball is bowled. Supports pre-match mode where toss is unknown — the model averages predictions across all four possible toss scenarios and breaks them down for you.
+**Win Predictor** — An XGBoost classifier trained on 30+ match-level features (rolling strike rates, economy rates, batting averages, home advantage, toss outcome, head-to-head win %, phase-specific run rates, matchup strength, batting depth) to predict which team wins before the first ball is bowled. Supports pre-match mode where toss is unknown — the model averages predictions across all four possible toss scenarios and breaks them down for you.
 
 **Match Simulator** — Runs 500 full ball-by-ball T20 simulations using a second XGBoost model trained on cumulative batsman/bowler stats per delivery. Produces score distributions, P10/P90 ranges, a ball outcome breakdown (dots, 1s, 2s, fours, sixes, wickets), full scorecards, and a live win-probability momentum graph that updates after every over.
 
@@ -64,8 +64,8 @@ ipl-intelligence/
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/your-username/ipl-intelligence.git
-cd ipl-intelligence
+git clone https://github.com/suryatejauppala9-hash/ipl_predictor.git
+cd ipl_predictor
 pip install -r requirements.txt
 ```
 

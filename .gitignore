@@ -1,7 +1,46 @@
+# Data files
 *.csv
+
+# Model artifacts
 *.pkl
 *.h5
 *.pt
+*.joblib
+
+# Generated plots & outputs
+*.png
+results.json
+git_diff.txt
+
+# Competitive Programming Helper (VS Code extension)
+.cph/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Directories
 data/
 models/
-__pycache__/
