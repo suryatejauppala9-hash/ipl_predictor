@@ -172,6 +172,19 @@ def load_and_clean(csv_path: str = "ipl_data.csv") -> pd.DataFrame:
     print("Loading raw data...")
     df = pd.read_csv(csv_path, low_memory=False)
 
+    rename_cols = {
+        "winner": "match_won_by",
+        "toss_decision": "toss_dec",
+        "inning": "innings",
+        "id": "match_id",
+        "bat_team": "batting_team",
+        "bowl_team": "bowling_team",
+        "total_runs": "runs_total",
+        "dismissal_kind": "wicket_kind",
+        "player_dismissed": "player_out"
+    }
+    df.rename(columns={k: v for k, v in rename_cols.items() if k in df.columns}, inplace=True)
+
     for col in ["batting_team", "bowling_team", "toss_winner", "match_won_by"]:
         if col in df.columns:
             df[col] = df[col].replace(TEAM_MAPPING)
@@ -202,7 +215,7 @@ def load_and_clean(csv_path: str = "ipl_data.csv") -> pd.DataFrame:
         df["bowling_style"] = "pace"  # default overridden below
 
     df = df.sort_values(["date", "match_id", "innings", "ball"]).reset_index(drop=True)
-    print(f"  → {len(df):,} deliveries | seasons {df['season'].min()}–{df['season'].max()}")
+    print(f"  -> {len(df):,} deliveries | seasons {df['season'].min()}-{df['season'].max()}")
     return df
 
 
@@ -264,7 +277,7 @@ def build_team_stats(df: pd.DataFrame):
     team_stats.rename(columns={"dyn_sr": "sr", "dyn_bat_avg": "bat_avg",
                                 "dyn_econ": "econ", "dyn_bowl_avg": "bowl_avg"}, inplace=True)
     team_stats.to_csv("team_stats.csv")
-    print("  → team_stats.csv saved")
+    print("  -> team_stats.csv saved")
     return match_bat, match_bowl, team_stats
 
 
@@ -382,7 +395,7 @@ def build_match_features(df: pd.DataFrame,
     (matches.drop_duplicates(subset=["matchup"], keep="last")
      [["team_A", "team_B", "team_A_h2h_win_pct"]]
      .to_csv("h2h_stats.csv", index=False))
-    print("  → h2h_stats.csv saved")
+    print("  -> h2h_stats.csv saved")
 
     matches["venue_home_team"]       = matches["venue"].map(HOME_TM)
     matches["team1_is_home"]         = (matches["team1"] == matches["venue_home_team"]).astype(int)
@@ -451,7 +464,7 @@ def build_match_features(df: pd.DataFrame,
     matches["team1_encoded"] = tm_lbl_enc.transform(matches["team1"])
     matches["team2_encoded"] = tm_lbl_enc.transform(matches["team2"])
     joblib.dump(tm_lbl_enc, "team_encoder.joblib")
-    print("  → team_encoder.joblib saved")
+    print("  -> team_encoder.joblib saved")
 
     for col in M_FEATS:
         if col in matches.columns:
@@ -494,21 +507,14 @@ def build_match_features(df: pd.DataFrame,
         matches["team1_matchup_strength"] = 100.0
         matches["team2_matchup_strength"] = 100.0
 
-    depth_data = (
-        df.groupby(["match_id", "innings", "batting_team"])
-        .apply(lambda g: (
-            g.groupby("batter")["runs_total"].sum()
-             .reset_index()
-             .assign(rank=lambda x: x["runs_total"].rank(method="first", ascending=False))
-        ))
-        .reset_index(drop=True)
-    ) if not df.empty else pd.DataFrame()
+    grouped_df = {}
+    if not df.empty:
+        for name, group in df.groupby(["match_id", "batting_team"]):
+            grouped_df[name] = group
 
     # calculate match batting depth
     def _match_depth(match_id, team):
-        if df.empty:
-            return 130.0
-        sub = df[(df["match_id"] == match_id) & (df["batting_team"] == team)]
+        sub = grouped_df.get((match_id, team), pd.DataFrame())
         if sub.empty:
             return 130.0
         bat_order = sub.groupby("batter").agg(
@@ -529,7 +535,7 @@ def build_match_features(df: pd.DataFrame,
 
     avail_features = [f for f in M_FEATS if f in matches.columns]
     matches[avail_features + ["target", "season", "match_id"]].to_csv("ml_ready_data.csv", index=False)
-    print(f"  → ml_ready_data.csv saved ({len(matches)} matches, {len(avail_features)} features)")
+    print(f"  -> ml_ready_data.csv saved ({len(matches)} matches, {len(avail_features)} features)")
     if "season" not in matches.columns:
         if "date" in matches.columns:
             matches["season"] = pd.to_datetime(matches["date"], errors="coerce").dt.year
@@ -596,7 +602,7 @@ def build_player_stats(df: pd.DataFrame) -> pd.DataFrame:
     plr_sts["player"] = plr_sts["batter"].fillna(plr_sts["bowler"])
     plr_sts["team"]   = plr_sts["batting_team"].fillna(plr_sts["bowling_team"])
     plr_sts.to_csv("plr_sts.csv", index=False)
-    print("  → plr_sts.csv saved")
+    print("  -> plr_sts.csv saved")
     return plr_sts
 
 
@@ -629,7 +635,7 @@ def build_matchup_stats(df: pd.DataFrame) -> pd.DataFrame:
     matchup["m_sr"]           = _safe_div(matchup["m_runs"], matchup["m_balls"]) * 100
     matchup["m_dism_prb"] = _safe_div(matchup["m_dism"], matchup["m_balls"])
     matchup.to_csv("matchup_stats.csv", index=False)
-    print("  → matchup_stats.csv saved")
+    print("  -> matchup_stats.csv saved")
     return matchup
 
 
@@ -777,7 +783,7 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
     avail_b_fts = [f for f in B_FEATS if f in df.columns]
     ball_df = df[avail_b_fts + ["ball_outcome", "season"]].dropna()
     ball_df.to_csv("ball_model_data.csv", index=False)
-    print(f"  → ball_model_data.csv saved ({len(ball_df):,} deliveries, "
+    print(f"  -> ball_model_data.csv saved ({len(ball_df):,} deliveries, "
           f"{len(avail_b_fts)} features)")
     return ball_df, avail_b_fts
 
@@ -791,7 +797,7 @@ def time_split(df: pd.DataFrame, feature_cols: list[str], target_col: str = "tar
     X_train, y_train = train[feature_cols].values, train[target_col].values
     X_val,   y_val   = val[feature_cols].values,   val[target_col].values
     X_test,  y_test  = test[feature_cols].values,  test[target_col].values
-    print(f"  Split → train {len(X_train)}, val {len(X_val)}, test {len(X_test)}")
+    print(f"  Split -> train {len(X_train)}, val {len(X_val)}, test {len(X_test)}")
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
@@ -855,7 +861,7 @@ def train_match_model(X_train, y_train, X_val, y_val, feature_names: list[str]):
     cal.fit(X_train, y_train)
     cal.feature_names_in_ = np.array(feature_names)
     joblib.dump({"model": cal, "features": feature_names}, "match_model.joblib")
-    print("  → match_model.joblib saved")
+    print("  -> match_model.joblib saved")
     return cal, base
 
 
@@ -872,7 +878,7 @@ def train_ball_model(X_train, y_train, X_val, y_val, classes, feature_names: lis
     cal.fit(X_train, y_train)
     cal.feature_names_in_ = np.array(feature_names)
     joblib.dump({"model": cal, "features": feature_names, "classes": classes}, "ball_model.joblib")
-    print("  → ball_model.joblib saved")
+    print("  -> ball_model.joblib saved")
     return cal, base
 
 
@@ -919,7 +925,7 @@ def evaluate_model(model, X_test, y_test, name: str, classes=None) -> dict:
             fname = f"calibration_{name.replace(' ', '_')}.png"
             fig.savefig(fname, dpi=120)
             plt.close(fig)
-            print(f"  → {fname} saved")
+            print(f"  -> {fname} saved")
         except Exception as e:
             print(f"  ! Calibration plot failed: {e}")
 
@@ -943,7 +949,7 @@ def shap_plot(base_model, X_sample, feature_names: list[str], title: str, fname:
         plt.tight_layout()
         plt.savefig(fname, dpi=120)
         plt.close("all")
-        print(f"  → {fname} saved")
+        print(f"  -> {fname} saved")
     except Exception as e:
         print(f"  ! SHAP plot failed: {e}")
 
@@ -995,7 +1001,7 @@ def clean_and_prepare_data(csv_path: str = "ipl_data.csv") -> None:
 
     with open("results.json", "w") as f:
         json.dump(results, f, indent=2, default=str)
-    print("\n  → results.json saved")
+    print("\n  -> results.json saved")
     print("\nPipeline complete.")
 
 
