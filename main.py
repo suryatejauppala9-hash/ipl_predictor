@@ -1821,7 +1821,7 @@ async def model_info():
     info: dict = {
         "match_model_features": _m_feats,
         "ball_model_features":  _b_feats,
-        "bm_classes":   bm_classes,
+        "bm_classes":   [int(c) for c in bm_classes],
     }
     if Path("results.json").exists():
         with open("results.json") as f:

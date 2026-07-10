@@ -49,11 +49,13 @@ sim_data = {
 test_endpoint("Simulate Stream", "/simulate-stream", method="POST", json_data=sim_data)
 
 custom_sim_data = {
-    "t1": team1,
-    "t2": team2,
-    "venue": "Wankhede Stadium, Mumbai",
-    "t1_xi": ["MS Dhoni", "Ruturaj Gaikwad", "Ravindra Jadeja", "Deepak Chahar", "Moeen Ali", "Shivam Dube", "Ambati Rayudu", "Devon Conway", "Maheesh Theekshana", "Matheesha Pathirana", "Tushar Deshpande"],
-    "t2_xi": ["Rohit Sharma", "Ishan Kishan", "Suryakumar Yadav", "Tilak Varma", "Hardik Pandya", "Tim David", "Jasprit Bumrah", "Piyush Chawla", "Gerald Coetzee", "Romario Shepherd", "Mohammad Nabi"],
-    "sim_count": 10
+    "team1": team1,
+    "team2": team2,
+    "t1_bat": ["MS Dhoni", "Ruturaj Gaikwad", "Ravindra Jadeja", "Deepak Chahar", "Moeen Ali", "Shivam Dube", "Ambati Rayudu", "Devon Conway", "Maheesh Theekshana", "Matheesha Pathirana", "Tushar Deshpande"],
+    "t1_bwl": ["Deepak Chahar", "Moeen Ali", "Maheesh Theekshana", "Matheesha Pathirana", "Tushar Deshpande"],
+    "t2_bat": ["Rohit Sharma", "Ishan Kishan", "Suryakumar Yadav", "Tilak Varma", "Hardik Pandya", "Tim David", "Jasprit Bumrah", "Piyush Chawla", "Gerald Coetzee", "Romario Shepherd", "Mohammad Nabi"],
+    "t2_bwl": ["Jasprit Bumrah", "Piyush Chawla", "Gerald Coetzee", "Romario Shepherd", "Mohammad Nabi"],
+    "n_matches": 10
 }
 test_endpoint("Simulate Custom", "/simulate-custom", method="POST", json_data=custom_sim_data)
+
