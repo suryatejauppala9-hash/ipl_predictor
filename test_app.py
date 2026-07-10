@@ -33,6 +33,15 @@ venue_enc = urllib.parse.quote("Wankhede Stadium, Mumbai")
 
 test_endpoint("Root", "/")
 test_endpoint("Predict GET", f"/predict?team1={team1_enc}&team2={team2_enc}&venue={venue_enc}&toss_winner={team1_enc}&toss_decision=field")
+predict_post_data = {
+    "team1": team1,
+    "team2": team2,
+    "t1_ven_st": "neutral",
+    "toss_known": True,
+    "toss_winner": team1,
+    "toss_dec": "field"
+}
+test_endpoint("Predict POST", "/predict", method="POST", json_data=predict_post_data)
 test_endpoint("Squad", f"/squad/{team1_enc}")
 test_endpoint("Playing 11", f"/playing11/{team1_enc}")
 test_endpoint("Ideal XI", f"/ideal-xi/{team1_enc}?style=balanced")
