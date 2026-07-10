@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
 
@@ -398,7 +398,23 @@
   <div class="panel panel-center">
     <div class="panel-header">
       <span class="panel-label">Monte Carlo Simulation</span>
-      <span class="model-dot">500 Matches</span>
+    </div>
+
+    <div class="page-matchup-selector">
+      <div class="field-group">
+        <label class="field-label">Team 1</label>
+        <div class="select-wrap">
+          <select class="setup-select page-team-select" id="sim-team1" data-default="Chennai Super Kings"></select>
+          <div class="select-caret"><svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Team 2</label>
+        <div class="select-wrap">
+          <select class="setup-select page-team-select" id="sim-team2" data-default="Mumbai Indians"></select>
+          <div class="select-caret"><svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+      </div>
     </div>
 
     <div style="margin-bottom:14px">
@@ -565,7 +581,23 @@
   <div class="panel panel-center">
     <div class="panel-header">
       <span class="panel-label">Ideal Playing XI</span>
-      <span class="model-dot">AI Selected</span>
+    </div>
+
+    <div class="page-matchup-selector">
+      <div class="field-group">
+        <label class="field-label">Team 1</label>
+        <div class="select-wrap">
+          <select class="setup-select page-team-select" id="ideal-team1" data-default="Chennai Super Kings"></select>
+          <div class="select-caret"><svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Team 2</label>
+        <div class="select-wrap">
+          <select class="setup-select page-team-select" id="ideal-team2" data-default="Mumbai Indians"></select>
+          <div class="select-caret"><svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+      </div>
     </div>
 
     <div style="margin-bottom:14px">
@@ -592,7 +624,6 @@
         <svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="margin-right:6px;vertical-align:middle"><polygon points="10,1 12.9,7 19.5,7 14.5,11.5 16.5,18 10,14.5 3.5,18 5.5,11.5 0.5,7 7.1,7" stroke="currentColor" stroke-width="1.5" fill="var(--gold,#f59e0b)" stroke-linejoin="round"/></svg>
         Dream11 Fantasy XI
       </span>
-      <span class="model-dot" style="background:var(--gold,#f59e0b);color:#000;font-weight:700;font-size:10px">Dream11</span>
     </div>
 
     <p class="fxi-intro">
@@ -604,6 +635,23 @@
       <div class="fxi-team-chip" id="fxi-chip-t1">—</div>
       <div class="fxi-vs-text">vs</div>
       <div class="fxi-team-chip" id="fxi-chip-t2">—</div>
+    </div>
+
+    <div class="page-matchup-selector">
+      <div class="field-group">
+        <label class="field-label">Team 1</label>
+        <div class="select-wrap">
+          <select class="setup-select page-team-select" id="fantasy-team1" data-default="Chennai Super Kings"></select>
+          <div class="select-caret"><svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Team 2</label>
+        <div class="select-wrap">
+          <select class="setup-select page-team-select" id="fantasy-team2" data-default="Mumbai Indians"></select>
+          <div class="select-caret"><svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+      </div>
     </div>
 
     <button class="btn-predict fxi-gen-btn" id="fantasy-gen-btn" onclick="loadFantasyXI()">
@@ -717,330 +765,6 @@
   </div>
 </section>
 
-
-<section id="simulate-view" class="view-section hidden">
-  <div class="panel panel-center">
-    <div class="panel-header">
-      <span class="panel-label">Monte Carlo Simulation</span>
-      <span class="model-dot">500 Matches</span>
-    </div>
-
-    <div style="margin-bottom:14px">
-      <div style="font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">XI Style</div>
-      <div class="style-pills" id="sim-style-pills">
-        <button class="style-pill active" onclick="setStyle('balanced',this)">Balanced</button>
-        <button class="style-pill" onclick="setStyle('aggressive',this)">Aggressive</button>
-        <button class="style-pill" onclick="setStyle('bowling',this)">Bowling-heavy</button>
-      </div>
-    </div>
-
-    <button class="btn-predict" id="simulate-btn" onclick="runSimulate()">
-      ≡ƒÄ▓ Run Simulation
-    </button>
-
-    <!-- loading -->
-    <div class="loading-wrap" id="sim-anim">
-      <div class="radar">
-        <div class="radar-ring radar-ring-1"></div>
-        <div class="radar-ring radar-ring-2"></div>
-        <div class="radar-ring radar-ring-3"></div>
-        <div class="radar-sweep"></div>
-        <div class="radar-blip"></div>
-        <div class="radar-blip"></div>
-        <div class="radar-blip"></div>
-        <div class="radar-core">≡ƒÄ▓</div>
-      </div>
-      <div class="loading-counter" id="sim-counter">0</div>
-      <div class="loading-label">matches simulated</div>
-      <div class="loading-desc">Running 500 matchesΓÇª</div>
-      <div class="sim-time-row">
-        <span class="sim-elapsed-lbl" id="sim-elapsed">0.0s</span>
-        <span class="sim-time-sep">┬╖</span>
-        <span class="sim-eta-lbl" id="sim-eta">EstimatingΓÇª</span>
-      </div>
-      <div class="prog-wrap">
-        <div class="prog-track"><div class="prog-fill" id="sim-bar" style="width:0%"></div></div>
-        <div class="prog-phases"><span>Start</span><span>PP</span><span>Middle</span><span>Death</span><span>Done</span></div>
-      </div>
-      <div class="loading-fact" id="sim-fact"></div>
-    </div>
-
-    <!-- result -->
-    <div id="sim-result" style="display:none">
-      <div class="divider"></div>
-
-      <div class="scoreboard">
-        <div class="score-card" id="sc1">
-          <div class="sc-team" id="sc1-team"></div>
-          <div class="sc-score" id="sc1-score">ΓÇö</div>
-          <div class="sc-detail" id="sc1-detail"></div>
-          <div class="sc-badge" id="sc1-badge"></div>
-        </div>
-        <div class="score-card" id="sc2">
-          <div class="sc-team" id="sc2-team"></div>
-          <div class="sc-score" id="sc2-score">ΓÇö</div>
-          <div class="sc-detail" id="sc2-detail"></div>
-          <div class="sc-badge" id="sc2-badge"></div>
-        </div>
-      </div>
-
-      <div class="mc-pills">
-        <div class="mc-pill"><div class="mc-pill-val" id="mc-p10-t1">ΓÇö</div><div class="mc-pill-lbl">T1 P10</div></div>
-        <div class="mc-pill"><div class="mc-pill-val" id="mc-p90-t1">ΓÇö</div><div class="mc-pill-lbl">T1 P90</div></div>
-        <div class="mc-pill"><div class="mc-pill-val" id="mc-p10-t2">ΓÇö</div><div class="mc-pill-lbl">T2 P10</div></div>
-        <div class="mc-pill"><div class="mc-pill-val" id="mc-p90-t2">ΓÇö</div><div class="mc-pill-lbl">T2 P90</div></div>
-      </div>
-
-      <!-- 3d simulation insights -->
-      <div class="sim-insights" id="sim-insights" style="display:none">
-        <div class="section-label">Simulation Insights</div>
-        <div class="si-grid">
-          <div class="si-card"><div class="si-val" id="si-avg-t1">ΓÇö</div><div class="si-lbl" id="si-avg-t1-lbl">Avg Score</div></div>
-          <div class="si-card"><div class="si-val" id="si-range-t1">ΓÇö</div><div class="si-lbl">Score Range (IQR)</div></div>
-          <div class="si-card"><div class="si-val" id="si-avg-t2">ΓÇö</div><div class="si-lbl" id="si-avg-t2-lbl">Avg Score</div></div>
-          <div class="si-card"><div class="si-val" id="si-range-t2">ΓÇö</div><div class="si-lbl">Score Range (IQR)</div></div>
-          <div class="si-card si-card-full"><div class="si-val" id="si-close">ΓÇö</div><div class="si-lbl">Close Match Probability (Γëñ15 run margin)</div></div>
-        </div>
-      </div>
-
-      <div class="impact-row" id="sim-impact-row" style="display:none">
-        <div class="impact-card">
-          <div class="impact-badge">Impact Player</div>
-          <div class="impact-team" id="sim-ip-t1-team"></div>
-          <div class="impact-name" id="sim-ip-t1-name"></div>
-          <div class="impact-reason" id="sim-ip-t1-reason"></div>
-          <div class="impact-bench">Replaces 1 bench player after innings</div>
-        </div>
-        <div class="impact-card">
-          <div class="impact-badge">Impact Player</div>
-          <div class="impact-team" id="sim-ip-t2-team"></div>
-          <div class="impact-name" id="sim-ip-t2-name"></div>
-          <div class="impact-reason" id="sim-ip-t2-reason"></div>
-          <div class="impact-bench">Replaces 1 bench player after innings</div>
-        </div>
-      </div>
-
-      <!-- tabs -->
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('momentum',this)">Momentum</button>
-        <button class="tab-btn" onclick="switchTab('dist',this)">Ball Distribution</button>
-        <button class="tab-btn" onclick="switchTab('inn1',this)">Innings 1</button>
-        <button class="tab-btn" onclick="switchTab('inn2',this)">Innings 2</button>
-        <button class="tab-btn" onclick="switchTab('scorecard',this)">Scorecard</button>
-        <button class="tab-btn" onclick="switchTab('xi-used',this)">Playing XI</button>
-        <button class="tab-btn" onclick="switchTab('matchups',this)">Key Matchups</button>
-      </div>
-
-      <!-- momentum -->
-      <div class="tab-panel active" id="tab-momentum">
-        <div class="momentum-wrap">
-          <div class="momentum-header">
-            <div class="momentum-title-txt" id="mom-title-txt">Win probability ┬╖ hover for details</div>
-            <div id="momentum-legend" class="momentum-legend"></div>
-          </div>
-          <div class="momentum-chart" id="momentum-container">
-            <svg class="momentum-svg" id="momentum-svg" viewBox="0 0 900 240" preserveAspectRatio="none" style="height:260px"></svg>
-            <div class="momentum-tooltip" id="momentum-tooltip">
-              <div class="tt-over" id="tt-over"></div>
-              <div class="tt-prob" id="tt-prob"></div>
-              <div class="tt-team" id="tt-team"></div>
-              <div class="tt-event" id="tt-event"></div>
-              <div class="tt-score" id="tt-score"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- distribution -->
-      <div class="tab-panel" id="tab-dist">
-        <div class="dist-chart-wrap" id="dist-chart"></div>
-        <div class="dist-tags" id="dist-tags"></div>
-      </div>
-
-      <!-- innings bbb -->
-      <div class="tab-panel" id="tab-inn1">
-        <div class="inn-header" id="inn1-header"></div>
-        <div class="bbb-scroll" id="bbb-inn1"></div>
-      </div>
-      <div class="tab-panel" id="tab-inn2">
-        <div class="inn-header" id="inn2-header"></div>
-        <div class="bbb-scroll" id="bbb-inn2"></div>
-      </div>
-
-      <!-- scorecard -->
-      <div class="tab-panel" id="tab-scorecard">
-        <div id="scorecard-content"></div>
-      </div>
-
-      <!-- playing xi -->
-      <div class="tab-panel" id="tab-xi-used">
-        <div class="xi-grid" id="xi-grid"></div>
-      </div>
-
-      <!-- 3e key matchups -->
-      <div class="tab-panel" id="tab-matchups">
-        <div id="matchup-cards" style="display:flex;flex-direction:column;gap:10px;padding:4px 0"></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="ideal-xi-view" class="view-section hidden">
-  <div class="panel panel-center">
-    <div class="panel-header">
-      <span class="panel-label">Ideal Playing XI</span>
-      <span class="model-dot">AI Selected</span>
-    </div>
-
-    <div style="margin-bottom:14px">
-      <div style="font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">Strategy</div>
-      <div class="style-pills" id="xi-style-pills">
-        <button class="style-pill active" onclick="setXIStyle('balanced',this)">Balanced</button>
-        <button class="style-pill" onclick="setXIStyle('aggressive',this)">Aggressive</button>
-        <button class="style-pill" onclick="setXIStyle('bowling',this)">Bowling-heavy</button>
-      </div>
-    </div>
-
-    <button class="btn-predict" onclick="loadIdealXI()">Generate Ideal XI</button>
-    <div class="divider"></div>
-    <div class="xi-grid" id="ideal-xi-grid"></div>
-    <div class="impact-row" id="ideal-impact-row" style="display:none;margin-top:0"></div>
-  </div>
-</section>
-
-<section id="fantasy-xi-view" class="view-section hidden">
-  <div class="panel panel-center fxi-panel">
-
-    <div class="panel-header">
-      <span class="panel-label">
-        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="margin-right:6px;vertical-align:middle"><polygon points="10,1 12.9,7 19.5,7 14.5,11.5 16.5,18 10,14.5 3.5,18 5.5,11.5 0.5,7 7.1,7" stroke="currentColor" stroke-width="1.5" fill="var(--gold,#f59e0b)" stroke-linejoin="round"/></svg>
-        Dream11 Fantasy XI
-      </span>
-      <span class="model-dot" style="background:var(--gold,#f59e0b);color:#000;font-weight:700;font-size:10px">Dream11</span>
-    </div>
-
-    <p class="fxi-intro">
-      Optimal 11 players from both selected squads ΓÇö scored on official Dream11 T20 rules.
-      Captain gets <strong>├ù2</strong>, Vice-Captain gets <strong>├ù1.5</strong>. Max 7 from any one team.
-    </p>
-
-    <div class="fxi-teams-row" id="fxi-teams-row">
-      <div class="fxi-team-chip" id="fxi-chip-t1">ΓÇö</div>
-      <div class="fxi-vs-text">vs</div>
-      <div class="fxi-team-chip" id="fxi-chip-t2">ΓÇö</div>
-    </div>
-
-    <button class="btn-predict fxi-gen-btn" id="fantasy-gen-btn" onclick="loadFantasyXI()">
-      <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style="margin-right:7px;vertical-align:middle"><polygon points="10,1 12.9,7 19.5,7 14.5,11.5 16.5,18 10,14.5 3.5,18 5.5,11.5 0.5,7 7.1,7" stroke="currentColor" stroke-width="1.5" fill="currentColor" stroke-linejoin="round"/></svg>
-      Generate Fantasy XI
-    </button>
-
-    <div class="fxi-loading" id="fxi-loading" style="display:none">
-      <div class="loading-spinner">
-        <svg width="36" height="36" viewBox="0 0 40 40" fill="none">
-          <circle cx="20" cy="20" r="17" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
-          <path d="M20 3 A17 17 0 0 1 37 20" stroke="var(--gold,#f59e0b)" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </div>
-      <div class="loading-label">Crunching Dream11 projectionsΓÇª</div>
-    </div>
-
-    <div id="fxi-result" style="display:none">
-
-      <!-- summary -->
-      <div class="fxi-summary">
-        <div class="fxi-summary-stat">
-          <div class="fxi-summary-val" id="fxi-total-pts">ΓÇö</div>
-          <div class="fxi-summary-lbl">Base Exp. Pts</div>
-        </div>
-        <div class="fxi-summary-divider"></div>
-        <div class="fxi-summary-stat">
-          <div class="fxi-summary-val" style="color:var(--gold,#f59e0b)" id="fxi-mult-pts">ΓÇö</div>
-          <div class="fxi-summary-lbl">With C &amp; VC Boost</div>
-        </div>
-        <div class="fxi-summary-divider"></div>
-        <div class="fxi-summary-stat">
-          <div class="fxi-summary-val fxi-cvc-name" id="fxi-captain-name">ΓÇö</div>
-          <div class="fxi-summary-lbl">Captain (├ù2)</div>
-        </div>
-        <div class="fxi-summary-divider"></div>
-        <div class="fxi-summary-stat">
-          <div class="fxi-summary-val fxi-cvc-name" id="fxi-vc-name">ΓÇö</div>
-          <div class="fxi-summary-lbl">Vice-Captain (├ù1.5)</div>
-        </div>
-      </div>
-
-      <!-- team distribution -->
-      <div class="fxi-dist-row" id="fxi-dist-row"></div>
-
-      <!-- scoring rules collapsible -->
-      <details class="fxi-scoring-ref">
-        <summary class="fxi-scoring-summary">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M6 5v3M6 3.5v.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-          Dream11 Scoring System Reference
-        </summary>
-        <div class="fxi-rules-grid">
-          <div class="fxi-rules-col">
-            <div class="fxi-rules-heading">≡ƒÅÅ Batting</div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+1</span><span>per run scored</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+1</span><span>per boundary (4)</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+2</span><span>per six</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>25-run milestone</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>50-run milestone</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>75-run milestone</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+16</span><span>100-run milestone</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ2</span><span>duck (non-tail)</span></div>
-            <div class="fxi-rules-sub">Strike Rate (min 10 balls):</div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+6</span><span>SR ΓëÑ 170</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>SR 150ΓÇô169</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+2</span><span>SR 130ΓÇô149</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ2</span><span>SR 80ΓÇô89</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ4</span><span>SR 70ΓÇô79</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ6</span><span>SR &lt; 70</span></div>
-          </div>
-          <div class="fxi-rules-col">
-            <div class="fxi-rules-heading">≡ƒÄ» Bowling</div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+25</span><span>per wicket</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>bowled / LBW bonus</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>3-wkt haul bonus</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>4-wkt haul bonus</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+16</span><span>5-wkt haul bonus</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>maiden over</span></div>
-            <div class="fxi-rules-sub">Economy Rate (min 2 overs):</div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+6</span><span>Econ &lt; 5</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>Econ 5ΓÇô5.99</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+2</span><span>Econ 6ΓÇô6.99</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ2</span><span>Econ 10ΓÇô10.99</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ4</span><span>Econ 11ΓÇô11.99</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-neg">ΓêÆ6</span><span>Econ ΓëÑ 12</span></div>
-          </div>
-          <div class="fxi-rules-col">
-            <div class="fxi-rules-heading">≡ƒñ▓ Fielding</div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+8</span><span>catch</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+4</span><span>3-catch bonus</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>stumping</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+12</span><span>direct run-out</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-pts fxi-pos">+6</span><span>indirect run-out</span></div>
-            <div class="fxi-rules-heading" style="margin-top:14px">ΓÜí Multipliers</div>
-            <div class="fxi-rule-row fxi-big-mult"><span class="fxi-rule-pts fxi-pos fxi-mult-badge">├ù2</span><span>Captain</span></div>
-            <div class="fxi-rule-row fxi-big-mult"><span class="fxi-rule-pts fxi-pos fxi-mult-badge">├ù1.5</span><span>Vice-Captain</span></div>
-            <div class="fxi-rules-heading" style="margin-top:14px">≡ƒôï Team Rules</div>
-            <div class="fxi-rule-row"><span class="fxi-rule-icon">≡ƒºñ</span><span>1ΓÇô4 Wicketkeepers</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-icon">≡ƒÅÅ</span><span>3ΓÇô6 Batters</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-icon">ΓÜí</span><span>1ΓÇô4 All-rounders</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-icon">≡ƒÄ»</span><span>3ΓÇô6 Bowlers</span></div>
-            <div class="fxi-rule-row"><span class="fxi-rule-icon">≡ƒöÆ</span><span>Max 7 from one team</span></div>
-          </div>
-        </div>
-      </details>
-
-      <div class="fxi-cards-label">Your Optimal Dream11 Squad</div>
-      <div class="fxi-cards-grid" id="fxi-player-grid"></div>
-
-    </div><!-- fxiresult -->
-  </div>
-</section>
-
 <section id="builder-view" class="view-section hidden">
 <!-- 
      view builder
@@ -1048,11 +772,27 @@
   <div class="panel panel-center">
     <div class="panel-header">
       <span class="panel-label">Build Your XI</span>
-      <span class="model-dot">Manual</span>
     </div>
 
     <div style="font-size:12px;color:var(--t2);margin-bottom:14px;font-weight:500">
       Pick 11 players per side. Last 5 bowlers selected will bowl (T20 rules: 5 bowlers, max 4 overs each).
+    </div>
+
+    <div class="page-matchup-selector">
+      <div class="field-group">
+        <label class="field-label">Team 1</label>
+        <div class="select-wrap">
+          <select class="setup-select page-team-select" id="builder-team1" data-default="Chennai Super Kings"></select>
+          <div class="select-caret"><svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Team 2</label>
+        <div class="select-wrap">
+          <select class="setup-select page-team-select" id="builder-team2" data-default="Mumbai Indians"></select>
+          <div class="select-caret"><svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div>
+        </div>
+      </div>
     </div>
 
     <div style="display:flex;gap:8px;margin-bottom:16px">
@@ -1171,7 +911,46 @@ const FACTS = [
 ];
 
 
-const clr = t => TEAM_COLORS[t] || '#3B82F6';
+function darkenHex(hex, factor = 0.5) {
+  const clean = String(hex || '').replace('#', '');
+  if (clean.length !== 6) return hex || '#1D417B';
+  const parts = [0, 2, 4].map(i => Math.round(parseInt(clean.slice(i, i + 2), 16) * factor));
+  return '#' + parts.map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+const clr = t => darkenHex(TEAM_COLORS[t] || '#3B82F6', 0.5);
+
+function teamOptionsHtml() {
+  const source = $id('team1');
+  return source ? source.innerHTML : '';
+}
+
+function populatePageTeamSelectors() {
+  const options = teamOptionsHtml();
+  document.querySelectorAll('.page-team-select').forEach(sel => {
+    if (!sel.innerHTML.trim()) sel.innerHTML = options;
+    if (sel.dataset.default) sel.value = sel.dataset.default;
+  });
+}
+
+function getTeams(scope = 'predict') {
+  const ids = scope === 'predict'
+    ? ['team1', 'team2']
+    : [`${scope}-team1`, `${scope}-team2`];
+  return {
+    t1: $id(ids[0])?.value || '',
+    t2: $id(ids[1])?.value || '',
+  };
+}
+
+function validatePageTeams(scope, message = true) {
+  const { t1, t2 } = getTeams(scope);
+  if (!t1 || !t2 || t1 === t2) {
+    if (message) alert('Select two different teams');
+    return null;
+  }
+  return { t1, t2 };
+}
 
 
 let simStyle   = 'balanced';
@@ -1687,9 +1466,10 @@ async function api(endpoint, payload) {
 
 
 async function runSimulate() {
-  const t1 = $id('team1').value, t2 = $id('team2').value;
-  if (t1 === t2) { alert('Select two different teams'); return; }
-  const tossKnown = $id('toss-toggle').checked;
+  const teams = validatePageTeams('sim');
+  if (!teams) return;
+  const { t1, t2 } = teams;
+  const tossKnown = false;
 
   $id('sim-result').style.display = 'none';
   setBtn('simulate-btn', true);
@@ -1715,8 +1495,8 @@ async function runSimulate() {
       body: JSON.stringify({
         team1: t1, team2: t2,
         toss_known: tossKnown,
-        toss_winner:   tossKnown ? ($id('toss_winner')?.value  || '') : '',
-        toss_dec: tossKnown ? ($id('toss_dec')?.value || 'bat') : 'bat',
+        toss_winner: '',
+        toss_dec: 'bat',
         style1: simStyle, style2: simStyle,
         n_matches: 500,
       })
@@ -1809,7 +1589,9 @@ async function runSimulate() {
 }
 
 async function runSim() {
-  const t1 = $id('team1').value, t2 = $id('team2').value;
+  const teams = validatePageTeams('builder');
+  if (!teams) return;
+  const { t1, t2 } = teams;
   if (custXI.t1.length < 11 || custXI.t2.length < 11) {
     alert(`Select 11 per team.\n${t1}: ${custXI.t1.length}/11\n${t2}: ${custXI.t2.length}/11`);
     return;
@@ -1823,7 +1605,7 @@ async function runSim() {
   txt('sim-eta',     'Starting…');
   txt('sim-elapsed', '0.0s');
   const bar = $id('sim-bar'); if (bar) bar.style.width = '0%';
-  const tossKnown = $id('toss-toggle').checked;
+  const tossKnown = false;
 
   const simStart  = Date.now();
   
@@ -1841,8 +1623,8 @@ async function runSim() {
       t2_bat: custXI.t2,
       t2_bwl: custXI.t2.slice(-5),
       toss_known: tossKnown,
-      toss_winner:   tossKnown ? $id('toss_winner').value : '',
-      toss_dec: tossKnown ? $id('toss_dec').value : 'bat',
+      toss_winner: '',
+      toss_dec: 'bat',
       n_matches: 500,
     });
     const duration = Date.now() - simStart;
@@ -1863,6 +1645,10 @@ async function runSim() {
   } finally {
     setBtn('simulate-btn', false);
   }
+}
+
+async function runCustomSimulate() {
+  return runSim();
 }
 
 // render simulation
@@ -2195,7 +1981,9 @@ function renderMomentum(points, t1, t2) {
 
 
 async function loadIdealXI() {
-  const t1 = $id('team1').value, t2 = $id('team2').value;
+  const teams = validatePageTeams('ideal');
+  if (!teams) return;
+  const { t1, t2 } = teams;
   const grid = $id('ideal-xi-grid');
   grid.innerHTML = '<p style="color:var(--t2);font-size:13px;padding:8px">Loading…</p>';
   const impactRow = $id('ideal-impact-row');
@@ -2343,14 +2131,15 @@ function sortSq(col) {
 // open team builder
 function openBuilder() {
   closeSquadModal();
-  showView('builder-view', document.querySelectorAll('.nav-item')[3]);
+  showView('builder-view', document.querySelectorAll('.nav-item')[4]);
   loadBothPools();
 }
 
 
 async function loadBothPools() {
-  const t1 = $id('team1').value;
-  const t2 = $id('team2').value;
+  const teams = validatePageTeams('builder', false);
+  if (!teams) return;
+  const { t1, t2 } = teams;
 
   
   txt('builder-t1-head', t1);
@@ -2418,7 +2207,8 @@ function togglePlayer(side, name) {
 
 async function loadDefaultXI(num) {
   const side = num === 1 ? 't1' : 't2';
-  const team = $id(`team${num}`).value;
+  const team = $id(`builder-team${num}`)?.value;
+  if (!team) return;
   try {
     const d = await fetch(`/playing11/${encodeURIComponent(team)}`).then(r => r.json());
     if (d.error) { alert(d.error); return; }
@@ -2574,9 +2364,18 @@ function fxiUpdateChips() {
   if (c2) { c2.textContent = t2; c2.style.borderColor = clr(t2); c2.style.color = clr(t2); }
 }
 
+fxiUpdateChips = function () {
+  const { t1, t2 } = getTeams('fantasy');
+  const c1 = $id('fxi-chip-t1');
+  const c2 = $id('fxi-chip-t2');
+  if (c1) { c1.textContent = t1 || '-'; c1.style.borderColor = clr(t1); c1.style.color = clr(t1); }
+  if (c2) { c2.textContent = t2 || '-'; c2.style.borderColor = clr(t2); c2.style.color = clr(t2); }
+};
+
 async function loadFantasyXI() {
-  const t1 = $id('team1')?.value;
-  const t2 = $id('team2')?.value;
+  const teams = validatePageTeams('fantasy');
+  const t1 = teams?.t1;
+  const t2 = teams?.t2;
   if (!t1 || !t2 || t1 === t2) {
     const errEl = $id('error-msg');
     if (errEl) { errEl.style.display = 'flex'; txt('error-text', 'Please select two different teams first'); }
@@ -2784,6 +2583,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('criciq_theme') === 'light') document.body.classList.add('light-mode');
   } catch {}
 
+  populatePageTeamSelectors();
   updateColors();
   onTossToggle();
   renderHistory();
@@ -2791,8 +2591,10 @@ document.addEventListener('DOMContentLoaded', () => {
   $id('team1')?.addEventListener('change', updateColors);
   $id('team2')?.addEventListener('change', updateColors);
 
-  $id('team1')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); fxiUpdateChips(); });
-  $id('team2')?.addEventListener('change', () => { if (!$id('builder-view').classList.contains('hidden')) loadBothPools(); fxiUpdateChips(); });
+  $id('builder-team1')?.addEventListener('change', loadBothPools);
+  $id('builder-team2')?.addEventListener('change', loadBothPools);
+  $id('fantasy-team1')?.addEventListener('change', fxiUpdateChips);
+  $id('fantasy-team2')?.addEventListener('change', fxiUpdateChips);
 
   
   initScroll();

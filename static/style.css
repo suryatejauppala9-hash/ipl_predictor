@@ -253,12 +253,7 @@ body.light-mode .topbar {
   border-radius: 50%;
   background: var(--green);
   box-shadow: 0 0 8px var(--green);
-  animation: pulse-dot 2.4s ease infinite;
   flex-shrink: 0;
-}
-@keyframes pulse-dot {
-  0%,100% { opacity:1; box-shadow:0 0 8px var(--green); }
-  50%      { opacity:0.5; box-shadow:0 0 2px var(--green); }
 }
 /* apply navsquadsbtn style */
 .nav-squads-btn {

@@ -27,13 +27,22 @@ from xgboost import XGBClassifier
 # check and regenerate player stats if squad rosters changed
 def _ensure_squad_csvs() -> None:
     import ipl_squads
+    squad_names = {name for players in ipl_squads.SQUADS.values() for name, *_ in players}
+    expected_players = len(squad_names)
     squad_mtime = os.path.getmtime(ipl_squads.__file__)
     csv_mtime = (min(os.path.getmtime("plr_sts.csv"),
                      os.path.getmtime("matchup_stats.csv"))
                  if os.path.exists("plr_sts.csv") and os.path.exists("matchup_stats.csv")
                  else 0)
+    csv_player_count = 0
+    if os.path.exists("plr_sts.csv"):
+        try:
+            csv_players = set(pd.read_csv("plr_sts.csv", usecols=["player"])["player"].astype(str))
+            csv_player_count = len(squad_names.intersection(csv_players))
+        except Exception:
+            csv_player_count = 0
 
-    if csv_mtime < squad_mtime:
+    if csv_mtime < squad_mtime or csv_player_count < expected_players:
         print("Squad file updated — regenerating CSVs...")
         pdf = ipl_squads.generate_player_stats()
         ipl_squads.generate_matchup_stats(pdf)
@@ -662,7 +671,7 @@ def _build_momentum_graph(inn1: dict, inn2: dict, t1: str, t2: str) -> list[dict
             "over": ov, "innings": 1, "team": t1,
             "runs": snap["runs"], "wickets": snap["wickets"],
             "win_prob_t1": round(wp, 3),
-            "event":      f"W – {snap['bowler']}" if evt == "wicket" else evt,
+            "event":      f"W - {snap['bowler']}" if evt == "wicket" else evt,
             "is_wicket":  evt == "wicket",
             "bowler":     snap["bowler"],
         })
@@ -677,7 +686,7 @@ def _build_momentum_graph(inn1: dict, inn2: dict, t1: str, t2: str) -> list[dict
             "over": ov + 20, "innings": 2, "team": t2,
             "runs": snap["runs"], "wickets": snap["wickets"],
             "win_prob_t1": round(t1_wp, 3),
-            "event":       f"W – {snap['bowler']}" if evt == "wicket" else evt,
+            "event":       f"W - {snap['bowler']}" if evt == "wicket" else evt,
             "is_wicket":   evt == "wicket",
             "bowler":      snap["bowler"],
             "target":      target,
@@ -1743,10 +1752,10 @@ def _select_fantasy_xi(t1: str, t2: str) -> dict:
             "team_constraints": {
                 "max_from_one_team": 7,
                 "min_from_each_team": 4,
-                "wicketkeepers": "1–4",
-                "batters": "3–6",
-                "all_rounders": "1–4",
-                "bowlers": "3–6",
+                "wicketkeepers": "1-4",
+                "batters": "3-6",
+                "all_rounders": "1-4",
+                "bowlers": "3-6",
             },
         },
     }
