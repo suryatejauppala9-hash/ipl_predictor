@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Pricket — IPL Match Intelligence</title>
+<title>IPL Match Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -72,7 +72,7 @@
         <path d="M2 8 Q5 10.5 8 8 Q11 5.5 14 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
-    <span class="brand-name">Pricket</span>
+    <span class="brand-name">IPL Match Intelligence</span>
     <span class="brand-tag">IPL 2026</span>
   </a>
 
@@ -1128,11 +1128,11 @@
 console.log("NEW FILE LOADED");
 
 const $id = id => document.getElementById(id);
-// configure txt behavior
+// helper to set text content of element
 const txt = (id, v) => { const el = $id(id); if (el) el.textContent = v; };
 
 
-// configure setmobactive behavior
+// set active state on mobile nav buttons
 function setMobActive(btn) {
   document.querySelectorAll('.mob-nav-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -1190,7 +1190,7 @@ let custXI    = { t1: [], t2: [] };
 let custSquad = { t1: [], t2: [] };
 
 
-// configure showview behavior
+// switch active screen view
 function showView(id, btn) {
   document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -1208,14 +1208,14 @@ function showView(id, btn) {
 }
 
 
-// configure setstyle behavior
+// set team strategy style
 function setStyle(style, btn) {
   simStyle = style;
   $id('sim-style-pills')?.querySelectorAll('.style-pill').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
 }
 
-// configure setxistyle behavior
+// set XI strategy style
 function setXIStyle(style, btn) {
   xiStyle = style;
   $id('xi-style-pills')?.querySelectorAll('.style-pill').forEach(b => b.classList.remove('active'));
@@ -1223,7 +1223,7 @@ function setXIStyle(style, btn) {
 }
 
 
-// configure switchtab behavior
+// switch panel tab
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1233,11 +1233,11 @@ function switchTab(name, btn) {
 }
 
 
-// configure updatecolors behavior
+// update UI theme colors based on selected teams
 function updateColors() {
   const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
   const c1 = clr(t1), c2 = clr(t2);
-  // configure applybg behavior
+  // apply team theme color background
   const applyBg = (id, bg) => { const el = $id(id); if (el) el.style.background = bg; };
   applyBg('t1-bar', c1);
   applyBg('t2-bar', c2);
@@ -1248,14 +1248,14 @@ function updateColors() {
 }
 
 
-// configure ontosstoggle behavior
+// handle toss configuration toggle
 function onTossToggle() {
   const on = $id('toss-toggle').checked;
   $id('toss-fields').style.display = on ? 'block' : 'none';
   $id('toss-notice').style.display = on ? 'none' : 'flex';
 }
 
-// configure poptosswin behavior
+// populate toss winner options
 function popTossWin() {
   const sel = $id('toss_winner'); if (!sel) return;
   const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
@@ -1265,7 +1265,7 @@ function popTossWin() {
 }
 
 
-// configure validateinputs behavior
+// validate team inputs
 function validateInputs() {
   const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
   const btn = $id('predict-btn');
@@ -1277,7 +1277,7 @@ function validateInputs() {
 }
 
 
-// configure swapteams behavior
+// swap team selections
 function swapTeams() {
   const s1 = $id('team1'), s2 = $id('team2');
   if (!s1 || !s2) return;
@@ -1290,12 +1290,12 @@ function swapTeams() {
 
 const HISTORY_KEY = 'criciq_history';
 
-// configure gethistory behavior
+// retrieve prediction history
 function getHistory() {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
 }
 
-// configure savehistory behavior
+// save prediction history
 function saveHistory(item) {
   const h = getHistory();
   h.unshift(item);
@@ -1304,13 +1304,13 @@ function saveHistory(item) {
   renderHistory();
 }
 
-// configure clearhistory behavior
+// clear prediction history
 function clearHistory() {
   localStorage.removeItem(HISTORY_KEY);
   renderHistory();
 }
 
-// configure renderhistory behavior
+// render prediction history list
 function renderHistory() {
   const list = $id('history-list'); if (!list) return;
   const h = getHistory();
@@ -1329,7 +1329,7 @@ function renderHistory() {
 }
 
 
-// configure conflabel behavior
+// get confidence label
 function confLabel(p) {
   if (p >= 70) return { label: 'High',   cls: 'conf-high' };
   if (p >= 58) return { label: 'Medium', cls: 'conf-med'  };
@@ -1337,7 +1337,7 @@ function confLabel(p) {
 }
 
 
-// configure renderfactors behavior
+// render prediction factor breakdown
 function renderFactors(data) {
   const list = $id('factors-list'); if (!list) return;
   const t1 = $id('team1')?.value, t2 = $id('team2')?.value;
@@ -1454,18 +1454,18 @@ async function runPredict() {
 }
 
 
-// configure safenum behavior
+// get numeric value safely
 function safeNum(val, fallback, decimals = 1) {
   const n = parseFloat(val);
   return isNaN(n) ? fallback.toFixed(decimals) : n.toFixed(decimals);
 }
 
 
-// configure animatecounter behavior
+// run animated numeric counter
 function animateCounter(el, target, duration) {
   if (!el) return;
   let start = 0, step = target / 60;
-  // configure tick behavior
+  // increment counter tick
   const tick = () => {
     start = Math.min(start + step, target);
     el.textContent = start.toFixed(1);
@@ -1475,7 +1475,7 @@ function animateCounter(el, target, duration) {
 }
 
 
-// configure renderpred behavior
+// render prediction result
 function renderPred(data, t1, t2) {
   
   
@@ -1562,7 +1562,7 @@ function renderPred(data, t1, t2) {
 }
 
 
-// configure renderstats behavior
+// render statistics comparison
 function renderStats(data, t1, t2) {
   const s1 = data.team1_stats || {};
   const s2 = data.team2_stats || {};
@@ -1586,7 +1586,7 @@ function renderStats(data, t1, t2) {
 }
 
 
-// configure rendertoss behavior
+// render toss options
 function renderToss(data, tossOn) {
   const tsWrap = $id('toss-scenarios-wrap');
   if (!tsWrap) return;
@@ -1603,7 +1603,7 @@ function renderToss(data, tossOn) {
 }
 
 
-// configure renderimpact behavior
+// render impact player details
 function renderImpact(data, t1, t2) {
   const ir = $id('impact-row');
   if (!ir) return;
@@ -1625,16 +1625,16 @@ function renderImpact(data, t1, t2) {
 }
 
 
-// configure renderresult behavior
+// render results card
 function renderResult(data, t1, t2) {
   renderPred(data, t1, t2);
 }
 
 
-// configure clearanimtimers behavior
+// clear running timers
 function clearAnimTimers() { animTimers.forEach(clearInterval); animTimers = []; }
 
-// configure runcounter behavior
+// run countdown counters
 function runCounter(counterId, factId, barId, total, expectedMs) {
   clearAnimTimers();
   const start = Date.now();
@@ -1666,11 +1666,11 @@ function runCounter(counterId, factId, barId, total, expectedMs) {
   animTimers.push(iv);
 }
 
-// configure showanim behavior
+// show loading animation
 function showAnim(id) { const e = $id(id); if (e) e.style.display = 'flex'; }
-// configure hideanim behavior
+// hide loading animation
 function hideAnim(id) { const e = $id(id); if (e) e.style.display = 'none'; }
-// configure setbtn behavior
+// disable button
 function setBtn(id, dis) { const e = $id(id); if (e) e.disabled = dis; }
 
 
@@ -1865,7 +1865,7 @@ async function runSim() {
   }
 }
 
-// configure rendersim behavior
+// render simulation
 function renderSim(d, t1, t2) {
   
   const ps = d.predicted_scores || {};
@@ -2002,11 +2002,11 @@ function renderSim(d, t1, t2) {
 }
 
 
-// configure mkel behavior
+// create svg element
 function mkEl(tag)         { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
-// configure setattr behavior
+// set svg attributes
 function setAttr(el, attrs){ Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v)); }
-// configure addstop behavior
+// add gradient stop
 function addStop(grad, offset, color, opacity) {
   const s = mkEl('stop');
   s.setAttribute('offset', offset);
@@ -2015,7 +2015,7 @@ function addStop(grad, offset, color, opacity) {
   grad.appendChild(s);
 }
 
-// configure rendermomentum behavior
+// render momentum graph
 function renderMomentum(points, t1, t2) {
   const svg = $id('momentum-svg');
   svg.innerHTML = '';
@@ -2258,7 +2258,7 @@ async function loadIdealXI() {
 }
 
 
-// configure opensquadmodal behavior
+// open squad viewer
 function openSquadModal() {
   $id('squad-modal').style.display = 'block';
   document.body.style.overflow = 'hidden';
@@ -2266,7 +2266,7 @@ function openSquadModal() {
   if (team) { $id('squad-team-sel').value = team; loadSquad(); }
 }
 
-// configure closesquadmodal behavior
+// close squad viewer
 function closeSquadModal() {
   $id('squad-modal').style.display = 'none';
   document.body.style.overflow = '';
@@ -2285,7 +2285,7 @@ async function loadSquad() {
   }
 }
 
-// configure filtersquad behavior
+// filter squad
 function filterSquad(f, btn) {
   sqFilter = f;
   document.querySelectorAll('.sq-filter').forEach(b => b.classList.remove('active'));
@@ -2294,7 +2294,7 @@ function filterSquad(f, btn) {
   if (squadCache[team]) renderSquad(squadCache[team]);
 }
 
-// configure rendersquad behavior
+// render squad
 function renderSquad(players) {
   let f = [...players];
   if      (sqFilter === 'bat') f = players.filter(p => p.bowl_wkts < 10 && p.bat_runs > 80);
@@ -2307,7 +2307,7 @@ function renderSquad(players) {
     return;
   }
 
-  // configure th behavior
+  // create sortable table header
   const th = (col, label) =>
     `<th onclick="sortSq('${col}')" style="user-select:none;cursor:pointer">${label}${sqSortCol === col ? (sqSortDir > 0 ? ' ↑' : ' ↓') : ''}</th>`;
 
@@ -2333,14 +2333,14 @@ function renderSquad(players) {
   </table></div>`;
 }
 
-// configure sortsq behavior
+// sort squad
 function sortSq(col) {
   if (sqSortCol === col) sqSortDir *= -1; else { sqSortCol = col; sqSortDir = -1; }
   const team = $id('squad-team-sel')?.value;
   if (squadCache[team]) renderSquad(squadCache[team]);
 }
 
-// configure openbuilder behavior
+// open team builder
 function openBuilder() {
   closeSquadModal();
   showView('builder-view', document.querySelectorAll('.nav-item')[3]);
@@ -2378,7 +2378,7 @@ async function loadPool(side, team) {
   }
 }
 
-// configure renderpool behavior
+// render player pool
 function renderPool(side) {
   const el    = $id(`pool-${side}`);
   const squad = custSquad[side];
@@ -2403,7 +2403,7 @@ function renderPool(side) {
   txt(`builder-${side}-count`, `${custXI[side].length} / 11`);
 }
 
-// configure toggleplayer behavior
+// toggle player
 function togglePlayer(side, name) {
   const xi  = custXI[side];
   const idx = xi.indexOf(name);
@@ -2431,7 +2431,7 @@ async function loadDefaultXI(num) {
 }
 
 
-// configure renderbbb behavior
+// render ball-by-ball
 function renderBBB(cid, innings) {
   const c = $id(cid);
   c.innerHTML = '';
@@ -2458,7 +2458,7 @@ function renderBBB(cid, innings) {
 }
 
 
-// configure renderdist behavior
+// render distribution
 function renderDist(dist, total) {
   const c = $id('dist-chart');
   if (!c) return;
@@ -2496,7 +2496,7 @@ function renderDist(dist, total) {
 }
 
 
-// configure renderxi behavior
+// render playing eleven
 function renderXI(xi, t1, t2) {
   const grid = $id('xi-grid');
   grid.innerHTML = '';
@@ -2514,7 +2514,7 @@ function renderXI(xi, t1, t2) {
 }
 
 
-// configure renderscorecard behavior
+// render scorecard
 function renderScorecard(match, t1, t2) {
   const wrap = $id('scorecard-content');
   if (!match || (!match.innings1 && !match.innings2)) {
@@ -2564,7 +2564,7 @@ function renderScorecard(match, t1, t2) {
 
 
 
-// configure fxiupdatechips behavior
+// update team badges
 function fxiUpdateChips() {
   const t1 = $id('team1')?.value || '—';
   const t2 = $id('team2')?.value || '—';
@@ -2609,7 +2609,7 @@ async function loadFantasyXI() {
   }
 }
 
-// configure renderfantasyxi behavior
+// display fantasy team recommendation
 function renderFantasyXI(data, t1, t2) {
   const players = data.players || [];
   const captain = players.find(p => p.is_captain);
@@ -2756,14 +2756,14 @@ $id('squad-modal').addEventListener('click', function (e) {
 });
 
 
-// configure toggletheme behavior
+// toggle theme
 function toggleTheme() {
   document.body.classList.toggle('light-mode');
   try { localStorage.setItem('criciq_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark'); } catch {}
 }
 
 
-// configure initscroll behavior
+// init scroll reveal
 function initScroll() {
   const opts = { threshold: 0.12, rootMargin: '0px 0px -40px 0px' };
   const obs = new IntersectionObserver((entries) => {

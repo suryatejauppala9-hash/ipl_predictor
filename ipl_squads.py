@@ -1,21 +1,4 @@
-"""
-ipl_squads.py — IPL 2026 Squad Rosters
-=======================================
-Hard-coded player stats based on historical IPL data (2022-2026).
-Sources: ESPNcricinfo, BCCI official auction lists, Cricbuzz squad pages.
-
-Data currency warning
----------------------
-Stats represent career IPL aggregates up to the 2025/early-2026 season.
-Updated post-IPL 2025 to reflect full 2025 season performances and
-IPL 2026 auction outcomes. Any roster changes after April 2026
-may not be reflected here.
-
-Generates
----------
-plr_sts.csv    per-player batting/bowling stats
-matchup_stats.csv   batsman vs bowler historical matchup data (synthetic)
-"""
+# ipl_squads.py — IPL 2026 squads database
 
 from __future__ import annotations
 
@@ -28,7 +11,7 @@ import pandas as pd
 SQD_UPDATED = datetime.date(2026, 4, 15)
 _STALE_DYS  = 365
 
-# process check staleness logic
+# warn if squads database is outdated
 def _check_staleness() -> None:
     delta = datetime.date.today() - SQD_UPDATED
     if delta.days > _STALE_DYS:
@@ -333,9 +316,9 @@ _ROLE_MAP = {
 }
 
 
-# process generate player stats logic
+# generate player statistics
 def generate_player_stats() -> pd.DataFrame:
-    """Generate plr_sts.csv from hard-coded squad data."""
+    # compute stats from squads database
     rows = []
     np.random.seed(42)
 
@@ -385,13 +368,9 @@ def generate_player_stats() -> pd.DataFrame:
     return df
 
 
-# process generate matchup stats logic
+# generate matchup statistics
 def generate_matchup_stats(player_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Generate synthetic batsman vs bowler matchup data.
-    Based on career SR/wicket_rate with random noise.
-    Source: derived — not directly from ESPNcricinfo matchup tables.
-    """
+    # generate synthetic matchups
     np.random.seed(42)
     rows  = []
     batters  = player_df[player_df["bat_runs"] > 200]["player"].tolist()

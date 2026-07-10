@@ -1,13 +1,4 @@
-"""
-main.py — IPL Intelligence API v7
-===================================
-Changes from v6:
-  - Loads calibrated, tuned models from match_model.joblib / ball_model.joblib
-    (produced by data_cleaning.py pipeline) with graceful fallback to in-process training
-  - Leakage-free cumulative ball features — shift inside group
-  - Impact Player logic, Ideal XI, Squad API all preserved
-  - All simulation / prediction endpoints unchanged for frontend compatibility
-"""
+# main.py — IPL Match Intelligence FastAPI Backend
 from __future__ import annotations
 
 import asyncio
@@ -33,7 +24,7 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBClassifier
 
-# process ensure squad csvs logic
+# check and regenerate player stats if squad rosters changed
 def _ensure_squad_csvs() -> None:
     import ipl_squads
     squad_mtime = os.path.getmtime(ipl_squads.__file__)
@@ -151,7 +142,7 @@ for _, row in h2h_df.iterrows():
         h2h_lookup[pair] = float(val)
 
 
-# process get h2h logic
+# calculate head-to-head win probability
 def get_h2h(t1: str, t2: str) -> float:
     pair = tuple(sorted([t1, t2]))
     raw  = float(h2h_lookup.get(pair, 0.5))
@@ -183,7 +174,7 @@ except FileNotFoundError:
     _tm_enc = None
     print("  ! team_encoder.joblib missing — encoding defaults to 0")
 
-# process team enc logic
+# encode team name to integer
 def _team_enc(name: str) -> int:
     if _tm_enc is None:
         return 0
@@ -193,7 +184,7 @@ def _team_enc(name: str) -> int:
         return 0
 
 
-# process safe float logic
+# safely parse floats to avoid nan/inf
 def _safe_float(v: Any, default: float = 0.0) -> float:
     try:
         f = float(v)
@@ -202,9 +193,9 @@ def _safe_float(v: Any, default: float = 0.0) -> float:
         return default
 
 
-# process train match model inline logic
+# train match winner model inline if pre-trained joblib is missing
 def _train_match_model_inline(matches: pd.DataFrame, feature_cols: list[str]):
-    """Fallback: train without tuning or calibration."""
+    # fallback to train match model without tuning
     avail = [f for f in feature_cols if f in matches.columns]
 
     if "season" not in matches.columns:
@@ -235,7 +226,7 @@ def _train_match_model_inline(matches: pd.DataFrame, feature_cols: list[str]):
     return cal, avail
 
 
-# process train ball model inline logic
+# train ball outcome model inline if pre-trained joblib is missing
 def _train_ball_model_inline(ball: pd.DataFrame, feature_cols: list[str]):
     avail  = [f for f in feature_cols if f in ball.columns]
     le     = LabelEncoder()
@@ -295,25 +286,25 @@ else:
     print("  ! No ball data — using calibrated heuristics")
 
 
-# process bat sr logic
+# get batting strike rate
 def _bat_sr(name: str) -> float:
     return _safe_float(plr_lu.get(name, {}).get("bat_sr"), DEF_SR)
 
 
-# process bowl econ logic
+# get bowling economy
 def _bowl_econ(name: str) -> float:
     return _safe_float(plr_lu.get(name, {}).get("bowl_econ"), DEF_ECON)
 
 
-# process bowl wktr logic
+# get bowling wicket rate
 def _bowl_wktr(name: str) -> float:
     return _safe_float(plr_lu.get(name, {}).get("wicket_rate"), DEF_OUT_PR)
 
 
-# process heuristic dist logic
+# calculate outcome probabilities using heuristics
 def _heuristic_dist(bat_sr: float, bowl_econ: float,
                     phase: str, ball_in_over: int) -> dict[int, float]:
-    """Calibrated ball-outcome distribution (IPL 2024/25 scoring)."""
+    # calibrated ball outcome distribution based on average scoring
     target_rpb = PHASE_RPB.get(phase, 0.148)
     sr_norm    = bat_sr / DEF_SR
     econ_norm  = DEF_ECON / max(bowl_econ, 6.0)
@@ -334,7 +325,7 @@ def _heuristic_dist(bat_sr: float, bowl_econ: float,
     return {k: v / total for k, v in raw.items()}
 
 
-# process model dist logic
+# predict outcome probabilities using xgboost
 def _model_dist(bat_sr: float, bat_runs: float, bat_balls: float,
                 bat_sr_pace: float, bat_sr_spin: float,
                 dot_pressure: int,
@@ -391,7 +382,7 @@ def _model_dist(bat_sr: float, bat_runs: float, bat_balls: float,
     return result
 
 
-# process dismiss prob logic
+# compute wicket probability based on match phase
 def _dismiss_prob(batter: str, bowler: str, phase: str) -> float:
     m = match_lu.get((batter, bowler))
     if m and _safe_float(m.get("m_balls"), 0) >= 10:
@@ -402,9 +393,9 @@ def _dismiss_prob(batter: str, bowler: str, phase: str) -> float:
     return float(np.clip(wr, 0.01, 0.22))
 
 
-# process team matchup strength logic
+# compute match strength using batter vs bowler histories
 def _team_matchup_strength(team: str, opponent: str) -> float:
-    """Mean matchup SR for team's batters vs opponent's bowlers."""
+    # calculate average matchup strike rate between team batters and opposing bowlers
     batters  = team_roster.get(team, [])
     bowlers  = team_roster.get(opponent, [])
     srs = []
@@ -418,9 +409,9 @@ def _team_matchup_strength(team: str, opponent: str) -> float:
     return float(np.mean(srs)) if srs else 130.0
 
 
-# process batting depth logic
+# calculate team batting depth
 def _batting_depth(team: str) -> float:
-    """Mean bat SR of players in positions 5–8 (0-based indices 4–7)."""
+    # calculate average strike rate of lower-middle order batters
     roster = team_roster.get(team, [])
     if not roster:
         return 130.0
@@ -434,7 +425,7 @@ def _batting_depth(team: str) -> float:
     return float(np.mean(srs))
 
 
-# process simulate innings logic
+# simulate one full innings
 def _simulate_innings(batting_order: list[str], bowling_order: list[str],
                       innings: int = 1, target: int | None = None) -> dict[str, Any]:
     from collections import deque
@@ -630,7 +621,7 @@ def _simulate_innings(batting_order: list[str], bowling_order: list[str],
     }
 
 
-# process win prob at state logic
+# compute dynamic win probability
 def _win_prob_at_state(batting_team: str, bowling_team: str,
                        runs_scored: int, wickets_lost: int,
                        over: int, target: int | None = None,
@@ -657,7 +648,7 @@ def _win_prob_at_state(batting_team: str, bowling_team: str,
         return float(np.clip(0.5 + edge * 0.6, 0.10, 0.90))
 
 
-# process build momentum graph logic
+# compile graph points representing win momentum
 def _build_momentum_graph(inn1: dict, inn2: dict, t1: str, t2: str) -> list[dict]:
     target = inn1["total"] + 1
     points: list[dict] = []
@@ -694,13 +685,13 @@ def _build_momentum_graph(inn1: dict, inn2: dict, t1: str, t2: str) -> list[dict
     return points
 
 
-# process get impact player logic
+# select impact player based on match situation
 def _get_impact_player(team: str, role_context: str = "balanced") -> dict[str, str]:
     roster = team_roster.get(team, [])
     if not roster:
         return {"name": "Unknown", "reason": "No squad data", "stat": "N/A"}
 
-    # process impact score logic
+    # rank players by overall impact score
     def impact_score(name: str) -> float:
         p    = plr_lu.get(name, {})
         bat  = _safe_float(p.get("bat_sr"), 0) * _safe_float(p.get("bat_avg"), 0) / 1000
@@ -729,7 +720,7 @@ def _get_impact_player(team: str, role_context: str = "balanced") -> dict[str, s
     return {"name": best, "reason": reason, "stat": f"SR {sr}" if sr > 0 else f"{wkts} wkts"}
 
 
-# process ideal xi logic
+# generate playing eleven based on chosen strategy
 def _ideal_xi(team: str, style: str = "balanced") -> dict[str, Any]:
     roster = team_roster.get(team, [])
     if not roster:
@@ -738,12 +729,12 @@ def _ideal_xi(team: str, style: str = "balanced") -> dict[str, Any]:
         return {"batting": generic, "bowling": [p["name"] for p in generic[-4:]],
                 "impact_player": None, "style": style}
 
-    # process bat score logic
+    # score batters by average and strike rate
     def bat_score(n):
         p = plr_lu.get(n, {})
         return _safe_float(p.get("bat_sr"), 0) * _safe_float(p.get("bat_avg"), 0)
 
-    # process bowl score logic
+    # score bowlers by economy and wickets
     def bowl_score(n):
         p    = plr_lu.get(n, {})
         wkts = _safe_float(p.get("bowl_wkts"), 0)
@@ -751,7 +742,7 @@ def _ideal_xi(team: str, style: str = "balanced") -> dict[str, Any]:
         if wkts == 0: return -99
         return wkts * 2.5 - econ
 
-    # process allround score logic
+    # score all-rounders by combining bat and bowl stats
     def allround_score(n):
         return bat_score(n) * 0.4 + max(bowl_score(n), 0) * 20
 
@@ -828,7 +819,7 @@ def _ideal_xi(team: str, style: str = "balanced") -> dict[str, Any]:
             "impact_player": _get_impact_player(team), "style": style}
 
 
-# process best xi names logic
+# get names of playing eleven
 def _best_xi_names(team: str, style: str = "balanced") -> tuple[list[str], list[str]]:
     xi   = _ideal_xi(team, style)
     bat  = [p["name"] for p in xi["batting"]]
@@ -836,7 +827,7 @@ def _best_xi_names(team: str, style: str = "balanced") -> tuple[list[str], list[
     return bat, bowl
 
 
-# process run sim logic
+# run monte carlo simulations
 def _run_sim(bat1: list[str], bowl1: list[str], bat2: list[str], bowl2: list[str],
              n: int, t1: str, t2: str,
              toss_known: bool = True, toss_winner_is_t1: int = 1, toss_bat: int = 1,
@@ -930,9 +921,9 @@ def _run_sim(bat1: list[str], bowl1: list[str], bat2: list[str], bowl2: list[str
         },
     }
 
-# process build explanation logic
+# generate prediction explanations
 def _build_explanation(t1: str, t2: str, t1_stats: dict, t2_stats: dict) -> list[dict]:
-    """Build ordered list of factors that explain the prediction result."""
+    # rank features by impact to explain prediction result
     factors = []
     sr_diff = t1_stats["sr"] - t2_stats["sr"]
     if abs(sr_diff) > 2:
@@ -961,10 +952,10 @@ def _build_explanation(t1: str, t2: str, t1_stats: dict, t2_stats: dict) -> list
     return factors[:4]
 
 
-# process get key matchups logic
+# identify top player matchups
 def _get_key_matchups(batters_t1: list, bowlers_t2: list,
                       batters_t2: list, bowlers_t1: list, n: int = 3) -> list[dict]:
-    """Top N most decisive batter-vs-bowler matchups across both teams."""
+    # select top decisive batter vs bowler matchups
     results = []
     for batter in batters_t1[:6]:
         for bowler in bowlers_t2[:3]:
@@ -999,10 +990,10 @@ def _get_key_matchups(batters_t1: list, bowlers_t2: list,
 
 
 
-# process make feature row logic
+# construct feature row for prediction
 def _make_feature_row(t1: str, t2: str, t1h: int, t2h: int, t1_h2h: float,
                       toss_t1: int, toss_bat: int) -> dict[str, float]:
-    # process ts logic
+    # get rolling stats for home and away teams
     def ts(team: str, col: str) -> float:
         try:   return _safe_float(team_stats.loc[team, col])
         except KeyError: return 0.0
@@ -1047,7 +1038,7 @@ def _make_feature_row(t1: str, t2: str, t1h: int, t2h: int, t1_h2h: float,
     }
 
 
-# process predict row logic
+# predict win probability for match state
 def _predict_row(t1: str, t2: str, t1h: int, t2h: int, t1_h2h: float,
                  toss_t1: int, toss_bat: int) -> tuple[int, list[float]]:
     row_dict = _make_feature_row(t1, t2, t1h, t2h, t1_h2h, toss_t1, toss_bat)
@@ -1111,7 +1102,7 @@ async def _predict_impl(data: MatchRequest):
     t1h    = 1 if data.t1_ven_st == "home"  else 0
     t2h    = 1 if data.t1_ven_st == "away"  else 0
 
-    # process ts logic
+    # get rolling stats for home and away teams
     def ts(team: str, col: str) -> float:
         try:   return _safe_float(team_stats.loc[team, col])
         except KeyError: return 0.0
@@ -1197,10 +1188,7 @@ async def predict_get(
 
 
 async def _simulate_stream_gen(payload: dict):
-    """
-    Async generator that runs the full simulation in a background thread
-    and streams SSE progress events + final result to the client.
-    """
+    # async generator streaming simulation progress and results via SSE
     t1            = payload.get("team1", "")
     t2            = payload.get("team2", "")
     n_matches     = int(payload.get("n_matches", N_MATCHES))
@@ -1215,7 +1203,7 @@ async def _simulate_stream_gen(payload: dict):
     error_box:  list = [None]
     done_event        = threading.Event()
 
-    # process run logic
+    # execute simulations in thread
     def run() -> None:
         global _PRED_CACHE
         try:
@@ -1411,7 +1399,7 @@ _SR_BNS = {
     (0,   70): -6,
 }
 
-# process sr bonus logic
+# calculate strike rate bonus points
 def _sr_bonus(sr: float, balls: float) -> float:
     if balls < 10: return 0.0
     for (lo, hi), pts in _SR_BNS.items():
@@ -1419,7 +1407,7 @@ def _sr_bonus(sr: float, balls: float) -> float:
             return float(pts)
     return 0.0
 
-# process econ bonus logic
+# calculate economy bonus points
 def _econ_bonus(econ: float, overs: float) -> float:
     if overs < 2: return 0.0
     for (lo, hi), pts in _ECON_BNS.items():
@@ -1428,12 +1416,9 @@ def _econ_bonus(econ: float, overs: float) -> float:
     return 0.0
 
 
-# process project fantasy pts logic
+# project expected fantasy points
 def _project_fantasy_pts(name: str) -> dict:
-    """
-    Project expected Dream11 fantasy points for a single player.
-    Based on career stats — projecting a 'typical T20 match' contribution.
-    """
+    # project expected fantasy points for a single player based on career stats
     p = plr_lu.get(name, {})
     if not p:
         return {"total": 0.0, "bat_pts": 0.0, "bowl_pts": 0.0, "field_pts": 0.0,
@@ -1535,9 +1520,9 @@ def _project_fantasy_pts(name: str) -> dict:
     }
 
 
-# process fantasy reason logic
+# generate reason for selecting fantasy pick
 def _fantasy_reason(name: str, proj: dict) -> str:
-    """Generate a concise natural-language justification for the Fantasy XI pick."""
+    # generate simple description explaining the fantasy pick
     p = plr_lu.get(name, {})
     if not p:
         return "Included for squad balance."
@@ -1600,20 +1585,9 @@ def _fantasy_reason(name: str, proj: dict) -> str:
     return "Picked for " + "; ".join(parts[:3]) + "."
 
 
-# process select fantasy xi logic
+# select best fantasy playing eleven
 def _select_fantasy_xi(t1: str, t2: str) -> dict:
-    """
-    Select the optimal Fantasy XI from both squads under Dream11 T20 rules:
-
-    Constraints:
-      • 11 players total
-      • 1–4 Wicketkeepers
-      • 3–6 Batters
-      • 1–4 All-rounders
-      • 3–6 Bowlers
-      • Maximum 7 players from any one team (minimum 4 from each)
-    Captain gets ×2, Vice-Captain gets ×1.5 on their points.
-    """
+    # choose optimal fantasy team satisfying category constraints and multipliers
     MIN_CAT = {"wk": 1, "bat": 3, "all": 1, "bowl": 3}
     MAX_CAT = {"wk": 4, "bat": 6, "all": 4, "bowl": 6}
     MAX_TEAM = 7
@@ -1662,7 +1636,7 @@ def _select_fantasy_xi(t1: str, t2: str) -> dict:
     counts   = {k: 0 for k in MIN_CAT}
     t_counts = {t1: 0, t2: 0}
 
-    # process can add logic
+    # check if player matches category limits
     def _can_add(pl: dict) -> bool:
         return (
             pl not in selected
@@ -1843,7 +1817,7 @@ async def player_stats_endpoint(team: str | None = None):
 
 @app.get("/model-info")
 async def model_info():
-    """Return model metadata and last evaluation metrics."""
+    # get model architecture and performance metrics
     info: dict = {
         "match_model_features": _m_feats,
         "ball_model_features":  _b_feats,

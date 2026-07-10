@@ -1,22 +1,4 @@
-"""
-data_cleaning.py — IPL Ball-by-Ball Data Preprocessor (v2)
-===========================================================
-Pipeline: clean → feature_eng → train → calibrate → evaluate
-
-Outputs
--------
-ml_ready_data.csv       match-level features + target
-team_stats.csv          latest rolling team stats
-h2h_stats.csv           head-to-head historical win %
-plr_sts.csv        per-player batting/bowling stats
-matchup_stats.csv       batsman vs bowler historical matchup data
-ball_model_data.csv     ball-level features for XGBoost ball-outcome model
-match_model.joblib      trained + calibrated match-winner model
-ball_model.joblib       trained + calibrated ball-outcome model
-results.json            evaluation metrics for both models
-shap_match.png          SHAP summary for match model
-shap_ball.png           SHAP summary for ball model
-"""
+# data_cleaning.py — preprocessor and trainer pipeline
 
 from __future__ import annotations
 
@@ -164,9 +146,9 @@ TST_SSN_ST = 2025
 
 
 
-# process safe divide logic
+# divide safely
 def safe_divide(numerator, denominator, default=0.0):
-    """Safely divide and preserve pandas compatibility."""
+    # divide pandas series safely to prevent divide by zero
     if np.isscalar(numerator) and np.isscalar(denominator):
         return default if denominator == 0 else numerator / denominator
 
@@ -175,7 +157,7 @@ def safe_divide(numerator, denominator, default=0.0):
     return result
 
 
-# process over phase logic
+# map over number to match phase
 def _over_phase(over_int: int) -> str:
     if over_int < 6:
         return "powerplay"
@@ -185,7 +167,7 @@ def _over_phase(over_int: int) -> str:
 
 
 
-# process load and clean logic
+# load dataset and standardise names
 def load_and_clean(csv_path: str = "ipl_data.csv") -> pd.DataFrame:
     print("Loading raw data...")
     df = pd.read_csv(csv_path, low_memory=False)
@@ -224,7 +206,7 @@ def load_and_clean(csv_path: str = "ipl_data.csv") -> pd.DataFrame:
     return df
 
 
-# process safe div logic
+# divide array or series safely
 def _safe_div(num, den, fill=0.0):
     import numpy as np
     import pandas as pd
@@ -235,12 +217,9 @@ def _safe_div(num, den, fill=0.0):
     
     return fill if den == 0 else num / den
 
-# process build team stats logic
+# calculate rolling stats
 def build_team_stats(df: pd.DataFrame):
-    """
-    Compute dynamic rolling last-5-match batting / bowling stats.
-    Returns (match_bat_df, match_bowl_df, latest_team_stats_df).
-    """
+    # compute rolling team stats over last five matches
     print("Building rolling team stats (last-5 matches)...")
 
     match_bat = (
@@ -290,9 +269,9 @@ def build_team_stats(df: pd.DataFrame):
 
 
 
-# process build phase features logic
+# calculate phase specific run rates
 def build_phase_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Per-match phase run rates: powerplay / middle / death."""
+    # calculate phase run rates
     phase_rr = (
         df.groupby(["match_id", "batting_team", "over_phase"])
         .agg(runs=("runs_total", "sum"), balls=("ball", "count"))
@@ -314,9 +293,9 @@ def build_phase_features(df: pd.DataFrame) -> pd.DataFrame:
     return phase_wide, death_bowl
 
 
-# process build venue chase features logic
+# calculate venue and chase win rates
 def build_venue_chase_features(df: pd.DataFrame, matches_base: pd.DataFrame) -> pd.DataFrame:
-    """Venue win rate and chase/defend win rate per team."""
+    # calculate venue and chase win rates
     m = matches_base.copy()
 
     venue_wins = []
@@ -350,7 +329,7 @@ def build_venue_chase_features(df: pd.DataFrame, matches_base: pd.DataFrame) -> 
 
 
 
-# process build match features logic
+# construct match features
 def build_match_features(df: pd.DataFrame,
                           match_bat: pd.DataFrame,
                           match_bowl: pd.DataFrame,
@@ -485,7 +464,7 @@ def build_match_features(df: pd.DataFrame,
     if matchup_df is not None and not matchup_df.empty:
         plr_sts_df = pd.read_csv("plr_sts.csv") if Path("plr_sts.csv").exists() else pd.DataFrame()
 
-        # process top bowlers logic
+        # select top bowlers for a team
         def _top_bowlers(team_name, n=5):
             if plr_sts_df.empty or "bowling_team" not in plr_sts_df.columns:
                 return []
@@ -493,7 +472,7 @@ def build_match_features(df: pd.DataFrame,
             sub = sub.sort_values("bowl_wkts", ascending=False)
             return sub["bowler"].dropna().tolist()[:n]
 
-        # process batters for team logic
+        # select top batters for a team
         def _batters_for_team(team_name, n=8):
             if plr_sts_df.empty or "batting_team" not in plr_sts_df.columns:
                 return []
@@ -525,7 +504,7 @@ def build_match_features(df: pd.DataFrame,
         .reset_index(drop=True)
     ) if not df.empty else pd.DataFrame()
 
-    # process match depth logic
+    # calculate match batting depth
     def _match_depth(match_id, team):
         if df.empty:
             return 130.0
@@ -562,7 +541,7 @@ def build_match_features(df: pd.DataFrame,
 
 
 
-# process build player stats logic
+# calculate batting and bowling stats
 def build_player_stats(df: pd.DataFrame) -> pd.DataFrame:
     print("Computing player-level batting & bowling stats...")
 
@@ -621,9 +600,9 @@ def build_player_stats(df: pd.DataFrame) -> pd.DataFrame:
     return plr_sts
 
 
-# process build sr by style logic
+# calculate strike rate against bowling styles
 def _build_sr_by_style(df: pd.DataFrame, style: str) -> pd.DataFrame:
-    """Approximate SR vs pace/spin using bowling_style column if available."""
+    # calculate strike rate against pace and spin
     if "bowling_style" not in df.columns:
         return pd.DataFrame(columns=["batter", f"sr_vs_{style}"])
     sub = df[df["bowling_style"].str.lower().str.contains(style, na=False)]
@@ -635,7 +614,7 @@ def _build_sr_by_style(df: pd.DataFrame, style: str) -> pd.DataFrame:
 
 
 
-# process build matchup stats logic
+# compute head-to-head matchup records
 def build_matchup_stats(df: pd.DataFrame) -> pd.DataFrame:
     print("Building batsman vs bowler matchup table...")
     matchup = (
@@ -654,10 +633,10 @@ def build_matchup_stats(df: pd.DataFrame) -> pd.DataFrame:
     return matchup
 
 
-# process compute matchup strength logic
+# calculate average matchup strength
 def compute_matchup_strength(team_batters: list, opponent_bowlers: list,
                               matchup_df: pd.DataFrame, default: float = 100.0) -> float:
-    """Mean SR for team's batters vs opponent's top bowlers from matchup_df."""
+    # calculate head-to-head matchup strength
     srs = []
     mu_index = matchup_df.set_index(["batter", "bowler"]) if not matchup_df.empty else None
     for batter in team_batters:
@@ -673,7 +652,7 @@ def compute_matchup_strength(team_batters: list, opponent_bowlers: list,
 
 
 
-# process build ball features logic
+# construct ball features
 def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFrame:
     print("Building ball-level XGBoost training dataset (leakage-free)...")
 
@@ -741,9 +720,9 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
     df["b_remain"]  = 120 - df["ball_seq"]
     df["over"]             = df["over_int"]
 
-    # process dot pressure logic
+    # calculate consecutive dot ball pressure
     def _dot_pressure(series):
-        """Consecutive dots so far by this batter."""
+        # count consecutive dot balls
         result = []
         streak = 0
         for val in series:
@@ -804,7 +783,7 @@ def build_ball_features(df: pd.DataFrame, matchup_df: pd.DataFrame) -> pd.DataFr
 
 
 
-# process time split logic
+# split dataset by season
 def time_split(df: pd.DataFrame, feature_cols: list[str], target_col: str = "target"):
     train = df[df["season"] <= TRN_SSN_END]
     val   = df[df["season"] == VAL_SEASON]
@@ -817,7 +796,7 @@ def time_split(df: pd.DataFrame, feature_cols: list[str], target_col: str = "tar
 
 
 
-# process tune xgb logic
+# tune model using optuna
 def tune_xgb(X_train, y_train, X_val, y_val, n_trials: int = 40,
              n_classes: int = 2) -> dict:
     if not HAS_OPTUNA:
@@ -828,7 +807,7 @@ def tune_xgb(X_train, y_train, X_val, y_val, n_trials: int = 40,
 
     obj_met = "logloss" if n_classes == 2 else "mlogloss"
 
-    # process objective logic
+    # objective function for optuna optimization
     def objective(trial):
         params = dict(
             n_estimators     = trial.suggest_int("n_estimators", 200, 600, step=100),
@@ -864,7 +843,7 @@ def tune_xgb(X_train, y_train, X_val, y_val, n_trials: int = 40,
 
 
 
-# process train match model logic
+# train match model
 def train_match_model(X_train, y_train, X_val, y_val, feature_names: list[str]):
     print("Training match-winner model...")
     params = tune_xgb(X_train, y_train, X_val, y_val, n_trials=30)
@@ -880,7 +859,7 @@ def train_match_model(X_train, y_train, X_val, y_val, feature_names: list[str]):
     return cal, base
 
 
-# process train ball model logic
+# train ball model
 def train_ball_model(X_train, y_train, X_val, y_val, classes, feature_names: list[str]):
     print("Training ball-outcome model...")
     n_cls  = len(classes)
@@ -898,7 +877,7 @@ def train_ball_model(X_train, y_train, X_val, y_val, classes, feature_names: lis
 
 
 
-# process evaluate model logic
+# evaluate trained model performance
 def evaluate_model(model, X_test, y_test, name: str, classes=None) -> dict:
     preds  = model.predict(X_test)
     proba  = model.predict_proba(X_test)
@@ -948,7 +927,7 @@ def evaluate_model(model, X_test, y_test, name: str, classes=None) -> dict:
 
 
 
-# process shap plot logic
+# generate and save shap summary plots
 def shap_plot(base_model, X_sample, feature_names: list[str], title: str, fname: str):
     if not HAS_SHAP or not HAS_MPL:
         return
@@ -970,7 +949,7 @@ def shap_plot(base_model, X_sample, feature_names: list[str], title: str, fname:
 
 
 
-# process clean and prepare data logic
+# clean raw dataset and compute features
 def clean_and_prepare_data(csv_path: str = "ipl_data.csv") -> None:
     results: dict = {}
 
